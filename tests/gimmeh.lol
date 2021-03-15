@@ -1,0 +1,6 @@
+HAI 1.2
+I HAS A input
+GIMMEH input
+
+VISIBLE input
+KTHXBYE

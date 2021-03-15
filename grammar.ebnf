@@ -1,0 +1,54 @@
+(* reference: https://github.com/justinmeza/lolcode-spec/blob/master/v1.2/lolcode-spec-v1.2.md *)
+top = start, block, end ;
+block = { statement, lineterm } | lineterm ;
+
+start = "HAI", version ;
+end = "KTHXBYE" ;
+
+statement = assignment | comment | declaration or assignment | import 
+          | function def | expr | case | if | break | loop | return 
+          | multiline comment | print ;
+
+loop = "IM", "IN", "YR", ident, ident, "YR", ident, [ "TILL" | "WILE", expr ], lineterm, block, "IM", "OUTTA", "YR", ident ;
+
+function def = "HOW", "IZ", "I", ident, { "YR", ident, "AN" }, [ "YR", ident ], lineterm, block, "IF", "YOU", "SAY", "SO" ;
+return = "FOUND", "YR", expr ;
+
+comment = "BTW", { any } ;
+multiline comment = "OBTW", { any | "\n" }, "TLDR" ;
+
+case = "WTF?", lineterm, { case block }, [final case block], "OIC" ;
+final case block = "OMGWTF", lineterm, block ;
+case block = "OMG", expr, lineterm, block ;
+
+if = "O", "RLY", "?", lineterm, [ "YA", "RLY", block ], { "MEBEE", expr, block }, [ "NO", "WAI", block ], "OIC";
+
+break = "GTFO" ;
+import = "CAN", "I", "HAS", ident, "?" ;
+declaration or assignment = "I", "HAS", "A", ident, ["ITZ", expr] ;
+assignment = ident, "R", expr ;
+
+print = "VISIBLE", expr ;
+
+expr = float | int | string | boolean | ident | function call ;
+int = { digit } ;
+float = int, ".", int ;
+string = '"', { any }, '"' ;
+boolean = "WIN" | "FAIL" ;
+function call = "I", "IZ", ident, { "YR", expr, "AN" }, [ "YR", expr ] ;
+
+ident = letter, { digit | letter } ;
+version = int, ".", int ;
+any = letter | " " | digit ;
+
+letter = "A" | "B" | "C" | "D" | "E" | "F" | "G"
+       | "H" | "I" | "J" | "K" | "L" | "M" | "N"
+       | "O" | "P" | "Q" | "R" | "S" | "T" | "U"
+       | "V" | "W" | "X" | "Y" | "Z" | "a" | "b"
+       | "c" | "d" | "e" | "f" | "g" | "h" | "i"
+       | "j" | "k" | "l" | "m" | "n" | "o" | "p"
+       | "q" | "r" | "s" | "t" | "u" | "v" | "w"
+       | "x" | "y" | "z" ;
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+
+lineterm = ("," | "\n");
