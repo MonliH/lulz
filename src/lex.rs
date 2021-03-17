@@ -1,11 +1,13 @@
 use smol_str::SmolStr;
+
+use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
 use std::str::Chars;
 
 use crate::diagnostics::prelude::*;
 
 #[derive(Eq, Debug, PartialEq, Clone)]
-enum TokenKind {
+pub enum TokenKind {
     Hai,
     Kthxbye,
     Im,
@@ -44,13 +46,60 @@ enum TokenKind {
     Eof,
 }
 
-#[derive(Eq, Debug, PartialEq)]
-struct Token {
-    token_kind: TokenKind,
-    span: Span,
+impl Display for TokenKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                TokenKind::Hai => "token `HAI`",
+                TokenKind::Kthxbye => "token `KTHXBYE`",
+                TokenKind::Im => "token `IM`",
+                TokenKind::In => "token `IN`",
+                TokenKind::Yr => "token `YR`",
+                TokenKind::Till => "token `TILL`",
+                TokenKind::Wile => "token `WILE`",
+                TokenKind::Outta => "token `OUTTA`",
+                TokenKind::Wtf => "token `WTF`",
+                TokenKind::Oic => "token `OIC`",
+                TokenKind::Omg => "token `OMG`",
+                TokenKind::Omgwtf => "token `OMGWTF`",
+                TokenKind::Rly => "token `RLY`",
+                TokenKind::O => "token `O`",
+                TokenKind::Mebee => "token `MEBEE`",
+                TokenKind::Wai => "token `WAI`",
+                TokenKind::Gtfo => "token `GTFO`",
+                TokenKind::Can => "token `CAN`",
+                TokenKind::I => "token `I`",
+                TokenKind::Has => "token `HAS`",
+                TokenKind::Itz => "token `ITZ`",
+                TokenKind::Win => "token `WIN`",
+                TokenKind::Fail => "token `FAIL`",
+                TokenKind::Iz => "token `IZ`",
+                TokenKind::An => "token `AN`",
+                TokenKind::Visible => "token `VISIBLE`",
+
+                TokenKind::Dot => "token `.`",
+                TokenKind::Question => "token `?`",
+                TokenKind::Break => "statement separator",
+
+                TokenKind::Number(..) => "number",
+                TokenKind::String(..) => "string",
+                TokenKind::Ident(..) => "identifier",
+
+                TokenKind::Eof => "end of file",
+            }
+        )
+    }
 }
 
-struct Lexer<'a> {
+#[derive(Eq, Debug, PartialEq)]
+pub struct Token {
+    pub token_kind: TokenKind,
+    pub span: Span,
+}
+
+pub struct Lexer<'a> {
     stream: Peekable<Chars<'a>>,
     position: usize,
     source_id: usize,
@@ -82,7 +131,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn next_token(&mut self) -> Failible<Token> {
+    fn next_token(&mut self) -> Failible<Token> {
         let prev_pos = self.position;
         let kind = match self.eat() {
             c if Self::is_id_start(c) => self.ident(c),
@@ -204,7 +253,7 @@ impl<'a> Lexer<'a> {
             "HAI" => TokenKind::Hai,
             "KTHXBYE" => TokenKind::Kthxbye,
             "IM" => TokenKind::Im,
-            "In" => TokenKind::In,
+            "IN" => TokenKind::In,
             "YR" => TokenKind::Yr,
             "TILL" => TokenKind::Till,
             "WILE" => TokenKind::Wile,
@@ -262,7 +311,7 @@ mod lexer_test {
             ("HAI", TokenKind::Hai),
             ("KTHXBYE", TokenKind::Kthxbye),
             ("IM", TokenKind::Im),
-            ("In", TokenKind::In),
+            ("IN", TokenKind::In),
             ("YR", TokenKind::Yr),
             ("TILL", TokenKind::Till),
             ("WILE", TokenKind::Wile),

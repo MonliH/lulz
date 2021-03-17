@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::diagnostics::Span;
 
-struct Ident(pub SmolStr, Span);
+pub struct Ident(pub SmolStr, pub Span);
 
 impl Deref for Ident {
     type Target = SmolStr;
@@ -19,14 +19,14 @@ impl DerefMut for Ident {
     }
 }
 
-struct Block(Vec<Statement>, Span);
+pub struct Block(pub Vec<Statement>, pub Span);
 
-struct Statement {
-    statement_kind: StatementKind,
-    span: Span,
+pub struct Statement {
+    pub statement_kind: StatementKind,
+    pub span: Span,
 }
 
-enum StatementKind {
+pub enum StatementKind {
     Assignment(Ident, Expr),
     DecAssign(Ident, Expr),
     Import(Ident),
@@ -47,12 +47,12 @@ enum StatementKind {
     Print(Expr),
 }
 
-struct Expr {
-    expr_kind: ExprKind,
-    span: Span,
+pub struct Expr {
+    pub expr_kind: ExprKind,
+    pub span: Span,
 }
 
-enum ExprKind {
+pub enum ExprKind {
     Float(f64),
     Int(i64),
     String(String),

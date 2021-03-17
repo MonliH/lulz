@@ -6,6 +6,7 @@ mod lex;
 mod parse;
 
 use clap::Clap;
+use codespan_reporting::files::SimpleFiles;
 use std::borrow::Cow;
 use std::fs::read_to_string;
 use std::io::{self, Read};
@@ -39,4 +40,8 @@ fn main() {
             Cow::Borrowed("Failed to read file"),
         )
     };
+    let mut sources = SimpleFiles::new();
+    let id = sources.add(opts.input, source);
+    let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
+    let parser = parse::Parser::new(lexer);
 }
