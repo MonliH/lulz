@@ -17,7 +17,7 @@ return = "FOUND", "YR", expr ;
 comment = "BTW", { any } ;
 multiline comment = "OBTW", { any | "\n" }, "TLDR" ;
 
-case = "WTF?", lineterm, { case block }, [final case block], "OIC" ;
+case = "WTF", "?", lineterm, { case block }, [final case block], "OIC" ;
 final case block = "OMGWTF", lineterm, block ;
 case block = "OMG", expr, lineterm, block ;
 

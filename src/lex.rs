@@ -34,6 +34,12 @@ pub enum TokenKind {
     Iz,
     An,
     Visible,
+    How,
+    If,
+    You,
+    Say,
+    So,
+    Found,
 
     Dot,
     Break,
@@ -44,6 +50,12 @@ pub enum TokenKind {
     Ident(SmolStr),
 
     Eof,
+}
+
+impl TokenKind {
+    pub fn eq(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
 }
 
 impl Display for TokenKind {
@@ -78,6 +90,12 @@ impl Display for TokenKind {
                 TokenKind::Iz => "token `IZ`",
                 TokenKind::An => "token `AN`",
                 TokenKind::Visible => "token `VISIBLE`",
+                TokenKind::How => "token `HOW`",
+                TokenKind::If => "token `IF`",
+                TokenKind::You => "token `YOU`",
+                TokenKind::Say => "token `SAY`",
+                TokenKind::So => "token `SO`",
+                TokenKind::Found => "token `FOUND`",
 
                 TokenKind::Dot => "token `.`",
                 TokenKind::Question => "token `?`",
@@ -102,7 +120,7 @@ pub struct Token {
 pub struct Lexer<'a> {
     stream: Peekable<Chars<'a>>,
     position: usize,
-    source_id: usize,
+    pub source_id: usize,
 }
 
 impl<'a> Iterator for Lexer<'a> {
@@ -276,6 +294,12 @@ impl<'a> Lexer<'a> {
             "IZ" => TokenKind::Iz,
             "AN" => TokenKind::An,
             "VISIBLE" => TokenKind::Visible,
+            "HOW" => TokenKind::How,
+            "IF" => TokenKind::If,
+            "YOU" => TokenKind::You,
+            "SAY" => TokenKind::Say,
+            "SO" => TokenKind::So,
+            "FOUND" => TokenKind::Found,
             _ => TokenKind::Ident(SmolStr::new(id)),
         }
     }
@@ -334,6 +358,11 @@ mod lexer_test {
             ("IZ", TokenKind::Iz),
             ("AN", TokenKind::An),
             ("VISIBLE", TokenKind::Visible),
+            ("IF", TokenKind::If),
+            ("YOU", TokenKind::You),
+            ("SAY", TokenKind::Say),
+            ("SO", TokenKind::So),
+            ("FOUND", TokenKind::Found),
         ]);
     }
 

@@ -5,9 +5,9 @@ pub mod prelude {
 
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
 pub struct Span {
-    s: usize,
-    e: usize,
-    file: usize,
+    pub s: usize,
+    pub e: usize,
+    pub file: usize,
 }
 
 impl Span {
@@ -60,6 +60,7 @@ pub enum DiagnosticType {
     UnexpectedCharacter = 1,
     InvalidEscapeSequence = 2,
     Syntax = 3,
+    UnmatchedBlockName = 4,
 }
 
 impl DiagnosticType {
@@ -68,6 +69,7 @@ impl DiagnosticType {
             DiagnosticType::UnexpectedCharacter => "unexpected character while lexing",
             DiagnosticType::InvalidEscapeSequence => "invalid escaped character",
             DiagnosticType::Syntax => "syntax error",
+            DiagnosticType::UnmatchedBlockName => "block names specified do not match",
         }
     }
 
@@ -76,6 +78,7 @@ impl DiagnosticType {
             DiagnosticType::UnexpectedCharacter => "unexpected_character",
             DiagnosticType::InvalidEscapeSequence => "invalid_escape",
             DiagnosticType::Syntax => "syntax",
+            DiagnosticType::UnmatchedBlockName => "unmatched_block_name",
         }
     }
 }

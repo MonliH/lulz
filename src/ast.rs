@@ -39,8 +39,10 @@ pub enum StatementKind {
         block_name: Ident,
         func: Ident,
         index: Ident,
-        pred: Expr,
-        till: bool,
+        /// Bool represents `till` or `wile`
+        /// true = `till`
+        /// false = `wile`
+        pred: Option<(bool, Expr)>,
         block: Block,
     },
     Return(Expr),
