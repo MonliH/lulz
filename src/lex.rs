@@ -164,7 +164,13 @@ impl<'a> Lexer<'a> {
             '.' => TokenKind::Dot,
             '?' => TokenKind::Question,
             '"' => self.eat_string()?,
-            '\n' | ',' => TokenKind::Break,
+            ',' => TokenKind::Break,
+            '\n' => {
+                while self.peek() == '\n' {
+                    self.eat();
+                }
+                TokenKind::Break
+            }
             '\t' | ' ' => return self.next_token(),
             '\0' => TokenKind::Eof,
             '-' => {
@@ -401,7 +407,11 @@ mod lexer_test {
 
     #[test]
     fn breaks() {
-        assert_map(&[("\n", TokenKind::Break), (",", TokenKind::Break)]);
+        assert_map(&[
+            ("\n", TokenKind::Break),
+            (",", TokenKind::Break),
+            ("\n\n\n", TokenKind::Break),
+        ]);
     }
 
     #[test]
@@ -450,5 +460,11 @@ mod lexer_test {
             ("}", DiagnosticType::UnexpectedCharacter),
             ("-asf", DiagnosticType::UnexpectedCharacter),
         ]);
+    }
+
+    #[test]
+    fn token_eq() {
+        assert!(TokenKind::Break.eq(&TokenKind::Break));
+        assert!(!TokenKind::Break.eq(&TokenKind::Itz));
     }
 }

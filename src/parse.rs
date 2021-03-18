@@ -69,9 +69,14 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::Hai)?;
         self.version()?;
         self.expect(TokenKind::Break)?;
-        let block = self.block()?;
-        self.expect(TokenKind::Kthxbye)?;
-        self.expect(TokenKind::Eof)?;
+        let block = match self.peek_token()?.token_kind {
+            TokenKind::Kthxbye => {
+                self.next_token()?;
+                self.expect(TokenKind::Eof)?;
+                Block(Vec::new(), Span::default())
+            }
+            _ => self.block()?,
+        };
         Ok(block)
     }
 
@@ -87,6 +92,10 @@ impl<'a> Parser<'a> {
         let mut statements = vec![self.statement()?];
         loop {
             if TokenKind::Break.eq(&self.peek_token()?.token_kind) {
+                self.next_token()?;
+                if TokenKind::Kthxbye.eq(&self.peek_token()?.token_kind) {
+                    break;
+                }
                 statements.push(self.statement()?);
             } else {
                 break;
@@ -135,8 +144,14 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::Yr)?;
         let index = self.ident()?;
         let pred = match self.peek_token()?.token_kind {
-            TokenKind::Till => Some((true, self.expr()?)),
-            TokenKind::Wile => Some((false, self.expr()?)),
+            TokenKind::Till => {
+                self.next_token()?;
+                Some((true, self.expr()?))
+            }
+            TokenKind::Wile => {
+                self.next_token()?;
+                Some((false, self.expr()?))
+            }
             _ => None,
         };
         self.expect(TokenKind::Break)?;
@@ -181,6 +196,7 @@ impl<'a> Parser<'a> {
     }
 
     fn return_statement(&mut self, span: Span) -> Failible<Statement> {
+        self.expect(TokenKind::Yr)?;
         let expr = self.expr()?;
         Ok(Statement {
             span: Span::new(span.s, self.current_span.e, self.source_id),
@@ -194,9 +210,11 @@ impl<'a> Parser<'a> {
         let fn_name = self.ident()?;
         let mut args = Vec::new();
         if TokenKind::Yr.eq(&self.peek_token()?.token_kind) {
+            self.next_token()?;
             args.push(self.ident()?);
             loop {
                 if TokenKind::An.eq(&self.peek_token()?.token_kind) {
+                    self.next_token()?;
                     self.expect(TokenKind::Yr)?;
                     args.push(self.ident()?);
                 } else {
@@ -222,6 +240,7 @@ impl<'a> Parser<'a> {
         let mut cases = Vec::new();
         loop {
             if TokenKind::Break.eq(&self.peek_token()?.token_kind) {
+                self.next_token()?;
                 self.expect(TokenKind::Omg)?;
                 let expr = self.expr()?;
                 self.expect(TokenKind::Break)?;
@@ -233,6 +252,7 @@ impl<'a> Parser<'a> {
         }
 
         let block = if TokenKind::Omgwtf.eq(&self.peek_token()?.token_kind) {
+            self.next_token()?;
             self.expect(TokenKind::Break)?;
             let block = self.block()?;
             Some(block)
@@ -252,6 +272,7 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::Break)?;
 
         let ya_rly = if TokenKind::Ya.eq(&self.peek_token()?.token_kind) {
+            self.next_token()?;
             self.expect(TokenKind::Rly)?;
             let block = self.block()?;
             Some(block)
@@ -263,6 +284,7 @@ impl<'a> Parser<'a> {
 
         loop {
             if TokenKind::Mebee.eq(&self.peek_token()?.token_kind) {
+                self.next_token()?;
                 let expr = self.expr()?;
                 self.expect(TokenKind::Break)?;
                 let block = self.block()?;
@@ -273,6 +295,7 @@ impl<'a> Parser<'a> {
         }
 
         let no_wai = if TokenKind::No.eq(&self.peek_token()?.token_kind) {
+            self.next_token()?;
             self.expect(TokenKind::Wai)?;
             let block = self.block()?;
             Some(block)
@@ -298,11 +321,11 @@ impl<'a> Parser<'a> {
     }
 
     fn declaration_assignment(&mut self, span: Span) -> Failible<Statement> {
-        self.expect(TokenKind::I)?;
         self.expect(TokenKind::Has)?;
         self.expect(TokenKind::A)?;
         let ident = self.ident()?;
-        let expr = if TokenKind::Itz.eq(&self.next_token()?.token_kind) {
+        let expr = if TokenKind::Itz.eq(&self.peek_token()?.token_kind) {
+            self.next_token()?;
             Some(self.expr()?)
         } else {
             None
@@ -400,7 +423,10 @@ impl<'a> Parser<'a> {
                     Diagnostic::build(Level::Error, DiagnosticType::Syntax, to_match.span)
                         .annotation(
                             Level::Error,
-                            Cow::Borrowed("expected an expression here"),
+                            Cow::Owned(format!(
+                                "expected an expression, found {}",
+                                to_match.token_kind
+                            )),
                             to_match.span,
                         )
                         .into(),
@@ -419,17 +445,22 @@ impl<'a> Parser<'a> {
 mod parse_test {
     use super::*;
 
-    fn assert_err(stream: &'static str, err_ty: DiagnosticType, no_of_annotation: usize) {
-        let lexer = Lexer::new(stream.chars(), 0);
-        let mut parser = Parser::new(lexer);
-        let ast = parser.parse();
-        match ast {
-            Ok(val) => panic!("Expected Err value, found {:?}", val),
-            Err(e) => {
-                assert_eq!(e.inner()[0].annotations.len(), no_of_annotation);
-                assert_eq!(e.inner()[0].ty, err_ty);
+    macro_rules! assert_err {
+        ($stream: expr, $err_ty: expr, $no_of_annotations: expr, $name: ident) => {
+            #[test]
+            fn $name() {
+                let lexer = Lexer::new($stream.chars(), 0);
+                let mut parser = Parser::new(lexer);
+                let ast = parser.parse();
+                match ast {
+                    Ok(val) => panic!("Expected Err value, found {:?}", val),
+                    Err(e) => {
+                        assert_eq!(e.inner()[0].annotations.len(), $no_of_annotations);
+                        assert_eq!(e.inner()[0].ty, $err_ty);
+                    }
+                }
             }
-        }
+        };
     }
 
     macro_rules! assert_ast {
@@ -451,13 +482,73 @@ mod parse_test {
 
     assert_ast!("HAI 1.4\nKTHXBYE", basic_empty, []);
     assert_ast!(
-        "HAI 1.4\nI HAS A ident\nKTHXBYE",
+        "HAI 1.4\n\nI HAS A ident\nKTHXBYE",
         var_dec,
         [StatementKind::DecAssign(..),]
     );
     assert_ast!(
         "HAI 1.4, I HAS A ident ITZ 10, KTHXBYE",
-        assign_dec,
+        assign_dec_num,
         [StatementKind::DecAssign(..),]
+    );
+    assert_ast!(
+        "HAI 1.4, I HAS A ident ITZ \"hello\", KTHXBYE",
+        assign_dec_string,
+        [StatementKind::DecAssign(..),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, \"hello\", KTHXBYE",
+        expr_string,
+        [StatementKind::Expr(..),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, 123, KTHXBYE",
+        expr_int,
+        [StatementKind::Expr(..),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, 123.123, KTHXBYE",
+        expr_float,
+        [StatementKind::Expr(..),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, FOUND YR 10, KTHXBYE",
+        return_stmt,
+        [StatementKind::Return(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+HOW IZ I MULTIPLY YR FIRSTOPERANT AN YR SECONDOPERANT
+  FOUND YR FIRSTOPERANT
+IF U SAY SO
+KTHXBYE"#,
+        function_with_two_args,
+        [StatementKind::FunctionDef(..),]
+    );
+
+    assert_err!(
+        "HAI 1.4, 123., KTHXBYE",
+        DiagnosticType::Syntax,
+        1,
+        float_missing_num_after_dot
+    );
+
+    assert_err!(
+        "HAI 1.4, , KTHXBYE",
+        DiagnosticType::Syntax,
+        1,
+        double_comma
+    );
+
+    assert_err!(
+        "HAI 1.4, I HAS A test ITZ\nKTHXBYE",
+        DiagnosticType::Syntax,
+        1,
+        expected_expr_found_break
     );
 }

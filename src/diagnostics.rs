@@ -3,7 +3,7 @@ pub mod prelude {
     pub use std::borrow::Cow;
 }
 
-#[derive(Eq, PartialEq, Debug, Clone, Copy)]
+#[derive(Eq, PartialEq, Debug, Clone, Copy, Default)]
 pub struct Span {
     pub s: usize,
     pub e: usize,
