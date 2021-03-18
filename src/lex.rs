@@ -40,6 +40,10 @@ pub enum TokenKind {
     Say,
     So,
     Found,
+    Ya,
+    No,
+    A,
+    R,
 
     Dot,
     Break,
@@ -96,6 +100,10 @@ impl Display for TokenKind {
                 TokenKind::Say => "token `SAY`",
                 TokenKind::So => "token `SO`",
                 TokenKind::Found => "token `FOUND`",
+                TokenKind::Ya => "token `YA`",
+                TokenKind::No => "token `NO`",
+                TokenKind::A => "token `A`",
+                TokenKind::R => "token `R`",
 
                 TokenKind::Dot => "token `.`",
                 TokenKind::Question => "token `?`",
@@ -159,22 +167,24 @@ impl<'a> Lexer<'a> {
             '\n' | ',' => TokenKind::Break,
             '\t' | ' ' => return self.next_token(),
             '\0' => TokenKind::Eof,
+            '-' => {
+                let c = self.peek();
+                match self.next_token()?.token_kind {
+                    TokenKind::Number(s) => TokenKind::Number(SmolStr::new(format!("-{}", s))),
+                    _ => {
+                        return Err(Self::lexer_err(
+                            c,
+                            Span::new(prev_pos, self.position, self.source_id),
+                        ))
+                    }
+                }
+            }
             c if c.is_ascii_digit() => {
                 TokenKind::Number(SmolStr::new(self.consume_while(c, |c| c.is_ascii_digit())))
             }
             c => {
                 let span = Span::new(prev_pos, self.position, self.source_id);
-                return Err(Diagnostic::build(
-                    Level::Error,
-                    DiagnosticType::UnexpectedCharacter,
-                    span,
-                )
-                .annotation(
-                    Level::Error,
-                    Cow::Owned(format!("unexpected character `{}`", c)),
-                    span,
-                )
-                .into());
+                return Err(Self::lexer_err(c, span));
             }
         };
 
@@ -182,6 +192,16 @@ impl<'a> Lexer<'a> {
             token_kind: kind,
             span: Span::new(prev_pos, self.position, self.source_id),
         })
+    }
+
+    fn lexer_err(c: char, span: Span) -> Diagnostics {
+        Diagnostic::build(Level::Error, DiagnosticType::UnexpectedCharacter, span)
+            .annotation(
+                Level::Error,
+                Cow::Owned(format!("unexpected character `{}`", c)),
+                span,
+            )
+            .into()
     }
 
     #[inline]
@@ -300,6 +320,10 @@ impl<'a> Lexer<'a> {
             "SAY" => TokenKind::Say,
             "SO" => TokenKind::So,
             "FOUND" => TokenKind::Found,
+            "YA" => TokenKind::Ya,
+            "NO" => TokenKind::No,
+            "A" => TokenKind::A,
+            "R" => TokenKind::R,
             _ => TokenKind::Ident(SmolStr::new(id)),
         }
     }
@@ -363,6 +387,10 @@ mod lexer_test {
             ("SAY", TokenKind::Say),
             ("SO", TokenKind::So),
             ("FOUND", TokenKind::Found),
+            ("YA", TokenKind::Ya),
+            ("NO", TokenKind::No),
+            ("A", TokenKind::A),
+            ("R", TokenKind::R),
         ]);
     }
 
@@ -405,7 +433,13 @@ mod lexer_test {
 
     #[test]
     fn numbers() {
-        assert_map(&[("1234567809", TokenKind::Number(SmolStr::new("1234567809")))]);
+        assert_map(&[
+            ("1234567809", TokenKind::Number(SmolStr::new("1234567809"))),
+            (
+                "-1234567809",
+                TokenKind::Number(SmolStr::new("-1234567809")),
+            ),
+        ]);
     }
 
     #[test]
@@ -414,6 +448,7 @@ mod lexer_test {
             ("\":k\"", DiagnosticType::InvalidEscapeSequence),
             ("\"", DiagnosticType::UnexpectedCharacter),
             ("}", DiagnosticType::UnexpectedCharacter),
+            ("-asf", DiagnosticType::UnexpectedCharacter),
         ]);
     }
 }

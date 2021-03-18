@@ -1,5 +1,5 @@
 pub mod prelude {
-    pub use super::{Diagnostic, DiagnosticType, Failible, Level, Span};
+    pub use super::{Diagnostic, DiagnosticType, Diagnostics, Failible, Level, Span};
     pub use std::borrow::Cow;
 }
 

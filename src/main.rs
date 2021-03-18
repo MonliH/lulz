@@ -43,5 +43,6 @@ fn main() {
     let mut sources = SimpleFiles::new();
     let id = sources.add(opts.input, source);
     let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
-    let parser = parse::Parser::new(lexer);
+    let mut parser = parse::Parser::new(lexer);
+    let ast = parser.parse();
 }

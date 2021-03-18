@@ -3,6 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::diagnostics::Span;
 
+#[derive(Debug, PartialEq)]
 pub struct Ident(pub SmolStr, pub Span);
 
 impl Deref for Ident {
@@ -19,16 +20,19 @@ impl DerefMut for Ident {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Block(pub Vec<Statement>, pub Span);
 
+#[derive(Debug, PartialEq)]
 pub struct Statement {
     pub statement_kind: StatementKind,
     pub span: Span,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum StatementKind {
     Assignment(Ident, Expr),
-    DecAssign(Ident, Expr),
+    DecAssign(Ident, Option<Expr>),
     Import(Ident),
     FunctionDef(Ident, Vec<Ident>, Block),
     Expr(Expr),
@@ -49,15 +53,17 @@ pub enum StatementKind {
     Print(Expr),
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Expr {
     pub expr_kind: ExprKind,
     pub span: Span,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum ExprKind {
     Float(f64),
     Int(i64),
-    String(String),
+    String(SmolStr),
     Boolean(bool),
     Variable(Ident),
     FunctionCall(Ident, Vec<Expr>),
