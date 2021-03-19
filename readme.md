@@ -1,12 +1,12 @@
 # lulz
 
-`lulz` is a [LOLCODE](http://www.lolcode.org/) interpreter written in rust.
+lulz is a [LOLCODE](http://www.lolcode.org/) **compiler** written in rust.
 
 **It...**
 
-- is based on the [**LOLCODE spec**](https://github.com/justinmeza/lolcode-spec)
+- compiles to **assembly** (via llvm) meaning your code will run faster than [lci](https://github.com/justinmeza/lci)!
+- tries very hard to conform to the [**LOLCODE spec**](https://github.com/justinmeza/lolcode-spec)
+    - however, we added some additional features
 - has **additional extensions** (`RANDOM`, `ARGV`, and more)
-- **won't segfault** like [lci](https://github.com/justinmeza/lci) [does](https://github.com/justinmeza/lci/issues/49) [a](https://github.com/justinmeza/lci/issues/47) [lot](https://github.com/justinmeza/lci/issues/54)
 - has **good rust/clang-like-errors**
-
-Also, I ([@MonliH](https://github.com/MonliH)) will continue to merge PRs and address issues (unlike [lci](https://github.com/justinmeza/lci)!)
+    - typechecking at compile-time

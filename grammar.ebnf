@@ -11,7 +11,7 @@ statement = assignment | comment | declaration or assignment | import
 
 loop = "IM", "IN", "YR", ident, ident, "YR", ident, [ "TILL" | "WILE", expr ], lineterm, block, "IM", "OUTTA", "YR", ident ;
 
-function def = "HOW", "IZ", "I", ident, { "YR", ident, "AN" }, [ "YR", ident ], lineterm, block, "IF", "YOU", "SAY", "SO" ;
+function def = "HOW", "IZ", "I", ident, { "YR", ident, "AN" }, [ "YR", ident ], lineterm, block, "IF", "U", "SAY", "SO" ;
 return = "FOUND", "YR", expr ;
 
 comment = "BTW", { any } ;

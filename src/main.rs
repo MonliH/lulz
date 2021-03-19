@@ -1,7 +1,6 @@
 mod ast;
 mod diagnostics;
 mod err;
-mod interpret;
 mod lex;
 mod parse;
 

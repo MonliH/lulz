@@ -69,14 +69,8 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::Hai)?;
         self.version()?;
         self.expect(TokenKind::Break)?;
-        let block = match self.peek_token()?.token_kind {
-            TokenKind::Kthxbye => {
-                self.next_token()?;
-                self.expect(TokenKind::Eof)?;
-                Block(Vec::new(), Span::default())
-            }
-            _ => self.block()?,
-        };
+        let block = self.block(Some(&[TokenKind::Kthxbye]))?;
+        self.expect(TokenKind::Kthxbye)?;
         Ok(block)
     }
 
@@ -87,20 +81,37 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    fn block(&mut self) -> Failible<Block> {
-        let start_span = self.current_span.s;
-        let mut statements = vec![self.statement()?];
-        loop {
-            if TokenKind::Break.eq(&self.peek_token()?.token_kind) {
-                self.next_token()?;
-                if TokenKind::Kthxbye.eq(&self.peek_token()?.token_kind) {
-                    break;
+    #[inline]
+    fn next_tok_is(&mut self, tokens_after: Option<&'static [TokenKind]>) -> Failible<bool> {
+        if let Some(tokens) = tokens_after {
+            for tok in tokens {
+                if tok.eq(&self.peek_token()?.token_kind) {
+                    return Ok(true);
                 }
-                statements.push(self.statement()?);
-            } else {
-                break;
             }
         }
+        Ok(false)
+    }
+
+    fn block(&mut self, tokens_after: Option<&'static [TokenKind]>) -> Failible<Block> {
+        let start_span = self.current_span.s;
+        let statements = if self.next_tok_is(tokens_after)? {
+            vec![]
+        } else {
+            let mut statements = vec![self.statement()?];
+            loop {
+                if TokenKind::Break.eq(&self.peek_token()?.token_kind) {
+                    self.next_token()?;
+                    if self.next_tok_is(tokens_after)? {
+                        break;
+                    }
+                    statements.push(self.statement()?);
+                } else {
+                    break;
+                }
+            }
+            statements
+        };
         let end_span = self.current_span.e;
 
         Ok(Block(
@@ -155,7 +166,7 @@ impl<'a> Parser<'a> {
             _ => None,
         };
         self.expect(TokenKind::Break)?;
-        let block = self.block()?;
+        let block = self.block(Some(&[TokenKind::Im]))?;
         self.expect(TokenKind::Im)?;
         self.expect(TokenKind::Outta)?;
         self.expect(TokenKind::Yr)?;
@@ -223,9 +234,9 @@ impl<'a> Parser<'a> {
             }
         }
         self.expect(TokenKind::Break)?;
-        let block = self.block()?;
+        let block = self.block(Some(&[TokenKind::If]))?;
         self.expect(TokenKind::If)?;
-        self.expect(TokenKind::You)?;
+        self.expect(TokenKind::U)?;
         self.expect(TokenKind::Say)?;
         self.expect(TokenKind::So)?;
         Ok(Statement {
@@ -234,36 +245,57 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn case_block(&mut self, omg_eaten: bool) -> Failible<(Expr, Block)> {
+        if !omg_eaten {
+            self.expect(TokenKind::Omg)?;
+        }
+        let expr = self.expr()?;
+        self.expect(TokenKind::Break)?;
+        let block = self.block(Some(&[TokenKind::Omgwtf, TokenKind::Omg, TokenKind::Oic]))?;
+        Ok((expr, block))
+    }
+
     fn case(&mut self, span: Span) -> Failible<Statement> {
         self.expect(TokenKind::Question)?;
         self.expect(TokenKind::Break)?;
-        let mut cases = Vec::new();
-        loop {
-            if TokenKind::Break.eq(&self.peek_token()?.token_kind) {
-                self.next_token()?;
-                self.expect(TokenKind::Omg)?;
-                let expr = self.expr()?;
-                self.expect(TokenKind::Break)?;
-                let block = self.block()?;
-                cases.push((expr, block));
-            } else {
-                break;
-            }
-        }
-
-        let block = if TokenKind::Omgwtf.eq(&self.peek_token()?.token_kind) {
+        if TokenKind::Oic.eq(&self.peek_token()?.token_kind) {
             self.next_token()?;
-            self.expect(TokenKind::Break)?;
-            let block = self.block()?;
-            Some(block)
+            Ok(Statement {
+                span: Span::new(span.s, self.current_span.e, self.source_id),
+                statement_kind: StatementKind::Case(Vec::new(), None),
+            })
         } else {
-            None
-        };
+            let mut cases = Vec::new();
+            if !TokenKind::Omgwtf.eq(&self.peek_token()?.token_kind) {
+                cases.push(self.case_block(false)?);
+                loop {
+                    let peek = &self.peek_token()?.token_kind;
+                    let is_omg = TokenKind::Omg.eq(peek);
+                    if is_omg || TokenKind::Break.eq(peek) {
+                        self.next_token()?;
+                        cases.push(self.case_block(is_omg)?);
+                    } else {
+                        break;
+                    }
+                }
+            }
 
-        Ok(Statement {
-            span: Span::new(span.s, self.current_span.e, self.source_id),
-            statement_kind: StatementKind::Case(cases, block),
-        })
+            let block = if TokenKind::Omgwtf.eq(&self.peek_token()?.token_kind) {
+                self.next_token()?;
+                self.expect(TokenKind::Break)?;
+                let block = self.block(Some(&[TokenKind::Oic]))?;
+                Some(block)
+            } else {
+                None
+            };
+
+            self.expect(TokenKind::Oic)?;
+
+            Ok(Statement {
+                span: Span::new(span.s, self.current_span.e, self.source_id),
+                statement_kind: StatementKind::Case(cases, block),
+            })
+        }
     }
 
     fn conditional(&mut self, span: Span) -> Failible<Statement> {
@@ -274,7 +306,7 @@ impl<'a> Parser<'a> {
         let ya_rly = if TokenKind::Ya.eq(&self.peek_token()?.token_kind) {
             self.next_token()?;
             self.expect(TokenKind::Rly)?;
-            let block = self.block()?;
+            let block = self.block(None)?;
             Some(block)
         } else {
             None
@@ -287,7 +319,7 @@ impl<'a> Parser<'a> {
                 self.next_token()?;
                 let expr = self.expr()?;
                 self.expect(TokenKind::Break)?;
-                let block = self.block()?;
+                let block = self.block(Some(&[TokenKind::Mebee, TokenKind::No]))?;
                 mebee.push((expr, block));
             } else {
                 break;
@@ -297,7 +329,7 @@ impl<'a> Parser<'a> {
         let no_wai = if TokenKind::No.eq(&self.peek_token()?.token_kind) {
             self.next_token()?;
             self.expect(TokenKind::Wai)?;
-            let block = self.block()?;
+            let block = self.block(None)?;
             Some(block)
         } else {
             None
@@ -529,6 +561,128 @@ IF U SAY SO
 KTHXBYE"#,
         function_with_two_args,
         [StatementKind::FunctionDef(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+HOW IZ I MULTIPLY YR FIRSTOPERANT
+  FOUND YR FIRSTOPERANT
+IF U SAY SO
+KTHXBYE"#,
+        function_with_one_arg,
+        [StatementKind::FunctionDef(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+HOW IZ I MULTIPLY
+  FOUND YR 10
+IF U SAY SO
+KTHXBYE"#,
+        function_with_no_args,
+        [StatementKind::FunctionDef(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+WTF ?
+    OMGWTF
+        10
+OIC
+KTHXBYE"#,
+        case_with_omgwtf_block,
+        [StatementKind::Case(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+WTF ?
+    OMG 10
+        10
+    OMG 12
+        20
+    OMGWTF
+        30
+OIC
+KTHXBYE"#,
+        case_two_with_omgwtf_block,
+        [StatementKind::Case(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+WTF ?
+    OMG 10
+        30
+    OMG 12
+        10
+OIC
+KTHXBYE"#,
+        case_two_block,
+        [StatementKind::Case(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+WTF ?
+    OMG 10
+        10
+OIC
+KTHXBYE"#,
+        case_one_block,
+        [StatementKind::Case(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+WTF ?
+    OMGWTF
+OIC
+KTHXBYE"#,
+        case_with_omgwtf,
+        [StatementKind::Case(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+WTF ?
+    OMG 10
+    OMG 12
+    OMGWTF
+OIC
+KTHXBYE"#,
+        case_two_with_omgwtf,
+        [StatementKind::Case(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+WTF ?
+    OMG 10
+    OMG 12
+OIC
+KTHXBYE"#,
+        case_two,
+        [StatementKind::Case(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+WTF ?
+    OMG 10
+OIC
+KTHXBYE"#,
+        case_one,
+        [StatementKind::Case(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+WTF ?
+OIC
+KTHXBYE"#,
+        case_none,
+        [StatementKind::Case(..),]
     );
 
     assert_err!(
