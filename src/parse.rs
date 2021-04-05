@@ -133,8 +133,15 @@ impl<'a> Parser<'a> {
                 statement_kind: StatementKind::Break,
             }),
             TokenKind::Can => self.import(next_token.span),
-            TokenKind::I => self.declaration_assignment(next_token.span),
+            TokenKind::I => {
+                if self.peek_token()?.token_kind.eq(&TokenKind::Iz) {
+                    self.assignment_or_expr(next_token)
+                } else {
+                    self.declaration_assignment(next_token.span)
+                }
+            }
             TokenKind::Visible => self.print(next_token.span),
+            TokenKind::Gimmeh => self.input_statement(next_token.span),
             _ => self.assignment_or_expr(next_token),
         }
     }
@@ -151,20 +158,25 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::In)?;
         self.expect(TokenKind::Yr)?;
         let block_name = self.ident()?;
-        let func = self.ident()?;
-        self.expect(TokenKind::Yr)?;
-        let index = self.ident()?;
-        let pred = match self.peek_token()?.token_kind {
-            TokenKind::Till => {
-                self.next_token()?;
-                Some((true, self.expr()?))
-            }
-            TokenKind::Wile => {
-                self.next_token()?;
-                Some((false, self.expr()?))
-            }
-            _ => None,
-        };
+        let mut func = None;
+        let mut index = None;
+        let mut pred = None;
+        if TokenKind::Ident(SmolStr::default()).eq(&self.peek_token()?.token_kind) {
+            func = Some(self.ident()?);
+            self.expect(TokenKind::Yr)?;
+            index = Some(self.ident()?);
+            pred = Some(match self.peek_token()?.token_kind {
+                TokenKind::Till => {
+                    self.next_token()?;
+                    Some((true, self.expr()?))
+                }
+                TokenKind::Wile => {
+                    self.next_token()?;
+                    Some((false, self.expr()?))
+                }
+                _ => None,
+            });
+        }
         self.expect(TokenKind::Break)?;
         let block = self.block(Some(&[TokenKind::Im]))?;
         self.expect(TokenKind::Im)?;
@@ -212,6 +224,14 @@ impl<'a> Parser<'a> {
         Ok(Statement {
             span: Span::new(span.s, self.current_span.e, self.source_id),
             statement_kind: StatementKind::Return(expr),
+        })
+    }
+
+    fn input_statement(&mut self, span: Span) -> Failible<Statement> {
+        let id = self.ident()?;
+        Ok(Statement {
+            span: Span::new(span.s, self.current_span.e, self.source_id),
+            statement_kind: StatementKind::Input(id),
         })
     }
 
@@ -306,7 +326,8 @@ impl<'a> Parser<'a> {
         let ya_rly = if TokenKind::Ya.eq(&self.peek_token()?.token_kind) {
             self.next_token()?;
             self.expect(TokenKind::Rly)?;
-            let block = self.block(None)?;
+            self.expect(TokenKind::Break)?;
+            let block = self.block(Some(&[TokenKind::Oic]))?;
             Some(block)
         } else {
             None
@@ -329,11 +350,13 @@ impl<'a> Parser<'a> {
         let no_wai = if TokenKind::No.eq(&self.peek_token()?.token_kind) {
             self.next_token()?;
             self.expect(TokenKind::Wai)?;
-            let block = self.block(None)?;
+            let block = self.block(Some(&[TokenKind::Oic]))?;
             Some(block)
         } else {
             None
         };
+
+        self.expect(TokenKind::Oic)?;
 
         Ok(Statement {
             span: Span::new(span.s, self.current_span.e, self.source_id),
@@ -420,6 +443,26 @@ impl<'a> Parser<'a> {
             TokenKind::String(s) => ExprKind::String(s),
             TokenKind::Win => ExprKind::Boolean(true),
             TokenKind::Fail => ExprKind::Boolean(false),
+            TokenKind::I => {
+                self.expect(TokenKind::Iz)?;
+                let name = self.ident()?;
+                let mut args = Vec::new();
+                if TokenKind::Yr.eq(&self.peek_token()?.token_kind) {
+                    self.next_token()?;
+                    args.push(self.expr()?);
+                    loop {
+                        if TokenKind::An.eq(&self.peek_token()?.token_kind) {
+                            self.next_token()?;
+                            self.expect(TokenKind::Yr)?;
+                            args.push(self.expr()?);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                self.expect(TokenKind::Mkay)?;
+                ExprKind::FunctionCall(name, args)
+            }
             TokenKind::Number(n1) => {
                 let peek = self.peek_token()?;
                 let peek_span = peek.span;
@@ -513,16 +556,19 @@ mod parse_test {
     }
 
     assert_ast!("HAI 1.4\nKTHXBYE", basic_empty, []);
+
     assert_ast!(
         "HAI 1.4\n\nI HAS A ident\nKTHXBYE",
         var_dec,
         [StatementKind::DecAssign(..),]
     );
+
     assert_ast!(
         "HAI 1.4, I HAS A ident ITZ 10, KTHXBYE",
         assign_dec_num,
         [StatementKind::DecAssign(..),]
     );
+
     assert_ast!(
         "HAI 1.4, I HAS A ident ITZ \"hello\", KTHXBYE",
         assign_dec_string,
@@ -530,21 +576,47 @@ mod parse_test {
     );
 
     assert_ast!(
+        "HAI 1.4, VISIBLE \"hello, world\", KTHXBYE",
+        print_string,
+        [StatementKind::Print(..),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, test_id R 10, KTHXBYE",
+        assignment_value_integer,
+        [StatementKind::Assignment(..),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, test_id R \"hi\", KTHXBYE",
+        assignment_value_string,
+        [StatementKind::Assignment(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+I IZ UPPIN YR 10 MKAY
+KTHXBYE"#,
+        function_call,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
+    );
+
+    assert_ast!(
         "HAI 1.4, \"hello\", KTHXBYE",
         expr_string,
-        [StatementKind::Expr(..),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::String(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, 123, KTHXBYE",
         expr_int,
-        [StatementKind::Expr(..),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Int(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, 123.123, KTHXBYE",
         expr_float,
-        [StatementKind::Expr(..),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Float(..), ..}),]
     );
 
     assert_ast!(
@@ -678,11 +750,112 @@ KTHXBYE"#,
 
     assert_ast!(
         r#"HAI 1.4
+GIMMEH hello
+KTHXBYE"#,
+        input,
+        [StatementKind::Input(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
 WTF ?
 OIC
 KTHXBYE"#,
         case_none,
         [StatementKind::Case(..),]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        r#"HAI 1.4
+IM IN YR block UPPIN YR i WILE WIN
+IM OUTTA YR block
+KTHXBYE"#,
+        loop_simple_wile,
+        [StatementKind::Loop { .. },]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        r#"HAI 1.4
+IM IN YR block UPPIN YR i WILE WIN
+    GTFO
+IM OUTTA YR block
+KTHXBYE"#,
+        loop_simple_wile_break,
+        [StatementKind::Loop { .. },]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        r#"HAI 1.4
+IM IN YR block UPPIN YR i
+IM OUTTA YR block
+KTHXBYE"#,
+        loop_simple,
+        [StatementKind::Loop { .. },]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        r#"HAI 1.4
+IM IN YR block UPPIN YR i
+    GTFO
+IM OUTTA YR block
+KTHXBYE"#,
+        loop_simple_break,
+        [StatementKind::Loop { .. },]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        r#"HAI 1.4
+IM IN YR block UPPIN YR i TILL WIN
+IM OUTTA YR block
+KTHXBYE"#,
+        loop_simple_till,
+        [StatementKind::Loop { .. },]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        r#"HAI 1.4
+IM IN YR block UPPIN YR i TILL WIN
+    GTFO
+IM OUTTA YR block
+KTHXBYE"#,
+        loop_simple_till_break,
+        [StatementKind::Loop { .. },]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        r#"HAI 1.4
+IM IN YR block
+IM OUTTA YR block
+KTHXBYE"#,
+        loop_forever_till_break,
+        [StatementKind::Loop { .. },]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+O RLY?
+    YA RLY
+OIC
+KTHXBYE"#,
+        if_ya_rly,
+        [StatementKind::If(..),]
+    );
+
+    assert_err!(
+        r#"HAI 1.4
+IM IN YR bLock UPPIN YR i TILL WIN
+IM OUTTA YR block
+KTHXBYE"#,
+        DiagnosticType::UnmatchedBlockName,
+        2,
+        mismatched_blocks_loop
     );
 
     assert_err!(

@@ -44,6 +44,8 @@ pub enum TokenKind {
     No,
     A,
     R,
+    Gimmeh,
+    Mkay,
 
     Dot,
     Break,
@@ -104,6 +106,8 @@ impl Display for TokenKind {
                 TokenKind::No => "token `NO`",
                 TokenKind::A => "token `A`",
                 TokenKind::R => "token `R`",
+                TokenKind::Gimmeh => "token `GIMMEH`",
+                TokenKind::Mkay => "token `MKAY`",
 
                 TokenKind::Dot => "token `.`",
                 TokenKind::Question => "token `?`",
@@ -330,6 +334,8 @@ impl<'a> Lexer<'a> {
             "NO" => TokenKind::No,
             "A" => TokenKind::A,
             "R" => TokenKind::R,
+            "GIMMEH" => TokenKind::Gimmeh,
+            "MKAY" => TokenKind::Mkay,
             _ => TokenKind::Ident(SmolStr::new(id)),
         }
     }
@@ -397,6 +403,8 @@ mod lexer_test {
             ("NO", TokenKind::No),
             ("A", TokenKind::A),
             ("R", TokenKind::R),
+            ("GIMMEH", TokenKind::Gimmeh),
+            ("MKAY", TokenKind::Mkay),
         ]);
     }
 

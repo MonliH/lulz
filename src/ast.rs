@@ -41,16 +41,17 @@ pub enum StatementKind {
     Break,
     Loop {
         block_name: Ident,
-        func: Ident,
-        index: Ident,
+        func: Option<Ident>,
+        index: Option<Ident>,
         /// Bool represents `till` or `wile`
         /// true = `till`
         /// false = `wile`
-        pred: Option<(bool, Expr)>,
+        pred: Option<Option<(bool, Expr)>>,
         block: Block,
     },
     Return(Expr),
     Print(Expr),
+    Input(Ident),
 }
 
 #[derive(Debug, PartialEq)]
