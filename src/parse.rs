@@ -56,7 +56,6 @@ impl<'a> Parser<'a> {
             Err(
                 Diagnostic::build(Level::Error, DiagnosticType::Syntax, next.span)
                     .annotation(
-                        Level::Error,
                         Cow::Owned(format!("expected {}, but found {}", token, next.token_kind)),
                         next.span,
                     )
@@ -165,7 +164,7 @@ impl<'a> Parser<'a> {
             func = Some(self.ident()?);
             self.expect(TokenKind::Yr)?;
             index = Some(self.ident()?);
-            pred = Some(match self.peek_token()?.token_kind {
+            pred = match self.peek_token()?.token_kind {
                 TokenKind::Till => {
                     self.next_token()?;
                     Some((true, self.expr()?))
@@ -175,7 +174,7 @@ impl<'a> Parser<'a> {
                     Some((false, self.expr()?))
                 }
                 _ => None,
-            });
+            };
         }
         self.expect(TokenKind::Break)?;
         let block = self.block(Some(&[TokenKind::Im]))?;
@@ -191,12 +190,10 @@ impl<'a> Parser<'a> {
                 block_name2.1,
             )
             .annotation(
-                Level::Error,
                 Cow::Owned(format!("the block is called `{}` here", &block_name.0)),
                 block_name.1,
             )
             .annotation(
-                Level::Error,
                 Cow::Owned(format!(
                     "but the block is closed with `{}` here",
                     &block_name2.0
@@ -393,9 +390,15 @@ impl<'a> Parser<'a> {
 
     fn print(&mut self, span: Span) -> Failible<Statement> {
         let expr = self.expr()?;
+        let no_newline = if self.peek_token()?.token_kind.eq(&TokenKind::Bang) {
+            self.next_token()?;
+            true
+        } else {
+            false
+        };
         Ok(Statement {
             span: Span::new(span.s, self.current_span.e, self.source_id),
-            statement_kind: StatementKind::Print(expr),
+            statement_kind: StatementKind::Print(expr, no_newline),
         })
     }
 
@@ -443,6 +446,18 @@ impl<'a> Parser<'a> {
             TokenKind::String(s) => ExprKind::String(s),
             TokenKind::Win => ExprKind::Boolean(true),
             TokenKind::Fail => ExprKind::Boolean(false),
+            TokenKind::Smoosh => {
+                let mut args = vec![self.expr()?];
+                loop {
+                    if TokenKind::An.eq(&self.peek_token()?.token_kind) {
+                        self.next_token()?;
+                        args.push(self.expr()?);
+                    } else {
+                        break;
+                    }
+                }
+                ExprKind::Concat(args)
+            }
             TokenKind::I => {
                 self.expect(TokenKind::Iz)?;
                 let name = self.ident()?;
@@ -482,7 +497,6 @@ impl<'a> Parser<'a> {
                                     to_match.span,
                                 )
                                 .annotation(
-                                    Level::Error,
                                     Cow::Borrowed("expected a number after the `.` token"),
                                     peek_span,
                                 )
@@ -497,7 +511,6 @@ impl<'a> Parser<'a> {
                 return Err(
                     Diagnostic::build(Level::Error, DiagnosticType::Syntax, to_match.span)
                         .annotation(
-                            Level::Error,
                             Cow::Owned(format!(
                                 "expected an expression, found {}",
                                 to_match.token_kind
@@ -541,6 +554,7 @@ mod parse_test {
     macro_rules! assert_ast {
         ($stream: expr, $name: ident, [$($pat: pat,)*]) => {
             #[test]
+            #[allow(unused_mut, unused_variables)]
             fn $name() {
                 let lexer = Lexer::new($stream.chars(), 0);
                 let mut parser = Parser::new(lexer);
@@ -605,6 +619,12 @@ KTHXBYE"#,
         "HAI 1.4, \"hello\", KTHXBYE",
         expr_string,
         [StatementKind::Expr(Expr {expr_kind: ExprKind::String(..), ..}),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4, SMOOSH "hi" AN " world", KTHXBYE"#,
+        concat_string,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
     );
 
     assert_ast!(

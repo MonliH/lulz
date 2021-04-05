@@ -1,14 +1,21 @@
 mod ast;
 mod diagnostics;
 mod err;
+mod interpret;
 mod lex;
 mod parse;
 
 use clap::Clap;
 use codespan_reporting::files::SimpleFiles;
+use codespan_reporting::{
+    term,
+    term::termcolor::{ColorChoice, StandardStream},
+};
 use std::borrow::Cow;
 use std::fs::read_to_string;
 use std::io::{self, Read};
+
+use crate::diagnostics::Failible;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -41,7 +48,23 @@ fn main() {
     };
     let mut sources = SimpleFiles::new();
     let id = sources.add(opts.input, source);
+    match pipeline(&sources, id) {
+        Ok(()) => {}
+        Err(es) => {
+            let writer = StandardStream::stderr(ColorChoice::Always);
+            let config = term::Config::default();
+
+            for e in es.into_inner().into_iter() {
+                term::emit(&mut writer.lock(), &config, &sources, &(e.into_codespan()))
+                    .expect("Failed to write error");
+            }
+        }
+    };
+}
+
+fn pipeline(sources: &SimpleFiles<String, String>, id: usize) -> Failible<()> {
     let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
     let mut parser = parse::Parser::new(lexer);
-    let ast = parser.parse();
+    let ast = parser.parse()?;
+    interpret::run(ast)
 }

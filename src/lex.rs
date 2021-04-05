@@ -46,10 +46,12 @@ pub enum TokenKind {
     R,
     Gimmeh,
     Mkay,
+    Smoosh,
 
     Dot,
     Break,
     Question,
+    Bang,
 
     Number(SmolStr),
     String(SmolStr),
@@ -108,8 +110,10 @@ impl Display for TokenKind {
                 TokenKind::R => "token `R`",
                 TokenKind::Gimmeh => "token `GIMMEH`",
                 TokenKind::Mkay => "token `MKAY`",
+                TokenKind::Smoosh => "token `SMOOSH`",
 
                 TokenKind::Dot => "token `.`",
+                TokenKind::Bang => "token `!`",
                 TokenKind::Question => "token `?`",
                 TokenKind::Break => "statement separator",
 
@@ -167,6 +171,7 @@ impl<'a> Lexer<'a> {
             c if Self::is_id_start(c) => self.ident(c),
             '.' => TokenKind::Dot,
             '?' => TokenKind::Question,
+            '!' => TokenKind::Bang,
             '"' => self.eat_string()?,
             ',' => TokenKind::Break,
             '\n' => {
@@ -206,11 +211,7 @@ impl<'a> Lexer<'a> {
 
     fn lexer_err(c: char, span: Span) -> Diagnostics {
         Diagnostic::build(Level::Error, DiagnosticType::UnexpectedCharacter, span)
-            .annotation(
-                Level::Error,
-                Cow::Owned(format!("unexpected character `{}`", c)),
-                span,
-            )
+            .annotation(Cow::Owned(format!("unexpected character `{}`", c)), span)
             .into()
     }
 
@@ -267,11 +268,7 @@ impl<'a> Lexer<'a> {
                     DiagnosticType::InvalidEscapeSequence,
                     span,
                 )
-                .annotation(
-                    Level::Error,
-                    Cow::Owned(format!("invalid escape `\\{}`", peeked)),
-                    span,
-                )
+                .annotation(Cow::Owned(format!("invalid escape `\\{}`", peeked)), span)
                 .into());
             } else if next == '"' {
                 break;
@@ -282,11 +279,7 @@ impl<'a> Lexer<'a> {
                     DiagnosticType::UnexpectedCharacter,
                     span,
                 )
-                .annotation(
-                    Level::Error,
-                    Cow::Borrowed("expected `\"`, found end of file"),
-                    span,
-                )
+                .annotation(Cow::Borrowed("expected `\"`, found end of file"), span)
                 .into());
             } else {
                 acc.push(next);
@@ -336,6 +329,7 @@ impl<'a> Lexer<'a> {
             "R" => TokenKind::R,
             "GIMMEH" => TokenKind::Gimmeh,
             "MKAY" => TokenKind::Mkay,
+            "SMOOSH" => TokenKind::Smoosh,
             _ => TokenKind::Ident(SmolStr::new(id)),
         }
     }
@@ -405,12 +399,17 @@ mod lexer_test {
             ("R", TokenKind::R),
             ("GIMMEH", TokenKind::Gimmeh),
             ("MKAY", TokenKind::Mkay),
+            ("SMOOSH", TokenKind::Smoosh),
         ]);
     }
 
     #[test]
     fn symbols() {
-        assert_map(&[(".", TokenKind::Dot), ("?", TokenKind::Question)]);
+        assert_map(&[
+            (".", TokenKind::Dot),
+            ("!", TokenKind::Bang),
+            ("?", TokenKind::Question),
+        ]);
     }
 
     #[test]

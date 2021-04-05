@@ -3,6 +3,8 @@ pub mod prelude {
     pub use std::borrow::Cow;
 }
 
+use codespan_reporting::diagnostic;
+
 #[derive(Eq, PartialEq, Debug, Clone, Copy, Default)]
 pub struct Span {
     pub s: usize,
@@ -61,6 +63,8 @@ pub enum DiagnosticType {
     InvalidEscapeSequence = 2,
     Syntax = 3,
     UnmatchedBlockName = 4,
+    UnknownSymbol = 5,
+    Cast = 6,
 }
 
 impl DiagnosticType {
@@ -70,6 +74,8 @@ impl DiagnosticType {
             DiagnosticType::InvalidEscapeSequence => "invalid escaped character",
             DiagnosticType::Syntax => "syntax error",
             DiagnosticType::UnmatchedBlockName => "block names specified do not match",
+            DiagnosticType::UnknownSymbol => "unknown symbol",
+            DiagnosticType::Cast => "casting error, invalid cast",
         }
     }
 
@@ -79,6 +85,8 @@ impl DiagnosticType {
             DiagnosticType::InvalidEscapeSequence => "invalid_escape",
             DiagnosticType::Syntax => "syntax",
             DiagnosticType::UnmatchedBlockName => "unmatched_block_name",
+            DiagnosticType::UnknownSymbol => "unknown_symbol",
+            DiagnosticType::Cast => "casting",
         }
     }
 }
@@ -91,7 +99,6 @@ pub enum Level {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Annotation {
-    pub level: Level,
     pub message: Cow<'static, str>,
     pub span: Span,
 }
@@ -103,6 +110,13 @@ pub struct Diagnostic {
     pub ty: DiagnosticType,
     pub level: Level,
     pub annotations: SmallVec<[Annotation; 1]>,
+}
+
+impl Annotation {
+    fn into_codespan(self) -> diagnostic::Label<usize> {
+        diagnostic::Label::primary(self.span.file, self.span.s..self.span.e)
+            .with_message(self.message)
+    }
 }
 
 impl Diagnostic {
@@ -119,12 +133,24 @@ impl Diagnostic {
         Diagnostics(smallvec![self])
     }
 
-    pub fn annotation(mut self, level: Level, message: Cow<'static, str>, span: Span) -> Self {
-        self.annotations.push(Annotation {
-            level,
-            message,
-            span,
-        });
+    pub fn annotation(mut self, message: Cow<'static, str>, span: Span) -> Self {
+        self.annotations.push(Annotation { message, span });
         self
+    }
+
+    pub fn into_codespan(self) -> diagnostic::Diagnostic<usize> {
+        let initial = match self.level {
+            Level::Error => diagnostic::Diagnostic::error(),
+            Level::Warning => diagnostic::Diagnostic::warning(),
+        };
+        initial
+            .with_message(self.ty.description())
+            .with_code(&format!("E{:0>3}: {}", self.ty as usize, self.ty.name()))
+            .with_labels(
+                self.annotations
+                    .into_iter()
+                    .map(|a| a.into_codespan())
+                    .collect(),
+            )
     }
 }
