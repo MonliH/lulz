@@ -1,4 +1,7 @@
 HAI 1.2
-VISIBLE "Hello, "!
-VISIBLE "WORLD!"
+HOW IZ I printHello
+    VISIBLE "Hello, World!"
+    I IZ printHello MKAY
+IF U SAY SO
+I IZ printHello MKAY
 KTHXBYE

@@ -1,5 +1,7 @@
 pub mod prelude {
-    pub use super::{Diagnostic, DiagnosticType, Diagnostics, Failible, Level, Span};
+    pub use super::{
+        plural, Annotation, Diagnostic, DiagnosticType, Diagnostics, Failible, Level, Span,
+    };
     pub use std::borrow::Cow;
 }
 
@@ -65,6 +67,8 @@ pub enum DiagnosticType {
     UnmatchedBlockName = 4,
     UnknownSymbol = 5,
     Cast = 6,
+    Type = 7,
+    FunctionArgumentMismatch = 8,
 }
 
 impl DiagnosticType {
@@ -76,6 +80,8 @@ impl DiagnosticType {
             DiagnosticType::UnmatchedBlockName => "block names specified do not match",
             DiagnosticType::UnknownSymbol => "unknown symbol",
             DiagnosticType::Cast => "casting error, invalid cast",
+            DiagnosticType::Type => "type error",
+            DiagnosticType::FunctionArgumentMismatch => "function argument mismatch",
         }
     }
 
@@ -87,6 +93,8 @@ impl DiagnosticType {
             DiagnosticType::UnmatchedBlockName => "unmatched_block_name",
             DiagnosticType::UnknownSymbol => "unknown_symbol",
             DiagnosticType::Cast => "casting",
+            DiagnosticType::Type => "type",
+            DiagnosticType::FunctionArgumentMismatch => "func_arg_mismatch",
         }
     }
 }
@@ -112,10 +120,21 @@ pub struct Diagnostic {
     pub annotations: SmallVec<[Annotation; 1]>,
 }
 
+pub fn plural(num: usize) -> &'static str {
+    if num == 1 {
+        ""
+    } else {
+        "s"
+    }
+}
+
 impl Annotation {
     fn into_codespan(self) -> diagnostic::Label<usize> {
         diagnostic::Label::primary(self.span.file, self.span.s..self.span.e)
             .with_message(self.message)
+    }
+    pub fn new(message: Cow<'static, str>, span: Span) -> Self {
+        Self { message, span }
     }
 }
 
@@ -127,10 +146,6 @@ impl Diagnostic {
             span,
             level,
         }
-    }
-
-    pub fn into_diagnostics(self) -> Diagnostics {
-        Diagnostics(smallvec![self])
     }
 
     pub fn annotation(mut self, message: Cow<'static, str>, span: Span) -> Self {

@@ -3,6 +3,7 @@ use std::iter::Peekable;
 
 use crate::ast::*;
 use crate::diagnostics::prelude::*;
+use crate::interpret::helpers::Type;
 use crate::lex::{Lexer, Token, TokenKind};
 
 pub struct Parser<'a> {
@@ -431,6 +432,24 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn ty(&mut self) -> Failible<Type> {
+        let id = self.ident()?;
+        Ok(match id.0.as_str() {
+            "TROOF" => Type::Bool,
+            "YARN" => Type::Str,
+            "NUMBR" => Type::Int,
+            "NUMBAR" => Type::Float,
+            "NOOB" => Type::Null,
+            s => {
+                return Err(
+                    Diagnostic::build(Level::Error, DiagnosticType::UnknownSymbol, id.1)
+                        .annotation(Cow::Owned(format!("`{}` is not a TYPE", s)), id.1)
+                        .into(),
+                )
+            }
+        })
+    }
+
     fn expr(&mut self) -> Failible<Expr> {
         self.expr_inner(None)
     }
@@ -442,10 +461,16 @@ impl<'a> Parser<'a> {
         };
 
         let kind = match to_match.token_kind {
+            TokenKind::Maek => {
+                let expr = self.expr()?;
+                self.expect(TokenKind::A)?;
+                let ty = self.ty()?;
+                ExprKind::Cast(Box::new(expr), ty)
+            }
             TokenKind::Ident(id) => ExprKind::Variable(Ident(id, to_match.span)),
             TokenKind::String(s) => ExprKind::String(s),
-            TokenKind::Win => ExprKind::Boolean(true),
-            TokenKind::Fail => ExprKind::Boolean(false),
+            TokenKind::Win => ExprKind::Bool(true),
+            TokenKind::Fail => ExprKind::Bool(false),
             TokenKind::Smoosh => {
                 let mut args = vec![self.expr()?];
                 loop {
@@ -637,6 +662,12 @@ KTHXBYE"#,
         "HAI 1.4, 123.123, KTHXBYE",
         expr_float,
         [StatementKind::Expr(Expr {expr_kind: ExprKind::Float(..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, MAEK 10 A NUMBAR, KTHXBYE",
+        float_cast,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Cast(_, Type::Float), ..}),]
     );
 
     assert_ast!(

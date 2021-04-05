@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::diagnostics::Span;
+use crate::interpret::helpers::Type;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Ident(pub SmolStr, pub Span);
@@ -74,8 +75,9 @@ pub enum ExprKind {
     Float(f64),
     Int(i64),
     String(SmolStr),
-    Boolean(bool),
+    Bool(bool),
     Variable(Ident),
     FunctionCall(Ident, Vec<Expr>),
     Concat(Vec<Expr>),
+    Cast(Box<Expr>, Type),
 }

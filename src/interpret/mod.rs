@@ -1,5 +1,5 @@
 mod expressions;
-mod helpers;
+pub mod helpers;
 mod statements;
 
 use crate::ast::Block;
@@ -10,5 +10,6 @@ use statements::Exec;
 
 pub fn run(ast: Block) -> Failible<()> {
     let mut ctx = Ctx::new();
-    ast.exec(&mut ctx)
+    ast.exec(&mut ctx)?;
+    Ok(())
 }

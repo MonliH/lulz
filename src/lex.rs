@@ -47,6 +47,7 @@ pub enum TokenKind {
     Gimmeh,
     Mkay,
     Smoosh,
+    Maek,
 
     Dot,
     Break,
@@ -111,6 +112,7 @@ impl Display for TokenKind {
                 TokenKind::Gimmeh => "token `GIMMEH`",
                 TokenKind::Mkay => "token `MKAY`",
                 TokenKind::Smoosh => "token `SMOOSH`",
+                TokenKind::Maek => "token `MAEK`",
 
                 TokenKind::Dot => "token `.`",
                 TokenKind::Bang => "token `!`",
@@ -304,6 +306,7 @@ impl<'a> Lexer<'a> {
             "OMG" => TokenKind::Omg,
             "OMGWTF" => TokenKind::Omgwtf,
             "RLY" => TokenKind::Rly,
+            "MAEK" => TokenKind::Maek,
             "O" => TokenKind::O,
             "MEBEE" => TokenKind::Mebee,
             "WAI" => TokenKind::Wai,
@@ -397,6 +400,7 @@ mod lexer_test {
             ("NO", TokenKind::No),
             ("A", TokenKind::A),
             ("R", TokenKind::R),
+            ("MAEK", TokenKind::Maek),
             ("GIMMEH", TokenKind::Gimmeh),
             ("MKAY", TokenKind::Mkay),
             ("SMOOSH", TokenKind::Smoosh),

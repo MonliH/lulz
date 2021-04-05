@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::fmt;
 
 use smol_str::SmolStr;
@@ -9,8 +8,8 @@ use crate::{
     diagnostics::prelude::*,
 };
 
-type INT = i32;
-type FLOAT = f32;
+type INT = i64;
+type FLOAT = f64;
 
 #[derive(Debug, Clone)]
 pub enum Prim {
@@ -22,7 +21,17 @@ pub enum Prim {
     Function(Vec<Ident>, Block),
 }
 
-#[derive(Debug, Clone, Copy)]
+impl Prim {
+    pub fn unwrap_str(self) -> String {
+        if let Prim::String(s) = self {
+            s
+        } else {
+            panic!("was not string");
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Type {
     Null,
     Bool,
@@ -149,6 +158,7 @@ impl Prim {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Ctx {
     pub sym_tab: HashMap<SmolStr, Prim>,
     pub it: Prim,
@@ -161,6 +171,10 @@ impl Ctx {
             sym_tab,
             it: Prim::Null,
         }
+    }
+
+    pub fn insert(&mut self, id: Ident, prim: Prim) {
+        self.sym_tab.insert(id.0, prim);
     }
 
     pub fn lookup_str(&self, s: &SmolStr) -> Option<&Prim> {
