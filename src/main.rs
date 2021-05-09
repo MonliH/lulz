@@ -1,9 +1,9 @@
-mod bytecode_compiler;
 mod diagnostics;
 mod err;
 mod frontend;
 mod lolbc;
 mod lolvm;
+mod middle;
 
 use clap::Clap;
 use codespan_reporting::files::SimpleFiles;
@@ -68,10 +68,12 @@ fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Fai
     let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
     let mut parser = parse::Parser::new(lexer);
     let ast = parser.parse()?;
-    let mut bytecode_compiler = bytecode_compiler::BytecodeCompiler::new();
-    let bytecode: lolbc::Chunk = bytecode_compiler.compile(ast);
+    let mut bytecode_compiler = middle::BytecodeCompiler::new();
+    let bytecode: lolbc::Chunk = bytecode_compiler.compile(ast)?;
     if opts.disasm {
         lolbc::disasm(&bytecode);
     }
+    let mut vm = lolvm::LolVm::new();
+    vm.run(bytecode);
     Ok(())
 }

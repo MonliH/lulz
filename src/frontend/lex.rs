@@ -8,6 +8,7 @@ use crate::diagnostics::prelude::*;
 
 #[derive(Eq, Debug, PartialEq, Clone)]
 pub enum TokenKind {
+    // Oh my goodness there are so many tokens
     Hai,
     Kthxbye,
     Im,
@@ -48,6 +49,25 @@ pub enum TokenKind {
     Mkay,
     Smoosh,
     Maek,
+
+    Sum,
+    Diff,
+    Produkt,
+    Quoshunt,
+    Mod,
+    Biggr,
+    Smallr,
+    Of,
+
+    Both,
+    Either,
+    Won,
+    Not,
+    All,
+    Any,
+
+    Saem,
+    Diffrint,
 
     Dot,
     Break,
@@ -113,6 +133,25 @@ impl Display for TokenKind {
                 TokenKind::Mkay => "token `MKAY`",
                 TokenKind::Smoosh => "token `SMOOSH`",
                 TokenKind::Maek => "token `MAEK`",
+
+                TokenKind::Sum => "token `SUM`",
+                TokenKind::Diff => "token `DIFF`",
+                TokenKind::Produkt => "token `PRODUKT`",
+                TokenKind::Quoshunt => "token `QUOSHUNT`",
+                TokenKind::Mod => "token `MOD`",
+                TokenKind::Biggr => "token `BIGGR`",
+                TokenKind::Smallr => "token `SMALLR`",
+                TokenKind::Of => "token `OF`",
+
+                TokenKind::Both => "token `BOTH`",
+                TokenKind::Either => "token `EITHER`",
+                TokenKind::Won => "token `WON`",
+                TokenKind::Not => "token `NOT`",
+                TokenKind::All => "token `ALL`",
+                TokenKind::Any => "token `ANY`",
+
+                TokenKind::Saem => "token `SAEM`",
+                TokenKind::Diffrint => "token `DIFFRINT`",
 
                 TokenKind::Dot => "token `.`",
                 TokenKind::Bang => "token `!`",
@@ -343,6 +382,26 @@ impl<'a> Lexer<'a> {
                 "GIMMEH" => TokenKind::Gimmeh,
                 "MKAY" => TokenKind::Mkay,
                 "SMOOSH" => TokenKind::Smoosh,
+
+                "SUM" => TokenKind::Sum,
+                "DIFF" => TokenKind::Diff,
+                "PRODUKT" => TokenKind::Produkt,
+                "QUOSHUNT" => TokenKind::Quoshunt,
+                "MOD" => TokenKind::Mod,
+                "BIGGR" => TokenKind::Biggr,
+                "SMALLR" => TokenKind::Smallr,
+                "OF" => TokenKind::Of,
+
+                "BOTH" => TokenKind::Both,
+                "EITHER" => TokenKind::Either,
+                "WON" => TokenKind::Won,
+                "NOT" => TokenKind::Not,
+                "ALL" => TokenKind::All,
+                "ANY" => TokenKind::Any,
+
+                "SAEM" => TokenKind::Saem,
+                "DIFFRINT" => TokenKind::Diffrint,
+
                 _ => TokenKind::Ident(SmolStr::new(id)),
             },
         })
@@ -415,6 +474,22 @@ mod lexer_test {
             ("GIMMEH", TokenKind::Gimmeh),
             ("MKAY", TokenKind::Mkay),
             ("SMOOSH", TokenKind::Smoosh),
+            ("SUM", TokenKind::Sum),
+            ("DIFF", TokenKind::Diff),
+            ("PRODUKT", TokenKind::Produkt),
+            ("QUOSHUNT", TokenKind::Quoshunt),
+            ("MOD", TokenKind::Mod),
+            ("BIGGR", TokenKind::Biggr),
+            ("SMALLR", TokenKind::Smallr),
+            ("OF", TokenKind::Of),
+            ("BOTH", TokenKind::Both),
+            ("EITHER", TokenKind::Either),
+            ("WON", TokenKind::Won),
+            ("NOT", TokenKind::Not),
+            ("ALL", TokenKind::All),
+            ("ANY", TokenKind::Any),
+            ("SAEM", TokenKind::Saem),
+            ("DIFFRINT", TokenKind::Diffrint),
         ]);
     }
 

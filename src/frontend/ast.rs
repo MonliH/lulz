@@ -79,6 +79,30 @@ pub enum ExprKind {
     FunctionCall(Ident, Vec<Expr>),
     Concat(Vec<Expr>),
     Cast(Box<Expr>, Type),
+
+    Operator(OpTy, Box<Expr>, Box<Expr>),
+
+    All(Vec<Expr>),
+    Any(Vec<Expr>),
+    Not(Box<Expr>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpTy {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Min,
+    Max,
+
+    And,
+    Or,
+    Xor,
+
+    Equal,
+    NotEq,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

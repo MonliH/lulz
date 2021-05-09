@@ -17,7 +17,7 @@ fn disasm_instruction(chunk: &Chunk, offset: usize) -> usize {
     let bytecode = &chunk.bytecode;
     let instr = getop(bytecode[offset]);
     let pos = chunk.pos.get(offset);
-    print!("{:0>5}  {:>4}:{: <3} ", offset, pos.0, pos.1);
+    print!("{:0>5}  {:>4}:{: <3} ", offset, pos.s, pos.e);
     match instr {
         Some(op) => {
             print!("{:>4} ", op);

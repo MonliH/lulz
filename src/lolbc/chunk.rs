@@ -1,17 +1,15 @@
-use super::{ByteC, OpCode, Value, ValueArray};
+use super::{OpCode, Value, ValueArray};
+use crate::diagnostics::Span;
 
-/// Light span, with just two fields
-/// (line, col) starting from 1
-pub type LSpan = (usize, usize);
+pub type ByteC = Vec<u8>;
+pub type ByteCRef<'a> = &'a [u8];
+
+pub type LSpan = Span;
 
 pub struct Positions(Vec<LSpan>);
 impl Positions {
     pub fn new() -> Self {
         Self(Vec::new())
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
     }
 
     pub fn add(&mut self, span: LSpan) {

@@ -454,6 +454,32 @@ impl<'a> Parser<'a> {
         self.expr_inner(None)
     }
 
+    fn expr_binop_of(&mut self, op_ty: OpTy) -> Failible<ExprKind> {
+        self.expect(TokenKind::Of)?;
+        self.expr_binop(op_ty)
+    }
+
+    fn expr_binop(&mut self, op_ty: OpTy) -> Failible<ExprKind> {
+        let left = self.expr()?;
+        if self.peek_token()?.token_kind.eq(&TokenKind::An) {
+            self.next_token()?;
+        }
+        let right = self.expr()?;
+        Ok(ExprKind::Operator(op_ty, Box::new(left), Box::new(right)))
+    }
+
+    fn repeated(&mut self) -> Failible<Vec<Expr>> {
+        let mut args = vec![self.expr()?];
+        while !self.peek_token()?.token_kind.eq(&TokenKind::Mkay) {
+            if self.peek_token()?.token_kind.eq(&TokenKind::An) {
+                self.next_token()?;
+            }
+            args.push(self.expr()?);
+        }
+        self.expect(TokenKind::Mkay)?;
+        Ok(args)
+    }
+
     fn expr_inner(&mut self, prev: Option<Token>) -> Failible<Expr> {
         let to_match = match prev {
             Some(val) => val,
@@ -471,6 +497,31 @@ impl<'a> Parser<'a> {
             TokenKind::String(s) => ExprKind::String(s),
             TokenKind::Win => ExprKind::Bool(true),
             TokenKind::Fail => ExprKind::Bool(false),
+
+            TokenKind::Sum => self.expr_binop_of(OpTy::Add)?,
+            TokenKind::Diff => self.expr_binop_of(OpTy::Sub)?,
+            TokenKind::Quoshunt => self.expr_binop_of(OpTy::Div)?,
+            TokenKind::Produkt => self.expr_binop_of(OpTy::Mul)?,
+            TokenKind::Mod => self.expr_binop_of(OpTy::Mod)?,
+
+            TokenKind::Biggr => self.expr_binop_of(OpTy::Max)?,
+            TokenKind::Smallr => self.expr_binop_of(OpTy::Min)?,
+
+            TokenKind::Both => {
+                if self.peek_token()?.token_kind.eq(&TokenKind::Saem) {
+                    self.expect(TokenKind::Saem)?;
+                    self.expr_binop(OpTy::Equal)?
+                } else {
+                    self.expr_binop_of(OpTy::And)?
+                }
+            }
+            TokenKind::Either => self.expr_binop_of(OpTy::Or)?,
+            TokenKind::Won => self.expr_binop_of(OpTy::Xor)?,
+
+            TokenKind::Diffrint => self.expr_binop(OpTy::NotEq)?,
+
+            TokenKind::Not => ExprKind::Not(Box::new(self.expr()?)),
+
             TokenKind::Smoosh => {
                 let mut args = vec![self.expr()?];
                 loop {
@@ -483,6 +534,7 @@ impl<'a> Parser<'a> {
                 }
                 ExprKind::Concat(args)
             }
+
             TokenKind::I => {
                 self.expect(TokenKind::Iz)?;
                 let name = self.ident()?;
@@ -503,6 +555,19 @@ impl<'a> Parser<'a> {
                 self.expect(TokenKind::Mkay)?;
                 ExprKind::FunctionCall(name, args)
             }
+
+            TokenKind::All => {
+                self.expect(TokenKind::Of)?;
+                let args = self.repeated()?;
+                ExprKind::All(args)
+            }
+
+            TokenKind::Any => {
+                self.expect(TokenKind::Of)?;
+                let args = self.repeated()?;
+                ExprKind::Any(args)
+            }
+
             TokenKind::Number(n1) => {
                 let peek = self.peek_token()?;
                 let peek_span = peek.span;
@@ -656,6 +721,102 @@ KTHXBYE"#,
         "HAI 1.4, 123, KTHXBYE",
         expr_int,
         [StatementKind::Expr(Expr {expr_kind: ExprKind::Int(..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, ALL OF 123 AN 123 AN WIN MKAY, KTHXBYE",
+        expr_all3,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::All(..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, ALL OF 123 AN 123 MKAY, KTHXBYE",
+        expr_all2,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::All(..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, ALL OF 123 MKAY, KTHXBYE",
+        expr_all1,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::All(..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, ANY OF 123 AN 123 AN WIN MKAY, KTHXBYE",
+        expr_any3,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Any(..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, ANY OF 123 AN 123 MKAY, KTHXBYE",
+        expr_any2,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Any(..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, ANY OF 123 MKAY, KTHXBYE",
+        expr_any1,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Any(..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, SUM OF 1 AN 2, KTHXBYE",
+        expr_add,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Add, ..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, DIFF OF 1 AN 2, KTHXBYE",
+        expr_sub,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Sub, ..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, PRODUKT OF 1 AN 2, KTHXBYE",
+        expr_mul,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Mul, ..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, QUOSHUNT OF 1 AN 2, KTHXBYE",
+        expr_div,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Div, ..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, MOD OF 1 AN 2, KTHXBYE",
+        expr_mod,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Mod, ..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, BIGGR OF 1 AN 2, KTHXBYE",
+        expr_max,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Max, ..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, SMALLR OF 1 AN 2, KTHXBYE",
+        expr_min,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Min, ..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, BOTH SAEM 1 AN 2, KTHXBYE",
+        expr_same,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Equal, ..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, DIFFRINT 1 AN 2, KTHXBYE",
+        expr_diff,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::NotEq, ..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, NOT WIN, KTHXBYE",
+        expr_not,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Not(..), ..}),]
     );
 
     assert_ast!(
@@ -907,6 +1068,13 @@ KTHXBYE"#,
         DiagnosticType::UnmatchedBlockName,
         2,
         mismatched_blocks_loop
+    );
+
+    assert_err!(
+        "HAI 1.4, ANY OF MKAY, KTHXBYE",
+        DiagnosticType::Syntax,
+        1,
+        any_of_mkay
     );
 
     assert_err!(
