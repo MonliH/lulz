@@ -5,7 +5,6 @@ use std::{
 };
 
 use crate::diagnostics::Span;
-use crate::interpret::helpers::Type;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Ident(pub SmolStr, pub Span);
@@ -80,4 +79,14 @@ pub enum ExprKind {
     FunctionCall(Ident, Vec<Expr>),
     Concat(Vec<Expr>),
     Cast(Box<Expr>, Type),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Type {
+    Null,
+    Bool,
+    Int,
+    Float,
+    Str,
+    Function,
 }

@@ -1,9 +1,9 @@
-mod ast;
+mod bytecode_compiler;
 mod diagnostics;
 mod err;
-mod interpret;
-mod lex;
-mod parse;
+mod frontend;
+mod lolbc;
+mod lolvm;
 
 use clap::Clap;
 use codespan_reporting::files::SimpleFiles;
@@ -16,20 +16,22 @@ use std::fs::read_to_string;
 use std::io::{self, Read};
 
 use crate::diagnostics::Failible;
+use frontend::*;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 #[derive(Clap, Debug)]
 #[clap(version = VERSION, author = "Jonathan Li")]
 struct Opts {
-    #[clap(about = "Input file to interpret. Use `-` to read from stdin.")]
+    #[clap(short = 'd', long, about = "Prints disassembled lolvm bytecode")]
+    disasm: bool,
+
+    #[clap(about = "Input file to interpret. Use `-` to read from stdin")]
     input: String,
-    #[clap(short = 'V', long)]
-    version: bool,
 }
 
 fn main() {
-    let opts: Opts = Opts::parse();
+    let mut opts: Opts = Opts::parse();
     let source: String = if &opts.input == "-" {
         let mut buffer = String::new();
         let stdin = io::stdin();
@@ -47,8 +49,8 @@ fn main() {
         )
     };
     let mut sources = SimpleFiles::new();
-    let id = sources.add(opts.input, source);
-    match pipeline(&sources, id) {
+    let id = sources.add(std::mem::take(&mut opts.input), source);
+    match pipeline(&sources, id, opts) {
         Ok(()) => {}
         Err(es) => {
             let writer = StandardStream::stderr(ColorChoice::Always);
@@ -62,9 +64,14 @@ fn main() {
     };
 }
 
-fn pipeline(sources: &SimpleFiles<String, String>, id: usize) -> Failible<()> {
+fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Failible<()> {
     let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
     let mut parser = parse::Parser::new(lexer);
     let ast = parser.parse()?;
-    interpret::run(ast)
+    let mut bytecode_compiler = bytecode_compiler::BytecodeCompiler::new();
+    let bytecode: lolbc::Chunk = bytecode_compiler.compile(ast);
+    if opts.disasm {
+        lolbc::disasm(&bytecode);
+    }
+    Ok(())
 }

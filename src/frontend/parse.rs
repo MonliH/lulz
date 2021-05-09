@@ -3,7 +3,6 @@ use std::iter::Peekable;
 
 use crate::ast::*;
 use crate::diagnostics::prelude::*;
-use crate::interpret::helpers::Type;
 use crate::lex::{Lexer, Token, TokenKind};
 
 pub struct Parser<'a> {
@@ -42,6 +41,7 @@ impl<'a> Parser<'a> {
         // NOTE: This code actually does compile with the nightly -Zpolonius flag.
         match unsafe { raw_self.as_mut() }.unwrap().lexer.peek().unwrap() {
             Ok(t) => Ok(t),
+            // The original err value **is DROPPED**
             Err(_) => Err(unsafe { raw_self.as_mut() }
                 .unwrap()
                 .next_token()
