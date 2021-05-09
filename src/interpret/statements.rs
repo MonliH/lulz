@@ -66,7 +66,7 @@ impl Exec for Statement {
                 block,
                 ..
             } => {}
-            _ => todo!(),
+            _ => todo!("{:?}", self),
         }
         Ok(None)
     }

@@ -170,7 +170,7 @@ impl<'a> Lexer<'a> {
     fn next_token(&mut self) -> Failible<Token> {
         let prev_pos = self.position;
         let kind = match self.eat() {
-            c if Self::is_id_start(c) => self.ident(c),
+            c if Self::is_id_start(c) => return self.ident(c),
             '.' => TokenKind::Dot,
             '?' => TokenKind::Question,
             '!' => TokenKind::Bang,
@@ -290,51 +290,62 @@ impl<'a> Lexer<'a> {
         Ok(TokenKind::String(SmolStr::new(acc)))
     }
 
-    fn ident(&mut self, first: char) -> TokenKind {
+    fn is_not_newline(c: char) -> bool {
+        c == '\n'
+    }
+
+    fn ident(&mut self, first: char) -> Failible<Token> {
         let id = self.consume_while(first, Self::is_id_continue);
-        match &id[..] {
-            "HAI" => TokenKind::Hai,
-            "KTHXBYE" => TokenKind::Kthxbye,
-            "IM" => TokenKind::Im,
-            "IN" => TokenKind::In,
-            "YR" => TokenKind::Yr,
-            "TILL" => TokenKind::Till,
-            "WILE" => TokenKind::Wile,
-            "OUTTA" => TokenKind::Outta,
-            "WTF" => TokenKind::Wtf,
-            "OIC" => TokenKind::Oic,
-            "OMG" => TokenKind::Omg,
-            "OMGWTF" => TokenKind::Omgwtf,
-            "RLY" => TokenKind::Rly,
-            "MAEK" => TokenKind::Maek,
-            "O" => TokenKind::O,
-            "MEBEE" => TokenKind::Mebee,
-            "WAI" => TokenKind::Wai,
-            "GTFO" => TokenKind::Gtfo,
-            "CAN" => TokenKind::Can,
-            "I" => TokenKind::I,
-            "HAS" => TokenKind::Has,
-            "ITZ" => TokenKind::Itz,
-            "WIN" => TokenKind::Win,
-            "FAIL" => TokenKind::Fail,
-            "IZ" => TokenKind::Iz,
-            "AN" => TokenKind::An,
-            "VISIBLE" => TokenKind::Visible,
-            "HOW" => TokenKind::How,
-            "IF" => TokenKind::If,
-            "U" => TokenKind::U,
-            "SAY" => TokenKind::Say,
-            "SO" => TokenKind::So,
-            "FOUND" => TokenKind::Found,
-            "YA" => TokenKind::Ya,
-            "NO" => TokenKind::No,
-            "A" => TokenKind::A,
-            "R" => TokenKind::R,
-            "GIMMEH" => TokenKind::Gimmeh,
-            "MKAY" => TokenKind::Mkay,
-            "SMOOSH" => TokenKind::Smoosh,
-            _ => TokenKind::Ident(SmolStr::new(id)),
-        }
+        Ok(Token {
+            span: Span::new(self.position - id.len(), self.position, self.source_id),
+            token_kind: match &id[..] {
+                "BTW" => {
+                    self.consume_while(first, Self::is_not_newline);
+                    return self.next_token();
+                }
+                "HAI" => TokenKind::Hai,
+                "KTHXBYE" => TokenKind::Kthxbye,
+                "IM" => TokenKind::Im,
+                "IN" => TokenKind::In,
+                "YR" => TokenKind::Yr,
+                "TILL" => TokenKind::Till,
+                "WILE" => TokenKind::Wile,
+                "OUTTA" => TokenKind::Outta,
+                "WTF" => TokenKind::Wtf,
+                "OIC" => TokenKind::Oic,
+                "OMG" => TokenKind::Omg,
+                "OMGWTF" => TokenKind::Omgwtf,
+                "RLY" => TokenKind::Rly,
+                "MAEK" => TokenKind::Maek,
+                "O" => TokenKind::O,
+                "MEBEE" => TokenKind::Mebee,
+                "WAI" => TokenKind::Wai,
+                "GTFO" => TokenKind::Gtfo,
+                "CAN" => TokenKind::Can,
+                "I" => TokenKind::I,
+                "HAS" => TokenKind::Has,
+                "ITZ" => TokenKind::Itz,
+                "WIN" => TokenKind::Win,
+                "FAIL" => TokenKind::Fail,
+                "IZ" => TokenKind::Iz,
+                "AN" => TokenKind::An,
+                "VISIBLE" => TokenKind::Visible,
+                "HOW" => TokenKind::How,
+                "IF" => TokenKind::If,
+                "U" => TokenKind::U,
+                "SAY" => TokenKind::Say,
+                "SO" => TokenKind::So,
+                "FOUND" => TokenKind::Found,
+                "YA" => TokenKind::Ya,
+                "NO" => TokenKind::No,
+                "A" => TokenKind::A,
+                "R" => TokenKind::R,
+                "GIMMEH" => TokenKind::Gimmeh,
+                "MKAY" => TokenKind::Mkay,
+                "SMOOSH" => TokenKind::Smoosh,
+                _ => TokenKind::Ident(SmolStr::new(id)),
+            },
+        })
     }
 }
 
