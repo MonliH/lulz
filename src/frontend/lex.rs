@@ -75,7 +75,7 @@ pub enum TokenKind {
     Bang,
 
     Number(SmolStr),
-    String(SmolStr),
+    String(String),
     Ident(SmolStr),
 
     Eof,
@@ -326,7 +326,7 @@ impl<'a> Lexer<'a> {
                 acc.push(next);
             }
         }
-        Ok(TokenKind::String(SmolStr::new(acc)))
+        Ok(TokenKind::String(acc))
     }
 
     fn is_not_newline(c: char) -> bool {
@@ -529,11 +529,11 @@ mod lexer_test {
         assert_map(&[
             (
                 "\"this is a fun string\"",
-                TokenKind::String(SmolStr::new("this is a fun string")),
+                TokenKind::String("this is a fun string".to_string()),
             ),
             (
                 "\":) :: :\" :> :o\"",
-                TokenKind::String(SmolStr::new("\n : \" \t \u{7}")),
+                TokenKind::String("\n : \" \t \u{7}".to_string()),
             ),
         ]);
     }

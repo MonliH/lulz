@@ -73,7 +73,7 @@ fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Fai
     if opts.disasm {
         lolbc::disasm(&bytecode);
     }
-    let mut vm = lolvm::LolVm::new();
-    vm.run(bytecode);
+    let mut vm = lolvm::LolVm::default();
+    vm.run(bytecode)?;
     Ok(())
 }

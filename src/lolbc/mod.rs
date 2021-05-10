@@ -1,10 +1,10 @@
 //! LOLVM bytecode
-mod bits;
+pub mod bits;
 mod chunk;
 mod disasm;
 mod opcodes;
 mod values;
 pub use chunk::{ByteC, ByteCRef, Chunk, LSpan, Positions};
-pub use disasm::disasm;
-pub use opcodes::{OpCode, NUM_CODES};
+pub use disasm::{disasm, disasm_instruction};
+pub use opcodes::{byte_to_opcode, OpCode, NUM_CODES};
 pub use values::{Value, ValueArray};

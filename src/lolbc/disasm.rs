@@ -1,7 +1,7 @@
-use std::intrinsics::transmute;
+use crate::lolbc::opcodes::byte_to_opcode;
 
 use super::bits;
-use super::{Chunk, OpCode, NUM_CODES};
+use super::{Chunk, OpCode};
 
 pub fn disasm(chunk: &Chunk) {
     eprintln!("=== {} ===", chunk.name);
@@ -13,9 +13,9 @@ pub fn disasm(chunk: &Chunk) {
     }
 }
 
-fn disasm_instruction(chunk: &Chunk, offset: usize) -> usize {
+pub fn disasm_instruction(chunk: &Chunk, offset: usize) -> usize {
     let bytecode = &chunk.bytecode;
-    let instr = getop(bytecode[offset]);
+    let instr = byte_to_opcode(bytecode[offset]);
     let pos = chunk.pos.get(offset);
     print!("{:0>5}  {:>4}:{: <3} ", offset, pos.s, pos.e);
     match instr {
@@ -50,18 +50,5 @@ fn disasm_instruction(chunk: &Chunk, offset: usize) -> usize {
             println!("invalid ({})", bytecode[offset]);
             offset + 1
         }
-    }
-}
-
-fn getop(instr: u8) -> Option<OpCode> {
-    if instr > NUM_CODES {
-        None
-    } else {
-        // SAFTEY: the opcode we are transmuting into is literally
-        // a u8, and is represented as a u8, so this is sound.
-        //
-        // We also do bounds checking above, so if it's an invalid
-        // u8 it's also sound.
-        Some(unsafe { transmute(instr) })
     }
 }

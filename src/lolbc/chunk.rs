@@ -6,7 +6,9 @@ pub type ByteCRef<'a> = &'a [u8];
 
 pub type LSpan = Span;
 
+#[derive(Default, Debug)]
 pub struct Positions(Vec<LSpan>);
+
 impl Positions {
     pub fn new() -> Self {
         Self(Vec::new())
@@ -19,8 +21,13 @@ impl Positions {
     pub fn get(&self, idx: usize) -> LSpan {
         self.0[idx]
     }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
+#[derive(Default)]
 pub struct Chunk {
     pub name: String,
     pub bytecode: ByteC,
@@ -47,8 +54,7 @@ impl Chunk {
         self.bytecode.push(instr);
     }
 
-    pub fn write_get_const(&mut self, value: Value, line: LSpan) {
-        self.pos.add(line);
+    pub fn write_get_const(&mut self, value: Value, line: LSpan) -> usize {
         let idx = self.add_const(value);
         if idx <= (u8::MAX as usize) {
             // LoadConst
@@ -61,5 +67,6 @@ impl Chunk {
             self.write_instr((idx >> 8) as u8, line);
             self.write_instr(idx as u8, line);
         }
+        idx
     }
 }

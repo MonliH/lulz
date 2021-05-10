@@ -73,8 +73,9 @@ pub struct Expr {
 pub enum ExprKind {
     Float(f64),
     Int(i64),
-    String(SmolStr),
+    String(String),
     Bool(bool),
+
     Variable(Ident),
     FunctionCall(Ident, Vec<Expr>),
     Concat(Vec<Expr>),

@@ -37,6 +37,17 @@ impl Diagnostics {
         self.0.push(other);
     }
 
+    pub fn map<F>(&mut self, f: F)
+    where
+        F: Fn(Diagnostic) -> Diagnostic,
+    {
+        let mut new_arr = SmallVec::with_capacity(self.0.len());
+        for ann in std::mem::take(&mut self.0).into_iter() {
+            new_arr.push(f(ann));
+        }
+        self.0 = new_arr;
+    }
+
     pub fn inner(&self) -> &SmallVec<[Diagnostic; 1]> {
         &self.0
     }
@@ -69,6 +80,7 @@ pub enum DiagnosticType {
     Cast = 6,
     Type = 7,
     FunctionArgumentMismatch = 8,
+    Runtime = 9,
 }
 
 impl DiagnosticType {
@@ -81,6 +93,7 @@ impl DiagnosticType {
             DiagnosticType::UnknownSymbol => "unknown symbol",
             DiagnosticType::Cast => "casting error, invalid cast",
             DiagnosticType::Type => "type error",
+            DiagnosticType::Runtime => "runtime error",
             DiagnosticType::FunctionArgumentMismatch => "function argument mismatch",
         }
     }
@@ -94,6 +107,7 @@ impl DiagnosticType {
             DiagnosticType::UnknownSymbol => "unknown_symbol",
             DiagnosticType::Cast => "casting",
             DiagnosticType::Type => "type",
+            DiagnosticType::Runtime => "runtime",
             DiagnosticType::FunctionArgumentMismatch => "func_arg_mismatch",
         }
     }
@@ -150,6 +164,11 @@ impl Diagnostic {
 
     pub fn annotation(mut self, message: Cow<'static, str>, span: Span) -> Self {
         self.annotations.push(Annotation { message, span });
+        self
+    }
+
+    pub fn remove_annotations(mut self) -> Self {
+        self.annotations.clear();
         self
     }
 
