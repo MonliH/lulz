@@ -153,6 +153,13 @@ impl LolVm {
                     self.st.push(Bool(!b));
                 }
 
+                Concat => {
+                    let st1 = self.st.pop().to_str();
+                    let st2 = self.st.pop().to_str();
+
+                    self.st.push(Str(format!("{}{}", st1, st2).into()));
+                }
+
                 And => binary_bool!(self.st, (|a, b| a && b)),
                 Or => binary_bool!(self.st, (|a, b| a || b)),
                 Xor => binary_bool!(self.st, (|a, b| a ^ b)),

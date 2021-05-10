@@ -74,6 +74,16 @@ impl Value {
         }
     }
 
+    pub fn to_str(&self) -> Rc<str> {
+        match self {
+            Bool(b) => if *b { "WIN" } else { "FAIL" }.into(),
+            Null => "NOOB".into(),
+            Float(f) => f.to_string().into(),
+            Int(i) => i.to_string().into(),
+            Str(s) => Rc::clone(&s),
+        }
+    }
+
     pub fn to_bool(&self) -> bool {
         match self {
             Bool(b) => *b,

@@ -24,11 +24,13 @@ pub enum OpCode {
     Xor = 12,
 
     Not = 13,
+
+    Concat = 14,
 }
 
 use OpCode::*;
 
-pub const NUM_CODES: u8 = Not as u8;
+pub const NUM_CODES: u8 = Concat as u8;
 
 impl OpCode {
     pub fn arity(self) -> usize {
@@ -39,7 +41,7 @@ impl OpCode {
             // 24-bit index
             LoadConstLong => 3,
 
-            Not | Xor | Or | And | Add | Mul | Div | Sub | Mod | Min | Max => 0,
+            Not | Xor | Or | And | Add | Mul | Div | Sub | Mod | Min | Max | Concat => 0,
         }
     }
 }
@@ -68,6 +70,7 @@ impl Display for OpCode {
                 Or => "or",
 
                 Not => "not",
+                Concat => "cnct",
             }
         )
     }

@@ -100,8 +100,7 @@ impl<'a> Parser<'a> {
         } else {
             let mut statements = vec![self.statement()?];
             loop {
-                if TokenKind::Break.eq(&self.peek_token()?.token_kind) {
-                    self.next_token()?;
+                if self.check(&TokenKind::Break)? {
                     if self.next_tok_is(tokens_after)? {
                         break;
                     }
@@ -238,12 +237,10 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::I)?;
         let fn_name = self.ident()?;
         let mut args = Vec::new();
-        if TokenKind::Yr.eq(&self.peek_token()?.token_kind) {
-            self.next_token()?;
+        if self.check(&TokenKind::Yr)? {
             args.push(self.ident()?);
             loop {
-                if TokenKind::An.eq(&self.peek_token()?.token_kind) {
-                    self.next_token()?;
+                if self.check(&TokenKind::An)? {
                     self.expect(TokenKind::Yr)?;
                     args.push(self.ident()?);
                 } else {
@@ -276,8 +273,7 @@ impl<'a> Parser<'a> {
     fn case(&mut self, span: Span) -> Failible<Statement> {
         self.expect(TokenKind::Question)?;
         self.expect(TokenKind::Break)?;
-        if TokenKind::Oic.eq(&self.peek_token()?.token_kind) {
-            self.next_token()?;
+        if self.check(&TokenKind::Oic)? {
             Ok(Statement {
                 span: Span::new(span.s, self.current_span.e, self.source_id),
                 statement_kind: StatementKind::Case(Vec::new(), None),
@@ -298,8 +294,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            let block = if TokenKind::Omgwtf.eq(&self.peek_token()?.token_kind) {
-                self.next_token()?;
+            let block = if self.check(&TokenKind::Omgwtf)? {
                 self.expect(TokenKind::Break)?;
                 let block = self.block(Some(&[TokenKind::Oic]))?;
                 Some(block)
@@ -321,8 +316,7 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::Question)?;
         self.expect(TokenKind::Break)?;
 
-        let ya_rly = if TokenKind::Ya.eq(&self.peek_token()?.token_kind) {
-            self.next_token()?;
+        let ya_rly = if self.check(&TokenKind::Ya)? {
             self.expect(TokenKind::Rly)?;
             self.expect(TokenKind::Break)?;
             let block = self.block(Some(&[TokenKind::Oic]))?;
@@ -334,8 +328,7 @@ impl<'a> Parser<'a> {
         let mut mebee = Vec::new();
 
         loop {
-            if TokenKind::Mebee.eq(&self.peek_token()?.token_kind) {
-                self.next_token()?;
+            if self.check(&TokenKind::Mebee)? {
                 let expr = self.expr()?;
                 self.expect(TokenKind::Break)?;
                 let block = self.block(Some(&[TokenKind::Mebee, TokenKind::No]))?;
@@ -345,8 +338,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let no_wai = if TokenKind::No.eq(&self.peek_token()?.token_kind) {
-            self.next_token()?;
+        let no_wai = if self.check(&TokenKind::No)? {
             self.expect(TokenKind::Wai)?;
             let block = self.block(Some(&[TokenKind::Oic]))?;
             Some(block)
@@ -377,8 +369,7 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::Has)?;
         self.expect(TokenKind::A)?;
         let ident = self.ident()?;
-        let expr = if TokenKind::Itz.eq(&self.peek_token()?.token_kind) {
-            self.next_token()?;
+        let expr = if self.check(&TokenKind::Itz)? {
             Some(self.expr()?)
         } else {
             None
@@ -391,12 +382,7 @@ impl<'a> Parser<'a> {
 
     fn print(&mut self, span: Span) -> Failible<Statement> {
         let expr = self.expr()?;
-        let no_newline = if self.peek_token()?.token_kind.eq(&TokenKind::Bang) {
-            self.next_token()?;
-            true
-        } else {
-            false
-        };
+        let no_newline = self.check(&TokenKind::Bang)?;
         Ok(Statement {
             span: Span::new(span.s, self.current_span.e, self.source_id),
             statement_kind: StatementKind::Print(expr, no_newline),
@@ -450,19 +436,30 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn check(&mut self, token: &TokenKind) -> Failible<bool> {
+        if self.peek_token()?.token_kind.eq(token) {
+            self.next_token()?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
     fn expr(&mut self) -> Failible<Expr> {
         self.expr_inner(None)
     }
 
-    fn expr_binop_of(&mut self, op_ty: OpTy) -> Failible<ExprKind> {
+    fn expr_binop_of(&mut self, op_ty: OpTy, an_optional: bool) -> Failible<ExprKind> {
         self.expect(TokenKind::Of)?;
-        self.expr_binop(op_ty)
+        self.expr_binop(op_ty, an_optional)
     }
 
-    fn expr_binop(&mut self, op_ty: OpTy) -> Failible<ExprKind> {
+    fn expr_binop(&mut self, op_ty: OpTy, an_optional: bool) -> Failible<ExprKind> {
         let left = self.expr()?;
-        if self.peek_token()?.token_kind.eq(&TokenKind::An) {
-            self.next_token()?;
+        if an_optional {
+            self.check(&TokenKind::An)?;
+        } else {
+            self.expect(TokenKind::An)?;
         }
         let right = self.expr()?;
         Ok(ExprKind::Operator(op_ty, Box::new(left), Box::new(right)))
@@ -471,9 +468,7 @@ impl<'a> Parser<'a> {
     fn repeated(&mut self) -> Failible<Vec<Expr>> {
         let mut args = vec![self.expr()?];
         while !self.peek_token()?.token_kind.eq(&TokenKind::Mkay) {
-            if self.peek_token()?.token_kind.eq(&TokenKind::An) {
-                self.next_token()?;
-            }
+            self.check(&TokenKind::An)?;
             args.push(self.expr()?);
         }
         self.expect(TokenKind::Mkay)?;
@@ -498,39 +493,34 @@ impl<'a> Parser<'a> {
             TokenKind::Win => ExprKind::Bool(true),
             TokenKind::Fail => ExprKind::Bool(false),
 
-            TokenKind::Sum => self.expr_binop_of(OpTy::Add)?,
-            TokenKind::Diff => self.expr_binop_of(OpTy::Sub)?,
-            TokenKind::Quoshunt => self.expr_binop_of(OpTy::Div)?,
-            TokenKind::Produkt => self.expr_binop_of(OpTy::Mul)?,
-            TokenKind::Mod => self.expr_binop_of(OpTy::Mod)?,
+            TokenKind::Sum => self.expr_binop_of(OpTy::Add, false)?,
+            TokenKind::Diff => self.expr_binop_of(OpTy::Sub, false)?,
+            TokenKind::Quoshunt => self.expr_binop_of(OpTy::Div, false)?,
+            TokenKind::Produkt => self.expr_binop_of(OpTy::Mul, false)?,
+            TokenKind::Mod => self.expr_binop_of(OpTy::Mod, false)?,
 
-            TokenKind::Biggr => self.expr_binop_of(OpTy::Max)?,
-            TokenKind::Smallr => self.expr_binop_of(OpTy::Min)?,
+            TokenKind::Biggr => self.expr_binop_of(OpTy::Max, false)?,
+            TokenKind::Smallr => self.expr_binop_of(OpTy::Min, false)?,
 
             TokenKind::Both => {
-                if self.peek_token()?.token_kind.eq(&TokenKind::Saem) {
-                    self.expect(TokenKind::Saem)?;
-                    self.expr_binop(OpTy::Equal)?
+                if self.check(&TokenKind::Saem)? {
+                    self.expr_binop(OpTy::Equal, true)?
                 } else {
-                    self.expr_binop_of(OpTy::And)?
+                    self.expr_binop_of(OpTy::And, true)?
                 }
             }
-            TokenKind::Either => self.expr_binop_of(OpTy::Or)?,
-            TokenKind::Won => self.expr_binop_of(OpTy::Xor)?,
+            TokenKind::Either => self.expr_binop_of(OpTy::Or, true)?,
+            TokenKind::Won => self.expr_binop_of(OpTy::Xor, true)?,
 
-            TokenKind::Diffrint => self.expr_binop(OpTy::NotEq)?,
+            TokenKind::Diffrint => self.expr_binop(OpTy::NotEq, true)?,
 
             TokenKind::Not => ExprKind::Not(Box::new(self.expr()?)),
 
             TokenKind::Smoosh => {
                 let mut args = vec![self.expr()?];
-                loop {
-                    if TokenKind::An.eq(&self.peek_token()?.token_kind) {
-                        self.next_token()?;
-                        args.push(self.expr()?);
-                    } else {
-                        break;
-                    }
+                while !(self.check(&TokenKind::Smoosh)? || self.check(&TokenKind::Break)?) {
+                    self.check(&TokenKind::An)?;
+                    args.push(self.expr()?);
                 }
                 ExprKind::Concat(args)
             }
@@ -539,12 +529,10 @@ impl<'a> Parser<'a> {
                 self.expect(TokenKind::Iz)?;
                 let name = self.ident()?;
                 let mut args = Vec::new();
-                if TokenKind::Yr.eq(&self.peek_token()?.token_kind) {
-                    self.next_token()?;
+                if self.check(&TokenKind::Yr)? {
                     args.push(self.expr()?);
                     loop {
-                        if TokenKind::An.eq(&self.peek_token()?.token_kind) {
-                            self.next_token()?;
+                        if self.check(&TokenKind::An)? {
                             self.expect(TokenKind::Yr)?;
                             args.push(self.expr()?);
                         } else {
@@ -712,6 +700,12 @@ KTHXBYE"#,
     );
 
     assert_ast!(
+        r#"HAI 1.4, SMOOSH "hi" " world", KTHXBYE"#,
+        concat_string_,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
+    );
+
+    assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" AN " world", KTHXBYE"#,
         concat_string,
         [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
@@ -799,6 +793,18 @@ KTHXBYE"#,
         "HAI 1.4, SMALLR OF 1 AN 2, KTHXBYE",
         expr_min,
         [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Min, ..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, BOTH SAEM 1 2, KTHXBYE",
+        expr_same_no_an,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Equal, ..), ..}),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, DIFFRINT 1 2, KTHXBYE",
+        expr_diff_no_an,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::NotEq, ..), ..}),]
     );
 
     assert_ast!(

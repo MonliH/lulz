@@ -113,5 +113,4 @@ pub enum Type {
     Int,
     Float,
     Str,
-    Function,
 }

@@ -15,6 +15,27 @@ impl BytecodeCompiler {
         }
     }
 
+    fn compile_seq(&mut self, es: Vec<Expr>, op: OpCode) -> Failible<()> {
+        let len = es.len();
+        let mut es_iter = es.into_iter();
+        if len == 1 {
+            self.compile_expr(es_iter.next().unwrap())?;
+        } else {
+            let first = es_iter.next().unwrap();
+            let second = es_iter.next().unwrap();
+            let mut combined_span = first.span.combine(&second.span);
+            self.compile_expr(first)?;
+            self.compile_expr(second)?;
+            self.write_instr(op, combined_span);
+            for es in es_iter {
+                combined_span = combined_span.combine(&es.span);
+                self.compile_expr(es)?;
+                self.write_instr(op, combined_span);
+            }
+        }
+        Ok(())
+    }
+
     pub fn compile_expr(&mut self, expr: Expr) -> Failible<()> {
         match expr.expr_kind {
             ExprKind::Float(f) => {
@@ -36,6 +57,18 @@ impl BytecodeCompiler {
             ExprKind::Not(e) => {
                 self.compile_expr(*e)?;
                 self.write_instr(OpCode::Not, expr.span)
+            }
+
+            ExprKind::All(es) => {
+                self.compile_seq(es, OpCode::And)?;
+            }
+
+            ExprKind::Any(es) => {
+                self.compile_seq(es, OpCode::Or)?;
+            }
+
+            ExprKind::Concat(es) => {
+                self.compile_seq(es, OpCode::Concat)?;
             }
 
             ExprKind::Operator(op, e1, e2) => {

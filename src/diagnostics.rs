@@ -1,7 +1,5 @@
 pub mod prelude {
-    pub use super::{
-        plural, Annotation, Diagnostic, DiagnosticType, Diagnostics, Failible, Level, Span,
-    };
+    pub use super::{Annotation, Diagnostic, DiagnosticType, Diagnostics, Failible, Level, Span};
     pub use std::borrow::Cow;
 }
 
@@ -17,6 +15,14 @@ pub struct Span {
 impl Span {
     pub fn new(s: usize, e: usize, file: usize) -> Span {
         Span { s, e, file }
+    }
+
+    pub fn combine(&self, other: &Self) -> Self {
+        Span {
+            file: self.file,
+            s: self.s,
+            e: other.e,
+        }
     }
 }
 
@@ -132,14 +138,6 @@ pub struct Diagnostic {
     pub ty: DiagnosticType,
     pub level: Level,
     pub annotations: SmallVec<[Annotation; 1]>,
-}
-
-pub fn plural(num: usize) -> &'static str {
-    if num == 1 {
-        ""
-    } else {
-        "s"
-    }
 }
 
 impl Annotation {

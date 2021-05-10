@@ -2,7 +2,6 @@ use super::{OpCode, Value, ValueArray};
 use crate::diagnostics::Span;
 
 pub type ByteC = Vec<u8>;
-pub type ByteCRef<'a> = &'a [u8];
 
 pub type LSpan = Span;
 
