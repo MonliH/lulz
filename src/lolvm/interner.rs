@@ -2,16 +2,8 @@ use rustc_hash::FxHashMap;
 use std::mem;
 // Credit to https://matklad.github.io/2020/03/22/fast-simple-rust-interner.html
 
-use crate::lolbc::bits::Bits;
-
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub struct StrId(usize);
-
-impl StrId {
-    pub fn get_bits(&self) -> Bits {
-        self.0.into()
-    }
-}
 
 #[derive(Default)]
 pub struct Interner {

@@ -701,9 +701,33 @@ mod parse_test {
 
     assert_ast!(
         r#"HAI 1.4
+I IZ UPPIN YR 10 AN YR 10 AN YR 123 MKAY
+KTHXBYE"#,
+        function_call_3_args,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+I IZ UPPIN YR 10 AN YR 10 MKAY
+KTHXBYE"#,
+        function_call_2_args,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+I IZ UPPIN MKAY
+KTHXBYE"#,
+        function_call_no_args,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
 I IZ UPPIN YR 10 MKAY
 KTHXBYE"#,
-        function_call,
+        function_call_1_arg,
         [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
     );
 

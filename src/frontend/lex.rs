@@ -282,7 +282,7 @@ impl<'a> Lexer<'a> {
     fn consume_while(&mut self, first: char, predicate: impl Fn(char) -> bool) -> String {
         let mut acc = String::with_capacity(1);
         acc.push(first);
-        while predicate(self.peek()) {
+        while predicate(self.peek()) && !self.is_eof() {
             acc.push(self.eat());
         }
         acc
@@ -333,6 +333,30 @@ impl<'a> Lexer<'a> {
         c != '\n'
     }
 
+    fn is_eof(&mut self) -> bool {
+        self.peek() == EOF
+    }
+
+    fn consume_multiline(&mut self) -> Failible<()> {
+        while self.peek() != 'T' && !self.is_eof() {
+            self.eat();
+        }
+
+        self.eat();
+        if self.peek() == 'L' {
+            self.eat();
+            if self.peek() == 'D' {
+                self.eat();
+                if self.peek() == 'R' {
+                    self.eat();
+                    return Ok(());
+                }
+            }
+        }
+
+        self.consume_multiline()
+    }
+
     fn ident(&mut self, first: char) -> Failible<Token> {
         let id = self.consume_while(first, Self::is_id_continue);
         Ok(Token {
@@ -340,6 +364,10 @@ impl<'a> Lexer<'a> {
             token_kind: match &id[..] {
                 "BTW" => {
                     self.consume_while(first, Self::is_not_newline);
+                    return self.next_token();
+                }
+                "OBTW" => {
+                    self.consume_multiline()?;
                     return self.next_token();
                 }
                 "HAI" => TokenKind::Hai,
@@ -430,6 +458,22 @@ mod lexer_test {
                 Ok(token.clone())
             );
         }
+    }
+
+    #[test]
+    fn comments() {
+        assert_map(&[
+            ("BTW blah blah blah\n", TokenKind::Break),
+            ("BTW aksjdlakwjdlakwjd", TokenKind::Eof),
+            (
+                "OBTW aksjdlakwjdlakwjd\na  a asd\nasd\nTLD\n TLDAR\n TLDR\n",
+                TokenKind::Break,
+            ),
+            (
+                "OBTW aksjdlakwjdlakwjd\na  a asd\nasd\nTLD\n TLDAR\n TLDR",
+                TokenKind::Eof,
+            ),
+        ]);
     }
 
     #[test]
