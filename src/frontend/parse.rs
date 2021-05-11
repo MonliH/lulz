@@ -65,12 +65,26 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub fn eat_lines(&mut self) -> Failible<()> {
+        while self.check(&TokenKind::Break)? {}
+        Ok(())
+    }
+
+    pub fn expect_lines(&mut self) -> Failible<()> {
+        self.expect(TokenKind::Break)?;
+        while self.check(&TokenKind::Break)? {}
+        Ok(())
+    }
+
     pub fn parse(&mut self) -> Failible<Block> {
+        self.eat_lines()?;
         self.expect(TokenKind::Hai)?;
         self.version()?;
-        self.expect(TokenKind::Break)?;
+        self.expect_lines()?;
         let block = self.block(Some(&[TokenKind::Kthxbye]))?;
+        self.eat_lines()?;
         self.expect(TokenKind::Kthxbye)?;
+        self.eat_lines()?;
         Ok(block)
     }
 
@@ -101,6 +115,7 @@ impl<'a> Parser<'a> {
             let mut statements = vec![self.statement()?];
             loop {
                 if self.check(&TokenKind::Break)? {
+                    self.eat_lines()?;
                     if self.next_tok_is(tokens_after)? {
                         break;
                     }
@@ -176,7 +191,7 @@ impl<'a> Parser<'a> {
                 _ => None,
             };
         }
-        self.expect(TokenKind::Break)?;
+        self.expect_lines()?;
         let block = self.block(Some(&[TokenKind::Im]))?;
         self.expect(TokenKind::Im)?;
         self.expect(TokenKind::Outta)?;
@@ -265,14 +280,14 @@ impl<'a> Parser<'a> {
             self.expect(TokenKind::Omg)?;
         }
         let expr = self.expr()?;
-        self.expect(TokenKind::Break)?;
+        self.expect_lines()?;
         let block = self.block(Some(&[TokenKind::Omgwtf, TokenKind::Omg, TokenKind::Oic]))?;
         Ok((expr, block))
     }
 
     fn case(&mut self, span: Span) -> Failible<Statement> {
         self.expect(TokenKind::Question)?;
-        self.expect(TokenKind::Break)?;
+        self.expect_lines()?;
         if self.check(&TokenKind::Oic)? {
             Ok(Statement {
                 span: Span::new(span.s, self.current_span.e, self.source_id),
@@ -283,10 +298,8 @@ impl<'a> Parser<'a> {
             if !TokenKind::Omgwtf.eq(&self.peek_token()?.token_kind) {
                 cases.push(self.case_block(false)?);
                 loop {
-                    let peek = &self.peek_token()?.token_kind;
-                    let is_omg = TokenKind::Omg.eq(peek);
-                    if is_omg || TokenKind::Break.eq(peek) {
-                        self.next_token()?;
+                    let is_omg = self.check(&TokenKind::Omg)?;
+                    if is_omg {
                         cases.push(self.case_block(is_omg)?);
                     } else {
                         break;
@@ -295,7 +308,7 @@ impl<'a> Parser<'a> {
             }
 
             let block = if self.check(&TokenKind::Omgwtf)? {
-                self.expect(TokenKind::Break)?;
+                self.expect_lines()?;
                 let block = self.block(Some(&[TokenKind::Oic]))?;
                 Some(block)
             } else {
@@ -518,10 +531,11 @@ impl<'a> Parser<'a> {
 
             TokenKind::Smoosh => {
                 let mut args = vec![self.expr()?];
-                while !(self.check(&TokenKind::Smoosh)? || self.check(&TokenKind::Break)?) {
+                while !(self.check(&TokenKind::Mkay)? || self.check(&TokenKind::Break)?) {
                     self.check(&TokenKind::An)?;
                     args.push(self.expr()?);
                 }
+                self.check(&TokenKind::Mkay)?;
                 ExprKind::Concat(args)
             }
 
@@ -700,8 +714,20 @@ KTHXBYE"#,
     );
 
     assert_ast!(
+        r#"HAI 1.4, SMOOSH "hi" " world" MKAY, KTHXBYE"#,
+        concat_string_no_an_mkay,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4, SMOOSH "hi" AN " world" MKAY, KTHXBYE"#,
+        concat_string_mkay,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
+    );
+
+    assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" " world", KTHXBYE"#,
-        concat_string_,
+        concat_string_no_an,
         [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
     );
 
@@ -1088,13 +1114,6 @@ KTHXBYE"#,
         DiagnosticType::Syntax,
         1,
         float_missing_num_after_dot
-    );
-
-    assert_err!(
-        "HAI 1.4, , KTHXBYE",
-        DiagnosticType::Syntax,
-        1,
-        double_comma
     );
 
     assert_err!(

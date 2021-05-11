@@ -76,6 +76,8 @@ pub enum ExprKind {
     String(String),
     Bool(bool),
 
+    Null,
+
     Variable(Ident),
     FunctionCall(Ident, Vec<Expr>),
     Concat(Vec<Expr>),

@@ -1,5 +1,8 @@
-use super::{OpCode, Value, ValueArray};
-use crate::diagnostics::Span;
+use super::{bits::Bits, OpCode, Value, ValueArray};
+use crate::{
+    diagnostics::Span,
+    lolvm::{Interner, StrId},
+};
 
 pub type ByteC = Vec<u8>;
 
@@ -32,6 +35,7 @@ pub struct Chunk {
     pub bytecode: ByteC,
     pub pos: Positions,
     pub values: ValueArray,
+    pub interner: Interner,
 }
 
 impl Chunk {
@@ -40,6 +44,7 @@ impl Chunk {
             bytecode: Vec::new(),
             values: ValueArray::new(),
             pos: Positions::new(),
+            interner: Interner::with_capacity(2),
             name,
         }
     }
@@ -53,19 +58,26 @@ impl Chunk {
         self.bytecode.push(instr);
     }
 
-    pub fn write_get_const(&mut self, value: Value, line: LSpan) -> usize {
-        let idx = self.add_const(value);
-        if idx <= (u8::MAX as usize) {
-            // LoadConst
-            self.write_instr(OpCode::LoadConst as u8, line);
-            self.write_instr(idx as u8, line);
-        } else {
-            // LoadConstLong
-            self.write_instr(OpCode::LoadConstLong as u8, line);
-            self.write_instr((idx >> 16) as u8, line);
-            self.write_instr((idx >> 8) as u8, line);
-            self.write_instr(idx as u8, line);
+    pub fn write_get_const(&mut self, value: Value, line: LSpan) -> Bits {
+        let idx: Bits = self.add_const(value).into();
+        match idx {
+            Bits::U8(idx) => {
+                // LoadConst
+                self.write_instr(OpCode::LoadConst as u8, line);
+                self.write_instr(idx as u8, line);
+            }
+            Bits::U24(hi, mi, lo) => {
+                // LoadConstLong
+                self.write_instr(OpCode::LoadConstLong as u8, line);
+                self.write_instr(hi, line);
+                self.write_instr(mi, line);
+                self.write_instr(lo, line);
+            }
         }
         idx
+    }
+
+    pub fn write_interned(&mut self, s: &str) -> StrId {
+        self.interner.intern(s)
     }
 }

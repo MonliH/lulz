@@ -1,10 +1,13 @@
+use std::io;
+use std::io::BufRead;
+
 use super::Stack;
 use crate::{
     diagnostics::prelude::*,
     lolbc::{bits::usize_from_u8, byte_to_opcode, disasm_instruction, Chunk, OpCode::*, Value::*},
 };
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 #[derive(Default)]
 pub struct LolVm {
@@ -19,15 +22,13 @@ macro_rules! binary_bool {
         let snd = $stack.pop().to_bool();
 
         $stack.push(Bool($boolf(fst, snd)));
-
-        panic!("Internal error: `{}` and `{}` are not bools", fst, snd);
     }};
 }
 
 macro_rules! binary_num {
     ($stack: expr, $floatf: expr, $intf: expr, $span: expr, $name: expr) => {{
         let fst = $stack.pop().cast_try_num($span, "first operand")?;
-        let snd = $stack.pop().cast_try_num($span, "first operand")?;
+        let snd = $stack.pop().cast_try_num($span, "second operand")?;
 
         let new_val = match (fst, snd) {
             (Float(f1), Float(f2)) => Float($floatf(f1, f2)),
@@ -60,10 +61,17 @@ impl LolVm {
         b
     }
 
+    #[inline]
+    fn read_24b(&mut self) -> usize {
+        let hi = self.byte();
+        let mi = self.byte();
+        let lo = self.byte();
+        usize_from_u8(hi, mi, lo)
+    }
+
     pub fn run(&mut self, chunk: Chunk) -> Failible<()> {
         self.ip = 0;
         self.c = chunk;
-        println!("{} {}", self.c.bytecode.len(), self.c.pos.len());
         loop {
             if DEBUG {
                 print!("                ");
@@ -78,18 +86,17 @@ impl LolVm {
             let op = byte_to_opcode(self.byte()).expect("Internal error: unknown opcode");
             match op {
                 Return => {
-                    println!("{}", self.st.pop());
                     return Ok(());
                 }
+
                 LoadConst => {
                     let loc = self.byte();
                     self.st.push(self.c.values.load(loc as usize));
                 }
+
                 LoadConstLong => {
-                    let hi = self.byte();
-                    let mi = self.byte();
-                    let lo = self.byte();
-                    self.st.push(self.c.values.load(usize_from_u8(hi, mi, lo)));
+                    let addr = self.read_24b();
+                    self.st.push(self.c.values.load(addr));
                 }
 
                 Add => binary_num!(
@@ -163,7 +170,84 @@ impl LolVm {
                 And => binary_bool!(self.st, (|a, b| a && b)),
                 Or => binary_bool!(self.st, (|a, b| a || b)),
                 Xor => binary_bool!(self.st, (|a, b| a ^ b)),
+
+                Prt => {
+                    print!("{}", self.st.pop().disp());
+                }
+                PrtL => {
+                    println!("{}", self.st.pop().disp());
+                }
+
+                Asgn => {}
+                AsgnLong => {}
+
+                VDec => {}
+                VDecLong => {}
+
+                PopN => {
+                    let no = self.byte();
+                    for _ in 0..no {
+                        self.st.pop();
+                    }
+                }
+
+                PopNLong => {
+                    let no = self.read_24b();
+                    for _ in 0..no {
+                        self.st.pop();
+                    }
+                }
+
+                WriteSt => {
+                    let stid = self.byte();
+                    self.st[stid as usize] = self.st.pop();
+                }
+
+                WriteStLong => {
+                    let stid = self.read_24b();
+                    self.st[stid] = self.st.pop();
+                }
+
+                ReadSt => {
+                    let stid = self.byte();
+                    self.st.push(self.st[stid as usize].clone());
+                }
+
+                ReadStLong => {
+                    let stid = self.read_24b();
+                    self.st.push(self.st[stid].clone());
+                }
+
+                ReadLine => {
+                    let dest = self.byte();
+                    let line = self.read_stdin(op_loc)?;
+                    self.st[dest as usize] = Str(line.into());
+                }
+
+                ReadLineLong => {
+                    let dest = self.read_24b();
+                    let line = self.read_stdin(op_loc)?;
+                    self.st[dest] = Str(line.into());
+                }
             }
         }
+    }
+
+    fn read_stdin(&self, op_loc: usize) -> Failible<String> {
+        let stdin = io::stdin();
+        let mut stdin_iter = stdin.lock().lines();
+        stdin_iter.next().unwrap().map_err(|e| {
+            Diagnostics::from(
+                Diagnostic::build(
+                    Level::Error,
+                    DiagnosticType::Runtime,
+                    self.c.pos.get(op_loc),
+                )
+                .annotation(
+                    Cow::Owned(format!("failed to read from stdin: `{}`", e)),
+                    self.c.pos.get(op_loc),
+                ),
+            )
+        })
     }
 }

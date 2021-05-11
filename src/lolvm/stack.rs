@@ -1,9 +1,25 @@
-use std::iter::IntoIterator;
+use std::{
+    iter::IntoIterator,
+    ops::{Index, IndexMut},
+};
 
 use crate::lolbc::Value;
 
 #[derive(Default)]
 pub struct Stack(Vec<Value>);
+
+impl Index<usize> for Stack {
+    type Output = Value;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl IndexMut<usize> for Stack {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
+    }
+}
 
 impl Stack {
     pub fn push(&mut self, value: Value) {
@@ -12,6 +28,10 @@ impl Stack {
 
     pub fn pop(&mut self) -> Value {
         self.0.pop().unwrap()
+    }
+
+    pub fn popn(&mut self, n: usize) {
+        self.0.truncate(self.0.len() - n);
     }
 }
 

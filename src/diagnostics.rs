@@ -87,6 +87,7 @@ pub enum DiagnosticType {
     Type = 7,
     FunctionArgumentMismatch = 8,
     Runtime = 9,
+    Scope = 10,
 }
 
 impl DiagnosticType {
@@ -101,6 +102,7 @@ impl DiagnosticType {
             DiagnosticType::Type => "type error",
             DiagnosticType::Runtime => "runtime error",
             DiagnosticType::FunctionArgumentMismatch => "function argument mismatch",
+            DiagnosticType::Scope => "scope error",
         }
     }
 
@@ -115,6 +117,7 @@ impl DiagnosticType {
             DiagnosticType::Type => "type",
             DiagnosticType::Runtime => "runtime",
             DiagnosticType::FunctionArgumentMismatch => "func_arg_mismatch",
+            DiagnosticType::Scope => "scope",
         }
     }
 }

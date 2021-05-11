@@ -330,7 +330,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_not_newline(c: char) -> bool {
-        c == '\n'
+        c != '\n'
     }
 
     fn ident(&mut self, first: char) -> Failible<Token> {

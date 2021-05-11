@@ -93,6 +93,19 @@ impl Value {
             Str(s) => !s.is_empty(),
         }
     }
+
+    pub fn disp(&self) -> Cow<'static, str> {
+        match self {
+            Bool(true) => Cow::Borrowed("WIN"),
+            Bool(false) => Cow::Borrowed("FAIL"),
+
+            Null => Cow::Borrowed("NOOB"),
+
+            Str(s) => Cow::Owned(s.to_string()),
+            Int(i) => Cow::Owned(i.to_string()),
+            Float(fl) => Cow::Owned(fl.to_string()),
+        }
+    }
 }
 
 impl Display for Value {

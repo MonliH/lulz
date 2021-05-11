@@ -26,22 +26,45 @@ pub enum OpCode {
     Not = 13,
 
     Concat = 14,
+
+    /// Print
+    Prt = 15,
+    /// Print with newline
+    PrtL = 16,
+
+    Asgn = 17,
+    AsgnLong = 19,
+    VDec = 18,
+    VDecLong = 20,
+
+    PopN = 21,
+    PopNLong = 22,
+
+    WriteSt = 23,
+    WriteStLong = 24,
+
+    ReadSt = 25,
+    ReadStLong = 26,
+
+    ReadLine = 27,
+    ReadLineLong = 28,
 }
 
 use OpCode::*;
 
-pub const NUM_CODES: u8 = Concat as u8;
+pub const NUM_CODES: u8 = ReadLineLong as u8;
 
 impl OpCode {
     pub fn arity(self) -> usize {
         match self {
-            Return => 0,
             // 8-bit index
-            LoadConst => 1,
+            ReadLine | ReadSt | WriteSt | PopN | Asgn | VDec | LoadConst => 1,
             // 24-bit index
-            LoadConstLong => 3,
+            ReadLineLong | ReadStLong | WriteStLong | PopNLong | AsgnLong | VDecLong
+            | LoadConstLong => 3,
 
-            Not | Xor | Or | And | Add | Mul | Div | Sub | Mod | Min | Max | Concat => 0,
+            Return | Prt | PrtL | Not | Xor | Or | And | Add | Mul | Div | Sub | Mod | Min
+            | Max | Concat => 0,
         }
     }
 }
@@ -71,6 +94,26 @@ impl Display for OpCode {
 
                 Not => "not",
                 Concat => "cnct",
+
+                Prt => "prt",
+                PrtL => "prtl",
+                Asgn => "asn",
+                VDec => "dec",
+
+                AsgnLong => "asnl",
+                VDecLong => "decl",
+
+                PopN => "pop",
+                PopNLong => "popl",
+
+                WriteSt => "wrt",
+                WriteStLong => "wrtl",
+
+                ReadSt => "rd",
+                ReadStLong => "rdl",
+
+                ReadLine => "rln",
+                ReadLineLong => "rlnl",
             }
         )
     }
