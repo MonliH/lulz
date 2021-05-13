@@ -240,14 +240,22 @@ impl BytecodeCompiler {
         for stmt in ast.0.into_iter() {
             match stmt.statement_kind {
                 StatementKind::If(if_e, elif_es, else_e) => {
+                    self.write_instr(OpCode::ReadIt, stmt.span);
+                    let then_jmp = self.emit_jmp(OpCode::JmpFalse, stmt.span);
                     if let Some(true_block) = if_e {
-                        self.write_instr(OpCode::ReadIt, stmt.span);
-                        let then_jmp = self.emit_jmp(OpCode::JmpFalse, true_block.1);
                         self.begin_scope();
                         self.compile(true_block)?;
                         self.end_scope();
-                        self.patch_jmp(then_jmp);
                     }
+                    let else_jmp = self.emit_jmp(OpCode::Jmp, stmt.span);
+                    self.patch_jmp(then_jmp);
+
+                    if let Some(else_block) = else_e {
+                        self.begin_scope();
+                        self.compile(else_block)?;
+                        self.end_scope();
+                    }
+                    self.patch_jmp(else_jmp);
                 }
                 StatementKind::Expr(e) => {
                     let span = e.span;
