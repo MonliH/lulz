@@ -1,5 +1,5 @@
 BTW { output: "Hello, World!\n" }
-HAI 1.2
+HAI 1.3
 I HAS A MSG ITZ "BYE!"
 HOW IZ I PRINT_HELLO
     MSG R "Hello, world!"

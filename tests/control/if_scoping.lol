@@ -1,0 +1,10 @@
+BTW { output: "HELLO\n" }
+HAI 1.3
+I HAS A SHARED
+WIN, O RLY?
+    YA RLY
+        SHARED R "HELLO"
+OIC
+
+VISIBLE SHARED
+KTHXBYE

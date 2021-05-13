@@ -69,11 +69,12 @@ fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Fai
     let mut parser = parse::Parser::new(lexer);
     let ast = parser.parse()?;
     let mut bytecode_compiler = middle::BytecodeCompiler::new();
-    let bytecode: lolbc::Chunk = bytecode_compiler.compile(ast)?;
+    bytecode_compiler.compile_start(ast)?;
+    let bytecode: lolbc::Chunk = bytecode_compiler.take_chunk();
     if opts.disasm {
         lolbc::disasm(&bytecode);
     }
-    let mut vm = lolvm::LolVm::default();
+    let mut vm = lolvm::LolVm::new();
     vm.run(bytecode)?;
     Ok(())
 }

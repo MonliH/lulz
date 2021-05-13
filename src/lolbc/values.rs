@@ -6,7 +6,7 @@ use std::{
 use crate::diagnostics::prelude::*;
 use Value::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Value {
     Bool(bool),
     Null,
@@ -14,6 +14,13 @@ pub enum Value {
     Int(i64),
     // Strings are reference counted
     Str(Rc<str>),
+    Fun(usize),
+}
+
+impl Default for Value {
+    fn default() -> Self {
+        Self::Null
+    }
 }
 
 impl Value {
@@ -22,6 +29,14 @@ impl Value {
     pub fn cast_try_num(self, span: Span, expr_name: &str) -> Failible<Self> {
         Ok(match self {
             Bool(b) => Int(b as i64),
+            Fun(_) => {
+                return Err(Diagnostic::build(Level::Error, DiagnosticType::Type, span)
+                    .annotation(
+                        Cow::Borrowed("this value is a FUNKSHION, not a NUMBAR or NUMBR"),
+                        span,
+                    )
+                    .into())
+            }
             Str(s) => {
                 if s.contains('.') {
                     // Parse float
@@ -71,6 +86,7 @@ impl Value {
             Float(..) => "NUMBAR",
             Int(..) => "NUMBR",
             Str(..) => "YARN",
+            Fun(..) => "FUNKSHON",
         }
     }
 
@@ -81,6 +97,7 @@ impl Value {
             Float(f) => f.to_string().into(),
             Int(i) => i.to_string().into(),
             Str(s) => Rc::clone(&s),
+            Fun(id) => format!("<FUNKSHON at {:#x}>", id).into(),
         }
     }
 
@@ -88,9 +105,10 @@ impl Value {
         match self {
             Bool(b) => *b,
             Null => false,
-            Float(f) => f == &0.0,
-            Int(i) => i == &0,
+            Float(f) => f != &0.0,
+            Int(i) => i != &0,
             Str(s) => !s.is_empty(),
+            Fun(_) => true,
         }
     }
 
@@ -104,6 +122,7 @@ impl Value {
             Str(s) => Cow::Owned(s.to_string()),
             Int(i) => Cow::Owned(i.to_string()),
             Float(fl) => Cow::Owned(fl.to_string()),
+            Fun(id) => Cow::Owned(format!("<FUNKSHON at {:#x}>", id)),
         }
     }
 }
@@ -120,11 +139,12 @@ impl Display for Value {
             Int(i) => write!(f, "NUMBR `{}`", i),
 
             Str(s) => write!(f, "YARN `{}`", s),
+            Fun(id) => write!(f, "FUNKSHON at `{:#x}`", id),
         }
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ValueArray(Vec<Value>);
 
 impl ValueArray {

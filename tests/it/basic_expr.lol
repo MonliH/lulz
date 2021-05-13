@@ -1,0 +1,5 @@
+BTW { output: "123" }
+HAI 1.3
+123
+VISIBLE IT
+KTHXBYE

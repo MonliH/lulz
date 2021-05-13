@@ -1,5 +1,6 @@
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
+use std::mem;
 
 use crate::{
     diagnostics::prelude::*,
@@ -8,31 +9,54 @@ use crate::{
     lolvm::StrId,
 };
 
-pub struct Local {
+#[derive(Debug)]
+struct Local {
     depth: usize,
     name: StrId,
 }
 
+#[derive(Debug)]
 pub struct BytecodeCompiler {
     c: Chunk,
+    // map from interned string to it's stack position
     locals: SmallVec<[Local; 16]>,
-    // map from interned string to a local usize
     valid_locals: FxHashMap<StrId, usize>,
     scope_depth: usize,
+    it: StrId,
 }
 
 impl BytecodeCompiler {
     pub fn new() -> Self {
-        Self {
-            c: Chunk::new("default".to_string()),
-            locals: SmallVec::new(),
+        let mut new = Self {
+            c: Chunk::new(),
             valid_locals: FxHashMap::default(),
+            locals: SmallVec::default(),
             scope_depth: 0,
-        }
+            it: StrId::default(),
+        };
+
+        new.it = new.c.interner.intern("IT");
+        new.declare_var(Ident("".into(), Span::default())).unwrap();
+        new
     }
 
     fn begin_scope(&mut self) {
         self.scope_depth += 1;
+    }
+
+    fn end_scope(&mut self) {
+        self.scope_depth -= 1;
+        let mut pops = 0;
+        while self.locals.len() > 0
+            && self.locals[self.locals.len() - pops - 1].depth > self.scope_depth
+        {
+            let str_id = self.locals.last().unwrap().name;
+            self.valid_locals.remove(&str_id);
+            pops += 1;
+        }
+        self.locals.truncate(self.locals.len() - pops);
+        let bits = Bits::from(pops);
+        self.write_bits(bits, OpCode::PopN, OpCode::PopNLong);
     }
 
     fn write_bits(&mut self, bits: Bits, short: OpCode, long: OpCode) {
@@ -49,20 +73,6 @@ impl BytecodeCompiler {
                 self.c.write_instr(lo, Span::default());
             }
         }
-    }
-
-    fn end_scope(&mut self) {
-        self.scope_depth -= 1;
-        let mut pops = 0;
-        while self.locals.len() > 0 && self.locals[self.locals.len() - 1].depth > self.scope_depth
-        {
-            let str_id = self.locals.last().unwrap().name;
-            self.valid_locals.remove(&str_id);
-            pops += 1;
-        }
-        self.locals.truncate(self.locals.len() - pops);
-        let bits = Bits::from(pops);
-        self.write_bits(bits, OpCode::PopN, OpCode::PopNLong);
     }
 
     fn compile_seq(&mut self, es: Vec<Expr>, op: OpCode) -> Failible<()> {
@@ -86,7 +96,7 @@ impl BytecodeCompiler {
         Ok(())
     }
 
-    pub fn compile_expr(&mut self, expr: Expr) -> Failible<()> {
+    fn compile_expr(&mut self, expr: Expr) -> Failible<()> {
         match expr.expr_kind {
             ExprKind::Float(f) => {
                 self.c.write_get_const(Value::Float(f), expr.span);
@@ -115,8 +125,12 @@ impl BytecodeCompiler {
 
             ExprKind::Variable(id) => {
                 let interned = self.c.interner.intern(id.0.as_str());
-                let stid = self.resolve_local(interned, id.1)?;
-                self.write_bits(stid.into(), OpCode::ReadSt, OpCode::ReadStLong);
+                if interned != self.it {
+                    let stid = self.resolve_local(interned, id.1)?;
+                    self.write_bits(stid.into(), OpCode::ReadSt, OpCode::ReadStLong);
+                } else {
+                    self.write_instr(OpCode::ReadIt, id.1);
+                }
             }
 
             ExprKind::All(es) => self.compile_seq(es, OpCode::And)?,
@@ -169,7 +183,7 @@ impl BytecodeCompiler {
         })
     }
 
-    pub fn compile_assign(&mut self, id: Ident, e: Expr) -> Failible<()> {
+    fn compile_assign(&mut self, id: Ident, e: Expr) -> Failible<()> {
         self.compile_expr(e)?;
 
         let local = self.c.write_interned(id.as_str());
@@ -180,23 +194,66 @@ impl BytecodeCompiler {
         Ok(())
     }
 
-    pub fn compile_dec(&mut self, id: Ident, e: Expr) -> Failible<()> {
-        self.compile_expr(e)?;
-
+    fn declare_var(&mut self, id: Ident) -> Failible<()> {
         let local = self.c.write_interned(id.as_str());
         self.locals.push(Local {
             depth: self.scope_depth,
             name: local,
         });
         self.valid_locals.insert(local, self.locals.len() - 1);
+        Ok(())
+    }
+
+    fn compile_dec(&mut self, id: Ident, e: Expr) -> Failible<()> {
+        self.compile_expr(e)?;
+        self.declare_var(id)?;
 
         Ok(())
     }
 
-    pub fn compile(&mut self, ast: Block) -> Failible<Chunk> {
+    fn emit_jmp(&mut self, instr: OpCode, span: Span) -> usize {
+        self.write_instr(instr, span);
+        self.c.write_instr(0, span);
+        self.c.write_instr(0, span);
+        self.c.write_instr(0, span);
+        self.c.write_instr(0, span);
+        self.c.bytecode.len() - 4
+    }
+
+    fn patch_jmp(&mut self, offset: usize) {
+        let jump = self.c.bytecode.len() - offset - 4;
+        let bits = jump.to_le_bytes();
+        self.c.bytecode[offset] = bits[0];
+        self.c.bytecode[offset + 1] = bits[1];
+        self.c.bytecode[offset + 2] = bits[2];
+        self.c.bytecode[offset + 3] = bits[3];
+    }
+
+    pub fn compile_start(&mut self, ast: Block) -> Failible<()> {
+        let span = ast.1;
+        self.compile(ast)?;
+        self.write_instr(OpCode::Return, span);
+        Ok(())
+    }
+
+    fn compile(&mut self, ast: Block) -> Failible<()> {
         for stmt in ast.0.into_iter() {
             match stmt.statement_kind {
-                StatementKind::Expr(e) => self.compile_expr(e)?,
+                StatementKind::If(if_e, elif_es, else_e) => {
+                    if let Some(true_block) = if_e {
+                        self.write_instr(OpCode::ReadIt, stmt.span);
+                        let then_jmp = self.emit_jmp(OpCode::JmpFalse, true_block.1);
+                        self.begin_scope();
+                        self.compile(true_block)?;
+                        self.end_scope();
+                        self.patch_jmp(then_jmp);
+                    }
+                }
+                StatementKind::Expr(e) => {
+                    let span = e.span;
+                    self.compile_expr(e)?;
+                    self.write_instr(OpCode::WriteIt, span);
+                }
                 StatementKind::DecAssign(id, e) => self.compile_dec(
                     id,
                     e.unwrap_or(Expr {
@@ -221,15 +278,59 @@ impl BytecodeCompiler {
                         stmt.span,
                     );
                 }
+                StatementKind::FunctionDef(id, args, block) => {
+                    if args.len() > 256 {
+                        let span = args[0].1.combine(&args[args.len() - 1].1);
+                        return Err(Diagnostic::build(
+                            Level::Error,
+                            DiagnosticType::FunctionArgumentMany,
+                            span,
+                        )
+                        .annotation(
+                            Cow::Borrowed("a function's parameters are limited to 256 in length"),
+                            span,
+                        )
+                        .into());
+                    }
+                    self.write_instr(OpCode::Jmp, id.1);
+                    let jmp_idx = self.c.bytecode.len();
+                    self.c.write_instr(0, id.1);
+                    self.c.write_instr(0, id.1);
+                    self.c.write_instr(0, id.1);
+
+                    let function_pos = self.c.bytecode.len();
+                    self.write_instr(OpCode::FnDef, id.1);
+                    self.c.write_instr(args.len() as u8, id.1);
+
+                    let old_locals = mem::replace(&mut self.valid_locals, FxHashMap::default());
+                    let interned_id = self.c.write_interned(id.as_str());
+                    self.valid_locals
+                        .insert(interned_id, self.valid_locals.len());
+                    for arg in args {
+                        self.declare_var(arg)?;
+                    }
+
+                    self.compile(block)?;
+                    self.valid_locals = old_locals;
+
+                    let bytes = self.c.bytecode.len().to_le_bytes();
+                    self.c.bytecode[jmp_idx] = bytes[0];
+                    self.c.bytecode[jmp_idx + 1] = bytes[1];
+                    self.c.bytecode[jmp_idx + 2] = bytes[2];
+                    self.c.bytecode[jmp_idx + 3] = bytes[3];
+
+                    self.c.write_get_const(Value::Fun(function_pos), id.1);
+                    self.valid_locals
+                        .insert(interned_id, self.valid_locals.len());
+                }
                 _ => {}
             }
         }
 
-        self.write_instr(OpCode::Return, ast.1);
+        Ok(())
+    }
 
-        Ok(std::mem::replace(
-            &mut self.c,
-            Chunk::new("default".to_string()),
-        ))
+    pub fn take_chunk(&mut self) -> Chunk {
+        mem::replace(&mut self.c, Chunk::default())
     }
 }

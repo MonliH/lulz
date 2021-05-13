@@ -5,7 +5,7 @@ assign = "VALUE{0} R SMOOSH VALUE{0} AN \"{0}\" MKAY\n"
 visible = "VISIBLE VALUE{0}\n"
 
 file = open("dec_assign_print.lol", "w+")
-file.write("HAI 1.2\n")
+file.write("HAI 1.3\n")
 
 for i in range(100000):
     file.write(dec.format(i))

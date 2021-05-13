@@ -1,19 +1,25 @@
+use smallvec::{smallvec, SmallVec};
 use std::io;
 use std::io::BufRead;
 
-use super::Stack;
+use super::{CallFrame, Stack};
 use crate::{
     diagnostics::prelude::*,
-    lolbc::{bits::usize_from_u8, byte_to_opcode, disasm_instruction, Chunk, OpCode::*, Value::*},
+    lolbc::{
+        bits::usize_from_u8,
+        byte_to_opcode, disasm_instruction, Chunk,
+        OpCode::*,
+        Value::{self, *},
+    },
 };
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
-#[derive(Default)]
 pub struct LolVm {
-    ip: usize,
-    c: Chunk,
     st: Stack,
+    call_st: SmallVec<[CallFrame; 256]>,
+    it: Value,
+    c: Chunk,
 }
 
 macro_rules! binary_bool {
@@ -55,10 +61,31 @@ macro_rules! binary_num {
 }
 
 impl LolVm {
-    pub fn byte(&mut self) -> u8 {
-        let b = self.c.bytecode[self.ip];
-        self.ip += 1;
+    #[inline]
+    fn frame_mut(&mut self) -> &mut CallFrame {
+        let len = self.call_st.len();
+        &mut self.call_st[len - 1]
+    }
+
+    #[inline]
+    fn frame(&self) -> &CallFrame {
+        &self.call_st[self.call_st.len() - 1]
+    }
+
+    #[inline]
+    fn byte(&mut self) -> u8 {
+        let b = self.c.bytecode[self.frame().ip];
+        self.frame_mut().ip += 1;
         b
+    }
+
+    #[inline]
+    fn read_32b(&mut self) -> usize {
+        let hi = self.byte();
+        let mih = self.byte();
+        let mil = self.byte();
+        let lo = self.byte();
+        u32::from_le_bytes([hi, mih, mil, lo]) as usize
     }
 
     #[inline]
@@ -69,9 +96,23 @@ impl LolVm {
         usize_from_u8(hi, mi, lo)
     }
 
+    pub fn new() -> Self {
+        Self {
+            st: Stack::new(),
+            it: Null,
+            call_st: smallvec![CallFrame {
+                ret_ip: 0,
+                ip: 0,
+                st_offset: 0
+            }],
+            c: Chunk::default(),
+        }
+    }
+
     pub fn run(&mut self, chunk: Chunk) -> Failible<()> {
-        self.ip = 0;
         self.c = chunk;
+        let mut f = *self.frame();
+        let mut st_offset = f.st_offset;
         loop {
             if DEBUG {
                 print!("                ");
@@ -79,10 +120,10 @@ impl LolVm {
                     print!("[ {} ]", value);
                 }
                 print!("\n");
-                disasm_instruction(&self.c, self.ip);
+                disasm_instruction(&self.c, self.frame().ip);
             }
 
-            let op_loc = self.ip;
+            let op_loc = f.ip;
             let op = byte_to_opcode(self.byte()).expect("Internal error: unknown opcode");
             match op {
                 Return => {
@@ -200,34 +241,59 @@ impl LolVm {
 
                 WriteSt => {
                     let stid = self.byte();
-                    self.st[stid as usize] = self.st.pop();
+                    self.st[st_offset + stid as usize] = self.st.pop();
                 }
 
                 WriteStLong => {
                     let stid = self.read_24b();
-                    self.st[stid] = self.st.pop();
+                    self.st[st_offset + stid] = self.st.pop();
                 }
 
                 ReadSt => {
                     let stid = self.byte();
-                    self.st.push(self.st[stid as usize].clone());
+                    self.st.push(self.st[st_offset + stid as usize].clone());
                 }
 
                 ReadStLong => {
                     let stid = self.read_24b();
-                    self.st.push(self.st[stid].clone());
+                    self.st.push(self.st[st_offset + stid].clone());
                 }
 
                 ReadLine => {
                     let dest = self.byte();
                     let line = self.read_stdin(op_loc)?;
-                    self.st[dest as usize] = Str(line.into());
+                    self.st[st_offset + dest as usize] = Str(line.into());
                 }
 
                 ReadLineLong => {
                     let dest = self.read_24b();
                     let line = self.read_stdin(op_loc)?;
-                    self.st[dest] = Str(line.into());
+                    self.st[st_offset + dest] = Str(line.into());
+                }
+
+                FnDef => {
+                    todo!()
+                }
+
+                Jmp => {
+                    let offset = self.read_32b();
+                    self.frame_mut().ip += offset;
+                }
+
+                JmpFalse => {
+                    let offset = self.read_32b();
+                    let cond = self.st.pop().to_bool();
+                    if !cond {
+                        self.frame_mut().ip += offset;
+                    }
+                }
+
+                WriteIt => {
+                    self.it = self.st.pop();
+                }
+
+                ReadIt => {
+                    self.st.push(self.it.clone());
                 }
             }
         }

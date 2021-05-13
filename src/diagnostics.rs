@@ -88,6 +88,7 @@ pub enum DiagnosticType {
     FunctionArgumentMismatch = 8,
     Runtime = 9,
     Scope = 10,
+    FunctionArgumentMany = 11,
 }
 
 impl DiagnosticType {
@@ -101,7 +102,8 @@ impl DiagnosticType {
             DiagnosticType::Cast => "casting error, invalid cast",
             DiagnosticType::Type => "type error",
             DiagnosticType::Runtime => "runtime error",
-            DiagnosticType::FunctionArgumentMismatch => "function argument mismatch",
+            DiagnosticType::FunctionArgumentMismatch => "funkshion argument mismatch",
+            DiagnosticType::FunctionArgumentMany => "too many funkshion arguments",
             DiagnosticType::Scope => "scope error",
         }
     }
@@ -116,7 +118,8 @@ impl DiagnosticType {
             DiagnosticType::Cast => "casting",
             DiagnosticType::Type => "type",
             DiagnosticType::Runtime => "runtime",
-            DiagnosticType::FunctionArgumentMismatch => "func_arg_mismatch",
+            DiagnosticType::FunctionArgumentMismatch => "funk_arg_mismatch",
+            DiagnosticType::FunctionArgumentMany => "funk_arg_many",
             DiagnosticType::Scope => "scope",
         }
     }

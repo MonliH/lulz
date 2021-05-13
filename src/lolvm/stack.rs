@@ -5,7 +5,6 @@ use std::{
 
 use crate::lolbc::Value;
 
-#[derive(Default)]
 pub struct Stack(Vec<Value>);
 
 impl Index<usize> for Stack {
@@ -22,6 +21,9 @@ impl IndexMut<usize> for Stack {
 }
 
 impl Stack {
+    pub fn new() -> Self {
+        Self(vec![Value::Null])
+    }
     pub fn push(&mut self, value: Value) {
         self.0.push(value)
     }

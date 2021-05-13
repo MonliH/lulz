@@ -1,7 +1,7 @@
 BTW { output: "foobar\n" }
-HAI 1.2
+HAI 1.3
 HOW IZ I ADD_BAR YR STR
-    GTFO SMOOSH STR AN "bar" MKAY
+    FOUND YR SMOOSH STR AN "bar" MKAY
     VISIBLE "ERROR!"
 IF U SAY SO
 

@@ -29,9 +29,8 @@ impl Positions {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Chunk {
-    pub name: String,
     pub bytecode: ByteC,
     pub pos: Positions,
     pub values: ValueArray,
@@ -39,13 +38,12 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    pub fn new(name: String) -> Self {
+    pub fn new() -> Self {
         Self {
             bytecode: Vec::new(),
             values: ValueArray::new(),
             pos: Positions::new(),
             interner: Interner::with_capacity(2),
-            name,
         }
     }
 

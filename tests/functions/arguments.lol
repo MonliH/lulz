@@ -1,5 +1,5 @@
 BTW { output: "123\n" }
-HAI 1.2
+HAI 1.3
 HOW IZ I PRINT YR VALUE
     VISIBLE VALUE
 IF U SAY SO

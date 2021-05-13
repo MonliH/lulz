@@ -332,7 +332,7 @@ impl<'a> Parser<'a> {
         let ya_rly = if self.check(&TokenKind::Ya)? {
             self.expect(TokenKind::Rly)?;
             self.expect(TokenKind::Break)?;
-            let block = self.block(Some(&[TokenKind::Oic]))?;
+            let block = self.block(Some(&[TokenKind::Oic, TokenKind::No, TokenKind::Mebbe]))?;
             Some(block)
         } else {
             None
@@ -341,10 +341,11 @@ impl<'a> Parser<'a> {
         let mut mebee = Vec::new();
 
         loop {
-            if self.check(&TokenKind::Mebee)? {
+            if self.check(&TokenKind::Mebbe)? {
                 let expr = self.expr()?;
                 self.expect(TokenKind::Break)?;
-                let block = self.block(Some(&[TokenKind::Mebee, TokenKind::No]))?;
+                let block =
+                    self.block(Some(&[TokenKind::Mebbe, TokenKind::No, TokenKind::Oic]))?;
                 mebee.push((expr, block));
             } else {
                 break;
@@ -353,6 +354,7 @@ impl<'a> Parser<'a> {
 
         let no_wai = if self.check(&TokenKind::No)? {
             self.expect(TokenKind::Wai)?;
+            self.expect(TokenKind::Break)?;
             let block = self.block(Some(&[TokenKind::Oic]))?;
             Some(block)
         } else {
@@ -1109,7 +1111,79 @@ KTHXBYE"#,
     assert_ast!(
         r#"HAI 1.4
 O RLY?
+    NO WAI
+        VISIBLE 20
+OIC
+KTHXBYE"#,
+        if_no_wai,
+        [StatementKind::If(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+O RLY?
     YA RLY
+        VISIBLE 10
+    MEBBE WIN
+        VISIBLE 123
+    MEBBE WIN
+        VISIBLE 123
+    NO WAI
+        VISIBLE 1023
+OIC
+KTHXBYE"#,
+        if_full,
+        [StatementKind::If(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+O RLY?
+    YA RLY
+        VISIBLE 10
+    MEBBE WIN
+        VISIBLE 123
+OIC
+KTHXBYE"#,
+        if_ya_rly_mebbe_single,
+        [StatementKind::If(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+O RLY?
+    YA RLY
+        VISIBLE 10
+    MEBBE WIN
+        VISIBLE 123
+    MEBBE WIN
+        VISIBLE 123
+OIC
+KTHXBYE"#,
+        if_ya_rly_mebbe_many,
+        [StatementKind::If(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+O RLY?
+    YA RLY
+        VISIBLE 10
+        VISIBLE 10
+    NO WAI
+        VISIBLE 20
+OIC
+KTHXBYE"#,
+        if_ya_rly_no_wai,
+        [StatementKind::If(..),]
+    );
+
+    assert_ast!(
+        r#"HAI 1.4
+O RLY?
+    YA RLY
+        VISIBLE 10
+        VISIBLE 10
 OIC
 KTHXBYE"#,
         if_ya_rly,

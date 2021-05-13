@@ -4,7 +4,7 @@ use super::bits;
 use super::{Chunk, OpCode};
 
 pub fn disasm(chunk: &Chunk) {
-    eprintln!("=== {} ===", chunk.name);
+    eprintln!("=== Disassembled Bytecode ===");
     let bytecode = &chunk.bytecode;
 
     let mut offset = 0;

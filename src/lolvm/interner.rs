@@ -2,10 +2,10 @@ use rustc_hash::FxHashMap;
 use std::mem;
 // Credit to https://matklad.github.io/2020/03/22/fast-simple-rust-interner.html
 
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
+#[derive(Default, Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub struct StrId(usize);
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Interner {
     map: FxHashMap<&'static str, StrId>,
     vec: Vec<&'static str>,

@@ -4,7 +4,7 @@ use std::{
 };
 
 #[repr(u8)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum OpCode {
     Return = 0,
     LoadConst = 1,
@@ -48,11 +48,20 @@ pub enum OpCode {
 
     ReadLine = 27,
     ReadLineLong = 28,
+
+    /// FN, arity (max 256)
+    FnDef = 29,
+
+    JmpFalse = 30,
+    Jmp = 31,
+
+    WriteIt = 32,
+    ReadIt = 33,
 }
 
 use OpCode::*;
 
-pub const NUM_CODES: u8 = ReadLineLong as u8;
+pub const NUM_CODES: u8 = ReadIt as u8;
 
 impl OpCode {
     pub fn arity(self) -> usize {
@@ -63,8 +72,12 @@ impl OpCode {
             ReadLineLong | ReadStLong | WriteStLong | PopNLong | AsgnLong | VDecLong
             | LoadConstLong => 3,
 
-            Return | Prt | PrtL | Not | Xor | Or | And | Add | Mul | Div | Sub | Mod | Min
-            | Max | Concat => 0,
+            JmpFalse | Jmp => 4,
+
+            FnDef => 1,
+
+            ReadIt | WriteIt | Return | Prt | PrtL | Not | Xor | Or | And | Add | Mul | Div
+            | Sub | Mod | Min | Max | Concat => 0,
         }
     }
 }
@@ -114,6 +127,14 @@ impl Display for OpCode {
 
                 ReadLine => "rln",
                 ReadLineLong => "rlnl",
+
+                FnDef => "fnd",
+
+                JmpFalse => "jmpf",
+                Jmp => "jmp",
+
+                ReadIt => "rit",
+                WriteIt => "wit",
             }
         )
     }
