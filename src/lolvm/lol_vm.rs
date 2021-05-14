@@ -269,6 +269,10 @@ impl LolVm {
                     todo!()
                 }
 
+                Call => {
+                    todo!()
+                }
+
                 Jmp => {
                     let offset = self.read_32b();
                     self.frame_mut().ip += offset;

@@ -47,7 +47,7 @@ impl Value {
             Fun(_) => {
                 return Err(Diagnostic::build(Level::Error, DiagnosticType::Type, span)
                     .annotation(
-                        Cow::Borrowed("this value is a FUNKSHION, not a NUMBAR or NUMBR"),
+                        Cow::Borrowed("this value is a FUNKSHON, not a NUMBAR or NUMBR"),
                         span,
                     )
                     .into())

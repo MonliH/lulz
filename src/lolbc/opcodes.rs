@@ -54,11 +54,13 @@ pub enum OpCode {
     ReadIt = 33,
 
     Equals = 34,
+
+    Call = 35,
 }
 
 use OpCode::*;
 
-pub const NUM_CODES: u8 = Equals as u8;
+pub const NUM_CODES: u8 = Call as u8;
 
 impl OpCode {
     pub fn arity(self) -> usize {
@@ -70,7 +72,7 @@ impl OpCode {
 
             JmpFalse | Jmp => 4,
 
-            FnDef => 1,
+            FnDef | Call => 1,
 
             Equals | ReadIt | WriteIt | Return | Prt | PrtL | Not | Xor | Or | And | Add | Mul
             | Div | Sub | Mod | Min | Max | Concat => 0,
@@ -121,7 +123,8 @@ impl Display for OpCode {
                 ReadLine => "rln",
                 ReadLineLong => "rlnl",
 
-                FnDef => "fnd",
+                FnDef => "fndf",
+                Call => "call",
 
                 JmpFalse => "jmpf",
                 Jmp => "jmp",
