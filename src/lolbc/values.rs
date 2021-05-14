@@ -17,6 +17,21 @@ pub enum Value {
     Fun(usize),
 }
 
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Bool(b1), Bool(b2)) => b1 == b2,
+            (Null, Null) => true,
+            (Float(f1), Float(f2)) => f1 == f2,
+            (Float(f), Int(i)) | (Int(i), Float(f)) => &(*i as f64) == f,
+            (Int(i1), Int(i2)) => i1 == i2,
+            (Str(s1), Str(s2)) => s1 == s2,
+            (Fun(f1), Fun(f2)) => f1 == f2,
+            _ => false,
+        }
+    }
+}
+
 impl Default for Value {
     fn default() -> Self {
         Self::Null

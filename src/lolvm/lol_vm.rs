@@ -13,8 +13,6 @@ use crate::{
     },
 };
 
-const DEBUG: bool = true;
-
 pub struct LolVm {
     st: Stack,
     call_st: SmallVec<[CallFrame; 256]>,
@@ -109,12 +107,12 @@ impl LolVm {
         }
     }
 
-    pub fn run(&mut self, chunk: Chunk) -> Failible<()> {
+    pub fn run(&mut self, chunk: Chunk, debug: bool) -> Failible<()> {
         self.c = chunk;
-        let mut f = *self.frame();
-        let mut st_offset = f.st_offset;
+        let f = *self.frame();
+        let st_offset = f.st_offset;
         loop {
-            if DEBUG {
+            if debug {
                 print!("                ");
                 for value in &self.st {
                     print!("[ {} ]", value);
@@ -219,11 +217,7 @@ impl LolVm {
                     println!("{}", self.st.pop().disp());
                 }
 
-                Asgn => {}
-                AsgnLong => {}
-
-                VDec => {}
-                VDecLong => {}
+                Equals => {}
 
                 PopN => {
                     let no = self.byte();

@@ -1,0 +1,47 @@
+BTW { output: "HELLO\nBYE\nBYE\nBAI" }
+HAI 1.3
+I HAS A SHARED
+FAIL, O RLY?
+    YA RLY
+        SHARED R "a"
+    MEBBE WIN
+        SHARED R "HELLO"
+    NO WAI
+        SHARED R "asd"
+OIC
+
+VISIBLE SHARED
+
+FAIL, O RLY?
+    YA RLY
+        SHARED R "HELLO"
+    MEBBE FAIL
+        SHARED R "HELLO"
+    MEBBE WIN
+        SHARED R "BYE"
+    NO WAI
+        SHARED R "NOWAI"
+OIC
+
+VISIBLE SHARED
+
+FAIL, O RLY?
+    YA RLY
+        SHARED R "HELLO"
+    MEBBE FAIL
+        SHARED R "HELLO"
+    MEBBE FAIL
+        SHARED R "BYE"
+OIC
+
+VISIBLE SHARED
+
+FAIL, O RLY?
+    MEBBE FAIL
+        SHARED R "HELLO"
+    MEBBE BOTH SAEM "asd" AN "asd"
+        SHARED R "BAI"
+OIC
+
+VISIBLE SHARED
+KTHXBYE

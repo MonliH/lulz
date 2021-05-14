@@ -154,8 +154,12 @@ impl BytecodeCompiler {
                         OpTy::And => OpCode::And,
                         OpTy::Or => OpCode::Or,
                         OpTy::Xor => OpCode::Xor,
-
-                        _ => todo!(),
+                        OpTy::Equal => OpCode::Equals,
+                        OpTy::NotEq => {
+                            self.write_instr(OpCode::Equals, expr.span);
+                            self.write_instr(OpCode::Not, expr.span);
+                            return Ok(());
+                        }
                     },
                     expr.span,
                 );
@@ -240,6 +244,31 @@ impl BytecodeCompiler {
         for stmt in ast.0.into_iter() {
             match stmt.statement_kind {
                 StatementKind::If(if_e, elif_es, else_e) => {
+                    // 1: if a { b }
+                    // 2: elif c { d }
+                    // 3: elif e { f }
+                    // 4: else { g }
+                    //
+                    // Compiles to;
+                    // ld it
+                    // jmpf 2 # jmp to next
+                    // <b>
+                    // jmpf 5
+                    //
+                    // 2:
+                    // ld c
+                    // jmpf 3 # jmp to next
+                    // <d>
+                    // jmpf 5
+                    //
+                    // 3:
+                    // ld e
+                    // jmpf 4 # jmp to next
+                    // <f>
+                    // jmpf 5
+                    //
+                    // 4:
+                    // <g>
                     self.write_instr(OpCode::ReadIt, stmt.span);
                     let then_jmp = self.emit_jmp(OpCode::JmpFalse, stmt.span);
                     if let Some(true_block) = if_e {
@@ -247,15 +276,29 @@ impl BytecodeCompiler {
                         self.compile(true_block)?;
                         self.end_scope();
                     }
-                    let else_jmp = self.emit_jmp(OpCode::Jmp, stmt.span);
+                    // prevent a fallthrough
+                    let mut done_jmps = vec![self.emit_jmp(OpCode::Jmp, stmt.span)];
                     self.patch_jmp(then_jmp);
+
+                    for elif in elif_es {
+                        let span = elif.0.span;
+                        self.compile_expr(elif.0)?;
+                        let then_jmp = self.emit_jmp(OpCode::JmpFalse, stmt.span);
+                        self.begin_scope();
+                        self.compile(elif.1)?;
+                        self.end_scope();
+                        done_jmps.push(self.emit_jmp(OpCode::Jmp, span));
+                        self.patch_jmp(then_jmp);
+                    }
 
                     if let Some(else_block) = else_e {
                         self.begin_scope();
                         self.compile(else_block)?;
                         self.end_scope();
                     }
-                    self.patch_jmp(else_jmp);
+                    for done_jmp in done_jmps.into_iter() {
+                        self.patch_jmp(done_jmp);
+                    }
                 }
                 StatementKind::Expr(e) => {
                     let span = e.span;

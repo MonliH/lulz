@@ -26,6 +26,12 @@ struct Opts {
     #[clap(short = 'd', long, about = "Prints disassembled lolvm bytecode")]
     disasm: bool,
 
+    #[clap(
+        long = "debug-vm",
+        about = "Steps through the stack and instructions of the lolvm"
+    )]
+    debug_vm: bool,
+
     #[clap(about = "Input file to interpret. Use `-` to read from stdin")]
     input: String,
 }
@@ -75,6 +81,6 @@ fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Fai
         lolbc::disasm(&bytecode);
     }
     let mut vm = lolvm::LolVm::new();
-    vm.run(bytecode)?;
+    vm.run(bytecode, opts.debug_vm)?;
     Ok(())
 }
