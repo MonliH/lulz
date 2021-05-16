@@ -5,6 +5,7 @@ import subprocess
 import difflib
 from subprocess import Popen, PIPE, STDOUT
 from glob import iglob
+import build_api
 
 GREEN = "\033[32m"
 RED = "\033[91m"
@@ -16,19 +17,6 @@ GRAY = "\033[38;5;243m"
 
 def colored(s: str, c: str) -> str:
     return f"{c}{s}{RESET}"
-
-
-BUILD_SETTINGS = ["--release", "--target-dir", "target", "-q"]
-
-print("Building...")
-subprocess.run(
-    [
-        "cargo",
-        "build",
-    ]
-    + BUILD_SETTINGS
-)
-print("Done Building...")
 
 
 def run_file(filename, stdin) -> (str, int):

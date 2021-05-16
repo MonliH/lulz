@@ -2,7 +2,7 @@
 
 `lulz` is a **[LOLCODE](http://www.lolcode.org/) interpreter** written in rust.
 It is **much faster than [lci](https://github.com/justinmeza/lci)** because it compiles 
-your LOLCODE code to `lolbc` (bytecode) that runs on the `lolvm`.
+the code to `lolbc` (bytecode), which runs on the `lolvm`.
 
 **also, it...**
 

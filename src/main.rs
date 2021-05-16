@@ -79,7 +79,8 @@ fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Fai
     let ast = parser.parse()?;
     let mut bytecode_compiler = middle::BytecodeCompiler::new();
     bytecode_compiler.compile_start(ast)?;
-    let bytecode: lolbc::Chunk = bytecode_compiler.take_chunk();
+    let mut bytecode: lolbc::Chunk = bytecode_compiler.take_chunk();
+    bytecode.opt();
     if opts.disasm {
         lolbc::disasm(&bytecode);
     }
