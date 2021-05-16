@@ -11,28 +11,29 @@ pub fn disasm(chunk: &Chunk) {
     while offset < bytecode.len() {
         offset = disasm_instruction(&chunk, offset);
     }
+    eprintln!("===\n");
 }
 
 pub fn disasm_instruction(chunk: &Chunk, offset: usize) -> usize {
     let bytecode = &chunk.bytecode;
     let instr = byte_to_opcode(bytecode[offset]);
     let pos = chunk.pos.get(offset);
-    print!("{:0>5}  {:>4}:{: <3} ", offset, pos.s, pos.e);
+    eprint!("{:0>5}  {:>4}:{: <3} ", offset, pos.s, pos.e);
     match instr {
         Some(op) => {
-            print!("{:>4} ", op);
+            eprint!("{:>4} ", op);
             let arity = op.arity();
             for operands in (offset + 1)..(offset + 1 + arity) {
-                print!("{} ", bytecode[operands]);
+                eprint!("{} ", bytecode[operands]);
             }
 
             // Special cases
             match op {
-                OpCode::LoadConst => print!(
+                OpCode::LoadConst => eprint!(
                     "(value: {})",
                     chunk.values.load(bytecode[offset + 1] as usize),
                 ),
-                OpCode::LoadConstLong => print!(
+                OpCode::LoadConstLong => eprint!(
                     "(value: {})",
                     chunk.values.load(bits::usize_from_u8(
                         bytecode[offset + 1],
@@ -43,11 +44,11 @@ pub fn disasm_instruction(chunk: &Chunk, offset: usize) -> usize {
                 _ => {}
             }
 
-            print!("\n");
+            eprint!("\n");
             offset + 1 + arity
         }
         None => {
-            println!("invalid ({})", bytecode[offset]);
+            eprintln!("invalid ({})", bytecode[offset]);
             offset + 1
         }
     }

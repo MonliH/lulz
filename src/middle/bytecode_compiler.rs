@@ -9,6 +9,13 @@ use crate::{
     lolvm::StrId,
 };
 
+#[derive(Debug, PartialEq)]
+enum RecentBlock {
+    Function,
+    Loop,
+    Case,
+}
+
 #[derive(Debug)]
 struct Local {
     depth: usize,
@@ -23,6 +30,7 @@ pub struct BytecodeCompiler {
     valid_locals: FxHashMap<StrId, usize>,
     scope_depth: usize,
     it: StrId,
+    recent_block: RecentBlock,
 }
 
 impl BytecodeCompiler {
@@ -33,6 +41,7 @@ impl BytecodeCompiler {
             locals: SmallVec::default(),
             scope_depth: 0,
             it: StrId::default(),
+            recent_block: RecentBlock::Function,
         };
 
         new.it = new.c.interner.intern("IT");
@@ -124,7 +133,6 @@ impl BytecodeCompiler {
                     )
                     .into());
                 }
-                println!("{:?} {:?}", self.locals, self.valid_locals);
                 self.read_var(id)?;
                 for arg in args.into_iter() {
                     self.compile_expr(arg)?;
@@ -281,6 +289,16 @@ impl BytecodeCompiler {
     fn compile(&mut self, ast: Block) -> Failible<()> {
         for stmt in ast.0.into_iter() {
             match stmt.statement_kind {
+                StatementKind::Break => {
+                    if self.recent_block == RecentBlock::Function {
+                        self.c.write_get_const(Value::Null, stmt.span);
+                        self.write_instr(OpCode::Return, stmt.span);
+                    }
+                }
+                StatementKind::Return(e) => {
+                    self.compile_expr(e)?;
+                    self.write_instr(OpCode::Return, stmt.span);
+                }
                 StatementKind::If(if_e, elif_es, else_e) => {
                     // 1: if a { b }
                     // 2: elif c { d }
@@ -398,11 +416,13 @@ impl BytecodeCompiler {
                     self.valid_locals = old_locals;
                     self.locals = old_local_arr;
 
+                    self.write_instr(OpCode::ReadIt, id.1);
+                    self.write_instr(OpCode::Return, id.1);
+
                     self.patch_jmp(skip_jmp);
 
                     self.c.write_get_const(Value::Fun(function_pos), id.1);
                     self.declare_intern(interned)?;
-                    dbg!(&self.valid_locals);
                 }
                 _ => {}
             }

@@ -22,8 +22,8 @@ pub struct LolVm {
 
 macro_rules! binary_bool {
     ($stack: expr, $boolf: expr) => {{
-        let fst = $stack.pop().to_bool();
         let snd = $stack.pop().to_bool();
+        let fst = $stack.pop().to_bool();
 
         $stack.push(Bool($boolf(fst, snd)));
     }};
@@ -31,8 +31,8 @@ macro_rules! binary_bool {
 
 macro_rules! binary_num {
     ($stack: expr, $floatf: expr, $intf: expr, $span: expr, $name: expr) => {{
-        let fst = $stack.pop().cast_try_num($span, "first operand")?;
         let snd = $stack.pop().cast_try_num($span, "second operand")?;
+        let fst = $stack.pop().cast_try_num($span, "first operand")?;
 
         let new_val = match (fst, snd) {
             (Float(f1), Float(f2)) => Float($floatf(f1, f2)),
@@ -71,7 +71,7 @@ impl LolVm {
     }
 
     #[inline]
-    fn byte(&mut self) -> u8 {
+    fn read_8b(&mut self) -> u8 {
         let b = self.c.bytecode[self.frame().ip];
         self.frame_mut().ip += 1;
         b
@@ -79,19 +79,23 @@ impl LolVm {
 
     #[inline]
     fn read_32b(&mut self) -> usize {
-        let hi = self.byte();
-        let mih = self.byte();
-        let mil = self.byte();
-        let lo = self.byte();
+        let hi = self.read_8b();
+        let mih = self.read_8b();
+        let mil = self.read_8b();
+        let lo = self.read_8b();
         u32::from_le_bytes([hi, mih, mil, lo]) as usize
     }
 
     #[inline]
     fn read_24b(&mut self) -> usize {
-        let hi = self.byte();
-        let mi = self.byte();
-        let lo = self.byte();
+        let hi = self.read_8b();
+        let mi = self.read_8b();
+        let lo = self.read_8b();
         usize_from_u8(hi, mi, lo)
+    }
+
+    fn peek_st(&mut self, idx: usize) -> Value {
+        self.st[self.st.len() - idx - 1].clone()
     }
 
     pub fn new() -> Self {
@@ -109,27 +113,36 @@ impl LolVm {
 
     pub fn run(&mut self, chunk: Chunk, debug: bool) -> Failible<()> {
         self.c = chunk;
-        let f = *self.frame();
-        let st_offset = f.st_offset;
+        let mut f = *self.frame();
         loop {
             if debug {
-                print!("                ");
+                eprint!("                ");
                 for value in &self.st {
-                    print!("[ {} ]", value);
+                    eprint!("[ {} ]", value);
                 }
-                print!("\n");
+                eprint!("\n");
                 disasm_instruction(&self.c, self.frame().ip);
             }
 
-            let op_loc = f.ip;
-            let op = byte_to_opcode(self.byte()).expect("Internal error: unknown opcode");
+            let op_loc = self.frame().ip;
+            let op = byte_to_opcode(self.read_8b()).expect("Internal error: unknown opcode");
             match op {
                 Return => {
-                    return Ok(());
+                    let res = self.st.pop();
+                    self.call_st.pop();
+                    if self.call_st.is_empty() {
+                        self.st.pop();
+                        return Ok(());
+                    }
+
+                    let no = self.st.len() - f.st_offset;
+                    self.st.popn(no);
+                    f = self.call_st[self.call_st.len() - 1];
+                    self.st.push(res);
                 }
 
                 LoadConst => {
-                    let loc = self.byte();
+                    let loc = self.read_8b();
                     self.st.push(self.c.values.load(loc as usize));
                 }
 
@@ -164,8 +177,8 @@ impl LolVm {
 
                 Mul => binary_num!(
                     self.st,
-                    (|a, b| a - b),
-                    (|a, b| a - b),
+                    (|a, b| a * b),
+                    (|a, b| a * b),
                     self.c.pos.get(op_loc),
                     "get PRODUKT of"
                 ),
@@ -200,8 +213,8 @@ impl LolVm {
                 }
 
                 Concat => {
-                    let st1 = self.st.pop().to_str();
                     let st2 = self.st.pop().to_str();
+                    let st1 = self.st.pop().to_str();
 
                     self.st.push(Str(format!("{}{}", st1, st2).into()));
                 }
@@ -217,60 +230,63 @@ impl LolVm {
                     println!("{}", self.st.pop().disp());
                 }
 
-                Equals => {}
+                Equals => {
+                    let st2 = self.st.pop().to_str();
+                    let st1 = self.st.pop().to_str();
+                    self.st.push(Bool(st1 == st2));
+                }
 
                 PopN => {
-                    let no = self.byte();
-                    for _ in 0..no {
-                        self.st.pop();
-                    }
+                    let no = self.read_8b();
+                    self.st.popn(no as usize);
                 }
 
                 PopNLong => {
                     let no = self.read_24b();
-                    for _ in 0..no {
-                        self.st.pop();
-                    }
+                    self.st.popn(no);
                 }
 
                 WriteSt => {
-                    let stid = self.byte();
-                    self.st[st_offset + stid as usize] = self.st.pop();
+                    let stid = self.read_8b();
+                    self.st[f.st_offset + stid as usize] = self.st.pop();
                 }
 
                 WriteStLong => {
                     let stid = self.read_24b();
-                    self.st[st_offset + stid] = self.st.pop();
+                    self.st[f.st_offset + stid] = self.st.pop();
                 }
 
                 ReadSt => {
-                    let stid = self.byte();
-                    self.st.push(self.st[st_offset + stid as usize].clone());
+                    let stid = self.read_8b();
+                    self.st.push(self.st[f.st_offset + stid as usize].clone());
                 }
 
                 ReadStLong => {
                     let stid = self.read_24b();
-                    self.st.push(self.st[st_offset + stid].clone());
+                    self.st.push(self.st[f.st_offset + stid].clone());
                 }
 
                 ReadLine => {
-                    let dest = self.byte();
+                    let dest = self.read_8b();
                     let line = self.read_stdin(op_loc)?;
-                    self.st[st_offset + dest as usize] = Str(line.into());
+                    self.st[f.st_offset + dest as usize] = Str(line.into());
                 }
 
                 ReadLineLong => {
                     let dest = self.read_24b();
                     let line = self.read_stdin(op_loc)?;
-                    self.st[st_offset + dest] = Str(line.into());
+                    self.st[f.st_offset + dest] = Str(line.into());
                 }
 
                 FnDef => {
-                    todo!()
+                    self.read_8b();
                 }
 
                 Call => {
-                    todo!()
+                    let arg_count = self.read_8b();
+                    let fun = self.peek_st(arg_count as usize);
+                    self.call_value(fun, arg_count, f.ip + op_loc)?;
+                    f = *self.frame();
                 }
 
                 Jmp => {
@@ -294,6 +310,56 @@ impl LolVm {
                     self.st.push(self.it.clone());
                 }
             }
+        }
+    }
+
+    fn call(&mut self, mem_pos: usize, args: usize) -> Failible<()> {
+        self.call_st.push(CallFrame {
+            ret_ip: self.frame().ip,
+            ip: mem_pos,
+            st_offset: self.st.len() - 1 - args,
+        });
+        Ok(())
+    }
+
+    fn call_value(&mut self, fun: Value, args: u8, call_instr: usize) -> Failible<()> {
+        if let Fun(mem_pos) = fun {
+            let func_args = self.c.bytecode[mem_pos + 1];
+            if func_args != args {
+                let call_span = self.c.pos.get(call_instr);
+                return Err(Diagnostic::build(
+                    Level::Error,
+                    DiagnosticType::FunctionArgumentMismatch,
+                    call_span,
+                )
+                .annotation(
+                    Cow::Owned(format!(
+                        "this funkshon takes {} {}...",
+                        func_args,
+                        plural(func_args as usize, "argument")
+                    )),
+                    self.c.pos.get(mem_pos),
+                )
+                .annotation(
+                    Cow::Owned(format!(
+                        "but {} {} are passed in here",
+                        args,
+                        plural(args as usize, "argument")
+                    )),
+                    call_span,
+                )
+                .into());
+            }
+            self.call(mem_pos, args as usize)?;
+            Ok(())
+        } else {
+            let span = self.c.pos.get(call_instr);
+            Err(Diagnostic::build(Level::Error, DiagnosticType::Type, span)
+                .annotation(
+                    Cow::Owned(format!("value is a `{}` not a `FUNKSHON`", fun.ty())),
+                    span,
+                )
+                .into())
         }
     }
 

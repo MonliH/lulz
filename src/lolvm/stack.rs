@@ -32,6 +32,10 @@ impl Stack {
         self.0.pop().unwrap()
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     pub fn popn(&mut self, n: usize) {
         self.0.truncate(self.0.len() - n);
     }
