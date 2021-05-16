@@ -107,7 +107,7 @@ impl BytecodeCompiler {
     }
 
     fn read_var(&mut self, id: Ident) -> Failible<()> {
-        let interned = self.c.interner.intern(id.0.as_str());
+        let interned = self.c.write_interned(id.0.as_str());
         if interned != self.it {
             let stid = self.resolve_local(interned, id.1)?;
             self.write_bits(stid.into(), OpCode::ReadSt, OpCode::ReadStLong);
@@ -119,6 +119,20 @@ impl BytecodeCompiler {
 
     fn compile_expr(&mut self, expr: Expr) -> Failible<()> {
         match expr.expr_kind {
+            ExprKind::Cast(..) => {}
+            ExprKind::InterpStr(s, interps) => {
+                let new_interps = interps
+                    .into_iter()
+                    .map(|(str_idx, var, sp): (usize, String, Span)| {
+                        let interned = self.c.write_interned(&var);
+                        let output: (usize, usize) = (str_idx, self.resolve_local(interned, sp)?);
+                        Ok(output)
+                    })
+                    .collect::<Failible<Vec<_>>>()?;
+                self.c
+                    .write_get_const(Value::IStr(s, new_interps), expr.span);
+                self.write_instr(OpCode::InterpStr, expr.span);
+            }
             ExprKind::FunctionCall(id, args) => {
                 let arg_len = args.len();
                 if arg_len > 255 {
@@ -202,7 +216,6 @@ impl BytecodeCompiler {
                     expr.span,
                 );
             }
-            _ => {}
         }
         Ok(())
     }

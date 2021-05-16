@@ -56,11 +56,12 @@ pub enum OpCode {
     Equals = 34,
 
     Call = 35,
+    InterpStr = 36,
 }
 
 use OpCode::*;
 
-pub const NUM_CODES: u8 = Call as u8;
+pub const NUM_CODES: u8 = InterpStr as u8;
 
 impl OpCode {
     pub fn arity(self) -> usize {
@@ -74,8 +75,8 @@ impl OpCode {
 
             FnDef | Call => 1,
 
-            Equals | ReadIt | WriteIt | Return | Prt | PrtL | Not | Xor | Or | And | Add | Mul
-            | Div | Sub | Mod | Min | Max | Concat => 0,
+            InterpStr | Equals | ReadIt | WriteIt | Return | Prt | PrtL | Not | Xor | Or | And
+            | Add | Mul | Div | Sub | Mod | Min | Max | Concat => 0,
         }
     }
 }
@@ -131,6 +132,8 @@ impl Display for OpCode {
 
                 ReadIt => "rit",
                 WriteIt => "wit",
+
+                InterpStr => "ints",
             }
         )
     }

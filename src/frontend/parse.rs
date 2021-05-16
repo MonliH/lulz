@@ -505,6 +505,7 @@ impl<'a> Parser<'a> {
             }
             TokenKind::Ident(id) => ExprKind::Variable(Ident(id, to_match.span)),
             TokenKind::String(s) => ExprKind::String(s),
+            TokenKind::InterpStr(s, interps) => ExprKind::InterpStr(s, interps),
             TokenKind::Win => ExprKind::Bool(true),
             TokenKind::Fail => ExprKind::Bool(false),
 

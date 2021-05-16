@@ -74,6 +74,7 @@ pub enum ExprKind {
     Float(f64),
     Int(i64),
     String(String),
+    InterpStr(String, Vec<(usize, String, Span)>),
     Bool(bool),
 
     Null,

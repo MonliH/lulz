@@ -1,6 +1,8 @@
 use smallvec::{smallvec, SmallVec};
-use std::io;
-use std::io::BufRead;
+use std::{
+    io::{self, BufRead},
+    rc::Rc,
+};
 
 use super::{CallFrame, Stack};
 use crate::{
@@ -307,6 +309,25 @@ impl LolVm {
 
                 ReadIt => {
                     self.st.push(self.it.clone());
+                }
+
+                InterpStr => {
+                    let inp_str = self.st.pop();
+                    if let IStr(s, stpos) = inp_str {
+                        let mut remaining_s = &s[..];
+                        let mut st_pieces = Vec::with_capacity(stpos.len() * 2 + 1);
+                        for (idx, st) in stpos {
+                            let (fst, snd) = remaining_s.split_at(idx);
+                            st_pieces.push(Cow::Borrowed(fst));
+                            let val = self.st[st].to_str().to_string();
+                            st_pieces.push(Cow::Owned(val));
+                            remaining_s = snd;
+                        }
+                        st_pieces.push(Cow::Borrowed(remaining_s));
+                        self.st.push(Str(Rc::from(st_pieces.concat())));
+                    } else {
+                        unreachable!()
+                    }
                 }
             }
         }

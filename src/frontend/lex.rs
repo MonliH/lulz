@@ -77,6 +77,8 @@ pub enum TokenKind {
 
     Number(SmolStr),
     String(String),
+    /// An interpolated string
+    InterpStr(String, Vec<(usize, String, Span)>),
     Ident(SmolStr),
 
     Eof,
@@ -161,6 +163,7 @@ impl Display for TokenKind {
 
                 TokenKind::Number(..) => "number",
                 TokenKind::String(..) => "string",
+                TokenKind::InterpStr(..) => "interpolated string",
                 TokenKind::Ident(..) => "identifier",
 
                 TokenKind::Eof => "end of file",
@@ -321,8 +324,17 @@ impl<'a> Lexer<'a> {
         Ok((esc, span))
     }
 
+    fn validate_id(s: &str) -> bool {
+        if s.len() < 1 {
+            return false;
+        }
+        let mut chars = s.chars();
+        Self::is_id_start(chars.next().unwrap()) && chars.all(|c| Self::is_id_continue(c))
+    }
+
     fn eat_string(&mut self) -> Failible<TokenKind> {
         let mut acc = String::new();
+        let mut interps = Vec::new();
         'main: loop {
             let next = self.eat();
             if next == ':' {
@@ -350,7 +362,26 @@ impl<'a> Lexer<'a> {
                         )
                     })?;
                     acc.push(val);
-                    continue 'main;
+                    continue;
+                }
+
+                if peeked == '{' {
+                    let (esc, span) = self.get_str_esc('}')?;
+                    if Self::validate_id(&esc) {
+                        interps.push((acc.len(), esc, span));
+                        continue;
+                    } else {
+                        return Err(Diagnostic::build(
+                            Level::Error,
+                            DiagnosticType::InvalidEscapeSequence,
+                            span,
+                        )
+                        .annotation(
+                            Cow::Owned(format!("`{}` is not a valid variable", esc)),
+                            span,
+                        )
+                        .into());
+                    }
                 }
 
                 if peeked == '(' {
@@ -372,7 +403,7 @@ impl<'a> Lexer<'a> {
                         .annotation(Cow::Owned(format!("invalid escape hex `{}`", esc)), span)
                     })?;
                     acc.push(val);
-                    continue 'main;
+                    continue;
                 }
 
                 let span = Span::new(self.position, self.position + 1, self.source_id);
@@ -398,7 +429,11 @@ impl<'a> Lexer<'a> {
                 acc.push(next);
             }
         }
-        Ok(TokenKind::String(acc))
+        if interps.is_empty() {
+            Ok(TokenKind::String(acc))
+        } else {
+            Ok(TokenKind::InterpStr(acc, interps))
+        }
     }
 
     fn is_not_newline(c: char) -> bool {

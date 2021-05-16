@@ -14,6 +14,8 @@ pub enum Value {
     Int(i64),
     // Strings are reference counted
     Str(Rc<str>),
+    // Vec<(str_idx, stack_idx)>
+    IStr(String, Vec<(usize, usize)>),
     Fun(usize),
 }
 
@@ -102,6 +104,7 @@ impl Value {
             Int(..) => "NUMBR",
             Str(..) => "YARN",
             Fun(..) => "FUNKSHON",
+            IStr(..) => unreachable!(),
         }
     }
 
@@ -113,6 +116,7 @@ impl Value {
             Int(i) => i.to_string().into(),
             Str(s) => Rc::clone(&s),
             Fun(id) => format!("<FUNKSHON at {:#x}>", id).into(),
+            IStr(..) => unreachable!(),
         }
     }
 
@@ -124,6 +128,7 @@ impl Value {
             Int(i) => i != &0,
             Str(s) => !s.is_empty(),
             Fun(_) => true,
+            IStr(..) => unreachable!(),
         }
     }
 
@@ -138,6 +143,7 @@ impl Value {
             Int(i) => Cow::Owned(i.to_string()),
             Float(fl) => Cow::Owned(fl.to_string()),
             Fun(id) => Cow::Owned(format!("<FUNKSHON at {:#x}>", id)),
+            IStr(..) => unreachable!(),
         }
     }
 }
@@ -155,6 +161,7 @@ impl Display for Value {
 
             Str(s) => write!(f, "YARN `{}`", s),
             Fun(id) => write!(f, "FUNKSHON at `{:#x}`", id),
+            IStr(s, values) => write!(f, "IYARN `{}` ({:?})", s, values),
         }
     }
 }
