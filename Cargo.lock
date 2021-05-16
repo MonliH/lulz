@@ -133,6 +133,7 @@ dependencies = [
  "smallvec",
  "smol_str",
  "typed-arena",
+ "unicode_names2",
 ]
 
 [[package]]
@@ -259,6 +260,12 @@ name = "unicode-xid"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
+
+[[package]]
+name = "unicode_names2"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87d6678d7916394abad0d4b19df4d3802e1fd84abd7d701f39b75ee71b9e8cf1"
 
 [[package]]
 name = "vec_map"

@@ -11,9 +11,9 @@ use codespan_reporting::{
     term,
     term::termcolor::{ColorChoice, StandardStream},
 };
-use std::borrow::Cow;
 use std::fs::read_to_string;
 use std::io::{self, Read};
+use std::{borrow::Cow, process::exit};
 
 use crate::diagnostics::Failible;
 use frontend::*;
@@ -66,6 +66,9 @@ fn main() {
                 term::emit(&mut writer.lock(), &config, &sources, &(e.into_codespan()))
                     .expect("Failed to write error");
             }
+
+            // Failed
+            exit(1);
         }
     };
 }

@@ -1,4 +1,5 @@
 use smol_str::SmolStr;
+use unicode_names2::character;
 
 use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
@@ -288,6 +289,38 @@ impl<'a> Lexer<'a> {
         acc
     }
 
+    fn consume_until(&mut self, predicate: impl Fn(char) -> bool) -> String {
+        let mut acc = String::with_capacity(1);
+        while predicate(self.peek()) && !self.is_eof() {
+            acc.push(self.eat());
+        }
+        acc
+    }
+
+    fn get_str_esc(&mut self, ch: char) -> Failible<(String, Span)> {
+        self.eat();
+        let esc = self.consume_until(|c| c != ch && c != '"');
+        if self.peek() == '"' {
+            let span = Span::new(self.position + 1, self.position + 2, self.source_id);
+            return Err(Diagnostic::build(
+                Level::Error,
+                DiagnosticType::InvalidEscapeSequence,
+                span,
+            )
+            .annotation(Cow::Borrowed("unclosed escape"), span)
+            .into());
+        } else {
+            self.eat();
+        }
+        let span = Span::new(
+            self.position - esc.len() - 1,
+            self.position - 1,
+            self.source_id,
+        );
+
+        Ok((esc, span))
+    }
+
     fn eat_string(&mut self) -> Failible<TokenKind> {
         let mut acc = String::new();
         'main: loop {
@@ -303,13 +336,52 @@ impl<'a> Lexer<'a> {
                     }
                 }
 
+                if peeked == '<' {
+                    let (esc, span) = self.get_str_esc('>')?;
+                    let val = character(&esc).ok_or_else(|| {
+                        Diagnostic::build(
+                            Level::Error,
+                            DiagnosticType::InvalidEscapeSequence,
+                            span,
+                        )
+                        .annotation(
+                            Cow::Owned(format!("invalid unicode normative name `{}`", esc)),
+                            span,
+                        )
+                    })?;
+                    acc.push(val);
+                    continue 'main;
+                }
+
+                if peeked == '(' {
+                    let (esc, span) = self.get_str_esc(')')?;
+                    let esc_num: u32 = u32::from_str_radix(&esc, 16).map_err(|_| {
+                        Diagnostic::build(
+                            Level::Error,
+                            DiagnosticType::InvalidEscapeSequence,
+                            span,
+                        )
+                        .annotation(Cow::Owned(format!("invalid hex string `{}`", esc)), span)
+                    })?;
+                    let val = std::char::from_u32(esc_num).ok_or_else(|| {
+                        Diagnostic::build(
+                            Level::Error,
+                            DiagnosticType::InvalidEscapeSequence,
+                            span,
+                        )
+                        .annotation(Cow::Owned(format!("invalid escape hex `{}`", esc)), span)
+                    })?;
+                    acc.push(val);
+                    continue 'main;
+                }
+
                 let span = Span::new(self.position, self.position + 1, self.source_id);
                 return Err(Diagnostic::build(
                     Level::Error,
                     DiagnosticType::InvalidEscapeSequence,
                     span,
                 )
-                .annotation(Cow::Owned(format!("invalid escape `\\{}`", peeked)), span)
+                .annotation(Cow::Owned(format!("invalid escape `:{}`", peeked)), span)
                 .into());
             } else if next == '"' {
                 break;

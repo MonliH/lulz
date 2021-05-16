@@ -33,7 +33,7 @@ print("Done Building...")
 
 def run_file(filename, stdin) -> (str, int):
     p = Popen(
-        ["cargo", "run"] + BUILD_SETTINGS + ["--", filename],
+        ["./target/release/lulz", filename],
         stdout=PIPE,
         stdin=PIPE,
         stderr=PIPE,
@@ -66,12 +66,13 @@ for filename in file_list:
     stderr = res[2].decode("utf-8")
 
     if "status" in header and header["status"] == "error":
-        print(colored("should fail.", BLUE), end=" ")
+        print(colored("should error.", BLUE), end=" ")
         if res[1] == 0:
             print(colored("test failed.", RED))
             failed += 1
         else:
             print(colored("test passed.", GREEN))
+            passed += 1
         continue
 
     if header["output"] != output:
@@ -89,7 +90,10 @@ for filename in file_list:
     print(colored(f"test passed.", GREEN))
     passed += 1
 
-print(colored(f"{passed} tests passed.", GREEN), colored(f"{failed} tests failed.", RED))
+print(
+    colored(f"{passed} test{'s' if passed != 1 else ''} passed.", GREEN),
+    colored(f"{failed} test{'s' if failed != 1 else ''} failed.", RED),
+)
 
 if failed:
     exit(1)
