@@ -1,4 +1,4 @@
-BTW { status: "error" }
+BTW { "status": "error" }
 HAI 1.3
 HOW IZ I GIVE_NOOB YR VALUE
     VISIBLE VALUE

@@ -1,4 +1,4 @@
-BTW { output: "4041\n" }
+BTW { "output": "4041\n" }
 HAI 1.3
 I HAS A GLOBAL ITZ 10     BTW GLOBAL = 10
 I HAS A GLOBAL1 ITZ 1337  BTW GLOBAL1 = 1337

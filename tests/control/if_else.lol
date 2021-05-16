@@ -1,4 +1,4 @@
-BTW { output: "NOWAI\nHELLO\n" }
+BTW { "output": "NOWAI\nHELLO\n" }
 HAI 1.3
 I HAS A SHARED
 FAIL, O RLY?

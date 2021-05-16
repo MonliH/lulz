@@ -23,10 +23,6 @@ impl Positions {
     pub fn get(&self, idx: usize) -> LSpan {
         self.0[idx]
     }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
 }
 
 #[derive(Default, Debug)]

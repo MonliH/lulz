@@ -131,7 +131,6 @@ impl LolVm {
                     let res = self.st.pop();
                     self.call_st.pop();
                     if self.call_st.is_empty() {
-                        self.st.pop();
                         return Ok(());
                     }
 

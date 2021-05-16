@@ -1,8 +1,8 @@
-BTW { output: "Hello, World!\n" }
+BTW { "output": "Hello, World!\n" }
 HAI 1.3
 I HAS A MSG ITZ "BYE!"
 HOW IZ I PRINT_HELLO
-    MSG R "Hello, world!"
+    I HAS A MSG ITZ "Hello, World!"
     VISIBLE MSG
 IF U SAY SO
 

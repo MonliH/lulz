@@ -1,4 +1,4 @@
-BTW { output: "HELLO\n" }
+BTW { "output": "HELLO\n" }
 HAI 1.3
 I HAS A VAR ITZ WIN
 VAR, O RLY?

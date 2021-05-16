@@ -9,6 +9,7 @@ use crate::{
     lolvm::StrId,
 };
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 enum RecentBlock {
     Function,

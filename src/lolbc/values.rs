@@ -167,10 +167,6 @@ impl ValueArray {
         ValueArray(Vec::new())
     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
     pub fn load(&self, key: usize) -> Value {
         self.0[key].clone()
     }

@@ -1,4 +1,4 @@
-BTW { output: "133\n" }
+BTW { "output": "133\n" }
 HAI 1.3
 I HAS A GLOBAL ITZ 123
 GLOBAL R SUM OF GLOBAL AN 10

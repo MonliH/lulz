@@ -1,4 +1,4 @@
-BTW { status: "error" }
+BTW { "status": "error" }
 HAI 1.3
 FAIL, O RLY?
     YA RLY

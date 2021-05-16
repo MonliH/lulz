@@ -1,4 +1,4 @@
-BTW { output: "Hello, there!\n" }
+BTW { "output": "Hello, there!\n" }
 HAI 1.3
 HOW IZ I GIVE_MSG
     "Hello, there!"

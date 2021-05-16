@@ -1,7 +1,7 @@
-BTW { output: "Hello, World!\n" }
+BTW { "output": "Hello, World!\n10\n" }
 HAI 1.3
 HOW IZ I PRINT_HELLO
-    VISIBLE "Hello, world!"
+    VISIBLE "Hello, World!"
     I HAS A foo ITZ 10
     I HAS A VAR ITZ 123
 

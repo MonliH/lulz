@@ -1,4 +1,4 @@
-BTW { output: "NOOB\n" }
+BTW { "output": "NOOB\n" }
 HAI 1.3
 HOW IZ I GIVE_NOOB
     GTFO

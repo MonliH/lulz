@@ -1,4 +1,4 @@
-BTW { output: "123\n" }
+BTW { "output": "123\n" }
 HAI 1.3
 HOW IZ I PRINT YR VALUE
     VISIBLE VALUE

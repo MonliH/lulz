@@ -1,4 +1,4 @@
-BTW { output: "3628800\n" }
+BTW { "output": "3628800\n" }
 HAI 1.3
 HOW IZ I FACTORIAL YR N
     BOTH SAEM N AN 1, O RLY?

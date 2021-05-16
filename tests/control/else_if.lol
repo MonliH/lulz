@@ -1,4 +1,4 @@
-BTW { output: "HELLO\nBYE\nBYE\nBAI" }
+BTW { "output": "HELLO\nBYE\nBYE\nBAI\n" }
 HAI 1.3
 I HAS A SHARED
 FAIL, O RLY?

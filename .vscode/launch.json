@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["tests/control/fail_if_scoping.lol"],
+            "args": ["tests/it/basic_expr.lol"],
             "cwd": "${workspaceFolder}"
         },
         {

@@ -1,4 +1,4 @@
-BTW { status: "error" }
+BTW { "status": "error" }
 HAI 1.3
 I HAS A VALUE ITZ 10
 HOW IZ I PRINT_BAD
