@@ -304,7 +304,7 @@ impl<'a> Lexer<'a> {
         self.eat();
         let esc = self.consume_until(|c| c != ch && c != '"');
         if self.peek() == '"' {
-            let span = Span::new(self.position + 1, self.position + 2, self.source_id);
+            let span = Span::new(self.position, self.position + 1, self.source_id);
             return Err(Diagnostic::build(
                 Level::Error,
                 DiagnosticType::InvalidEscapeSequence,
@@ -377,7 +377,7 @@ impl<'a> Lexer<'a> {
                             span,
                         )
                         .annotation(
-                            Cow::Owned(format!("`{}` is not a valid variable", esc)),
+                            Cow::Owned(format!("`{}` is not a valid identifier", esc)),
                             span,
                         )
                         .into());
