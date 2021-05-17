@@ -57,23 +57,25 @@ pub enum OpCode {
 
     Call = 35,
     InterpStr = 36,
+
+    Cast = 37,
+    CastMut = 38,
+    CastMutLong = 39,
 }
 
 use OpCode::*;
 
-pub const NUM_CODES: u8 = InterpStr as u8;
+pub const NUM_CODES: u8 = CastMutLong as u8;
 
 impl OpCode {
     pub fn arity(self) -> usize {
         match self {
             // 8-bit index
-            ReadLine | ReadSt | WriteSt | PopN | LoadConst => 1,
+            CastMut | Cast | FnDef | Call | ReadLine | ReadSt | WriteSt | PopN | LoadConst => 1,
             // 24-bit index
-            ReadLineLong | ReadStLong | WriteStLong | PopNLong | LoadConstLong => 3,
+            CastMutLong | ReadLineLong | ReadStLong | WriteStLong | PopNLong | LoadConstLong => 3,
 
             JmpFalse | Jmp => 4,
-
-            FnDef | Call => 1,
 
             InterpStr | Equals | ReadIt | WriteIt | Return | Prt | PrtL | Not | Xor | Or | And
             | Add | Mul | Div | Sub | Mod | Min | Max | Concat => 0,
@@ -134,6 +136,9 @@ impl Display for OpCode {
                 WriteIt => "wit",
 
                 InterpStr => "ints",
+                Cast => "cst",
+                CastMut => "ctm",
+                CastMutLong => "ctml",
             }
         )
     }

@@ -1,12 +1,14 @@
 use smallvec::{smallvec, SmallVec};
 use std::{
     io::{self, BufRead},
+    mem,
     rc::Rc,
 };
 
 use super::{CallFrame, Stack};
 use crate::{
     diagnostics::prelude::*,
+    frontend::ast::Type,
     lolbc::{
         bits::usize_from_u8,
         byte_to_opcode, disasm_instruction, Chunk,
@@ -232,8 +234,8 @@ impl LolVm {
                 }
 
                 Equals => {
-                    let st2 = self.st.pop().to_str();
-                    let st1 = self.st.pop().to_str();
+                    let st2 = self.st.pop();
+                    let st1 = self.st.pop();
                     self.st.push(Bool(st1 == st2));
                 }
 
@@ -328,6 +330,23 @@ impl LolVm {
                     } else {
                         unreachable!()
                     }
+                }
+
+                Cast => {
+                    let ty = Type::from_num(self.read_8b()).unwrap();
+                    let e = self.st.pop().cast(ty, self.c.pos.get(op_loc))?;
+                    self.st.push(e);
+                }
+
+                CastMut | CastMutLong => {
+                    let st_pos = match op {
+                        CastMut => self.read_8b() as usize,
+                        CastMutLong => self.read_24b(),
+                        _ => unreachable!(),
+                    } + f.st_offset;
+                    let ty = Type::from_num(self.read_8b()).unwrap();
+                    let e = mem::take(&mut self.st[st_pos]).cast(ty, self.c.pos.get(op_loc))?;
+                    self.st[st_pos] = e;
                 }
             }
         }

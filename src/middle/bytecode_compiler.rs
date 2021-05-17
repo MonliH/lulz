@@ -119,7 +119,11 @@ impl BytecodeCompiler {
 
     fn compile_expr(&mut self, expr: Expr) -> Failible<()> {
         match expr.expr_kind {
-            ExprKind::Cast(..) => {}
+            ExprKind::Cast(e, ty) => {
+                self.compile_expr(*e)?;
+                self.write_instr(OpCode::Cast, expr.span);
+                self.c.write_instr(ty as u8, expr.span);
+            }
             ExprKind::InterpStr(s, interps) => {
                 let new_interps = interps
                     .into_iter()
@@ -437,6 +441,12 @@ impl BytecodeCompiler {
 
                     self.c.write_get_const(Value::Fun(function_pos), id.1);
                     self.declare_intern(interned)?;
+                }
+                StatementKind::MutCast(id, ty) => {
+                    let interned = self.c.write_interned(id.0.as_ref());
+                    let stid = Bits::from(self.resolve_local(interned, id.1)?);
+                    self.write_bits(stid, OpCode::CastMut, OpCode::CastMutLong);
+                    self.c.write_instr(ty as u8, stmt.span);
                 }
                 _ => {}
             }

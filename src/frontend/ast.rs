@@ -1,6 +1,7 @@
 use smol_str::SmolStr;
 use std::{
     hash::{Hash, Hasher},
+    intrinsics::transmute,
     ops::{Deref, DerefMut},
 };
 
@@ -47,6 +48,7 @@ pub enum StatementKind {
     Expr(Expr),
     Case(Vec<(Expr, Block)>, Option<Block>),
     If(Option<Block>, Vec<(Expr, Block)>, Option<Block>),
+    MutCast(Ident, Type),
     Break,
     Loop {
         block_name: Ident,
@@ -109,11 +111,22 @@ pub enum OpTy {
     NotEq,
 }
 
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Type {
-    Null,
-    Bool,
-    Int,
-    Float,
-    Str,
+    Null = 0,
+    Bool = 1,
+    Int = 2,
+    Float = 3,
+    Str = 4,
+}
+
+impl Type {
+    pub fn from_num(id: u8) -> Option<Self> {
+        if id <= 4 {
+            Some(unsafe { transmute(id) })
+        } else {
+            None
+        }
+    }
 }

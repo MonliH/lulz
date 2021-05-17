@@ -405,32 +405,48 @@ impl<'a> Parser<'a> {
     }
 
     fn assignment_or_expr(&mut self, prev: Token) -> Failible<Statement> {
-        match self.peek_token()?.token_kind {
+        let statement_kind = match self.peek_token()?.token_kind {
+            TokenKind::Is => {
+                self.next_token()?;
+                self.expect(TokenKind::Now)?;
+                self.expect(TokenKind::A)?;
+                StatementKind::MutCast(
+                    Ident(
+                        match prev.token_kind {
+                            TokenKind::Ident(s) => s,
+                            _ => unreachable!(),
+                        },
+                        prev.span,
+                    ),
+                    self.ty()?,
+                )
+            }
             TokenKind::R => {
                 self.next_token()?;
                 let expr = self.expr()?;
-                Ok(Statement {
-                    statement_kind: StatementKind::Assignment(
-                        Ident(
-                            match prev.token_kind {
-                                TokenKind::Ident(s) => s,
-                                _ => unreachable!(),
-                            },
-                            prev.span,
-                        ),
-                        expr,
+                StatementKind::Assignment(
+                    Ident(
+                        match prev.token_kind {
+                            TokenKind::Ident(s) => s,
+                            _ => unreachable!(),
+                        },
+                        prev.span,
                     ),
-                    span: Span::new(prev.span.s, self.current_span.e, self.source_id),
-                })
+                    expr,
+                )
             }
             _ => {
                 let expr = self.expr_inner(Some(prev))?;
-                Ok(Statement {
+                return Ok(Statement {
                     span: expr.span,
                     statement_kind: StatementKind::Expr(expr),
-                })
+                });
             }
-        }
+        };
+        Ok(Statement {
+            statement_kind,
+            span: Span::new(prev.span.s, self.current_span.e, self.source_id),
+        })
     }
 
     fn ty(&mut self) -> Failible<Type> {
@@ -665,6 +681,12 @@ mod parse_test {
     }
 
     assert_ast!("HAI 1.4\nKTHXBYE", basic_empty, []);
+
+    assert_ast!(
+        "HAI 1.4, ident IS NOW A TROOF, KTHXBYE",
+        ident_cast_mut,
+        [StatementKind::MutCast(..),]
+    );
 
     assert_ast!(
         "HAI 1.4\n\nI HAS A ident\nKTHXBYE",

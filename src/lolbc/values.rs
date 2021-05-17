@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::diagnostics::prelude::*;
+use crate::{diagnostics::prelude::*, frontend::ast::Type};
 use Value::*;
 
 #[derive(Clone, Debug)]
@@ -45,6 +45,10 @@ impl Value {
     /// Returns an `Err()` if the string is not a valid number, however.
     pub fn cast_try_num(self, span: Span, expr_name: &str) -> Failible<Self> {
         Ok(match self {
+            IStr(..) => unreachable!(),
+            Null => Int(0),
+            Float(_) => self,
+            Int(_) => self,
             Bool(b) => Int(b as i64),
             Fun(_) => {
                 return Err(Diagnostic::build(Level::Error, DiagnosticType::Type, span)
@@ -92,7 +96,6 @@ impl Value {
                     }
                 }
             }
-            _ => self,
         })
     }
 
@@ -130,6 +133,39 @@ impl Value {
             Fun(_) => true,
             IStr(..) => unreachable!(),
         }
+    }
+
+    fn ast_ty(&self) -> Option<Type> {
+        match self {
+            Bool(..) => Some(Type::Bool),
+            Null => Some(Type::Null),
+            Float(..) => Some(Type::Float),
+            Int(..) => Some(Type::Int),
+            Str(..) => Some(Type::Str),
+            Fun(..) => None,
+            IStr(..) => None,
+        }
+    }
+
+    pub fn cast(self, ty: Type, span: Span) -> Failible<Self> {
+        if Some(ty) == self.ast_ty() {
+            return Ok(self);
+        }
+        Ok(match ty {
+            Type::Bool => Bool(self.to_bool()),
+            Type::Null => Null,
+            Type::Float => match self.cast_try_num(span, "this")? {
+                Float(f) => Float(f),
+                Int(i) => Float(i as f64),
+                _ => unreachable!(),
+            },
+            Type::Int => match self.cast_try_num(span, "this")? {
+                Float(f) => Int(f as i64),
+                Int(i) => Int(i),
+                _ => unreachable!(),
+            },
+            Type::Str => Str(self.to_str()),
+        })
     }
 
     pub fn disp(&self) -> Cow<'static, str> {
