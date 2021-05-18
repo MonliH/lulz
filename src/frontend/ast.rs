@@ -7,8 +7,9 @@ use std::{
 
 use crate::diagnostics::Span;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Ident(pub SmolStr, pub Span);
+#[derive(Derivative, Debug, Clone)]
+#[derivative(PartialEq)]
+pub struct Ident(pub SmolStr, #[derivative(PartialEq = "ignore")] pub Span);
 
 impl Hash for Ident {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -30,7 +31,7 @@ impl DerefMut for Ident {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Default)]
 pub struct Block(pub Vec<Statement>, pub Span);
 
 #[derive(Debug, PartialEq, Clone)]
@@ -65,18 +66,29 @@ pub enum StatementKind {
     Input(Ident),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Derivative, Debug, Clone)]
+#[derivative(PartialEq)]
 pub struct Expr {
     pub expr_kind: ExprKind,
+    #[derivative(PartialEq = "ignore")]
     pub span: Span,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Derivative, Debug, Clone, Eq)]
+#[derivative(PartialEq)]
+pub struct InterpEntry(
+    pub usize,
+    pub String,
+    #[derivative(PartialEq = "ignore")] pub Span,
+);
+
+#[derive(Derivative, Debug, Clone)]
+#[derivative(PartialEq)]
 pub enum ExprKind {
     Float(f64),
     Int(i64),
     String(String),
-    InterpStr(String, Vec<(usize, String, Span)>),
+    InterpStr(String, Vec<InterpEntry>),
     Bool(bool),
 
     Null,
@@ -91,6 +103,29 @@ pub enum ExprKind {
     All(Vec<Expr>),
     Any(Vec<Expr>),
     Not(Box<Expr>),
+}
+
+impl ExprKind {
+    /// Check if an expression has side effects, currently very conservative
+    pub fn side_effects(&self) -> bool {
+        match self {
+            Self::Float(..)
+            | Self::Int(..)
+            | Self::String(..)
+            | Self::InterpStr(..)
+            | Self::Bool(..)
+            | Self::Null
+            | Self::Variable(..) => false,
+            Self::FunctionCall(..) => true,
+            Self::Concat(es) | Self::All(es) | Self::Any(es) => {
+                es.iter().any(|e| e.expr_kind.side_effects())
+            }
+            Self::Cast(e, _) | Self::Not(e) => e.expr_kind.side_effects(),
+            Self::Operator(_, e1, e2) => {
+                e1.expr_kind.side_effects() || e2.expr_kind.side_effects()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,6 +144,11 @@ pub enum OpTy {
 
     Equal,
     NotEq,
+
+    GT,
+    LT,
+    GTE,
+    LTE,
 }
 
 #[repr(u8)]

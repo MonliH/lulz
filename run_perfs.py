@@ -4,6 +4,7 @@ from glob import iglob
 import subprocess
 import build_api
 import timeit
+import json
 
 if len(sys.argv) == 2:
     filename = f"./perfs/{sys.argv[1]}.lol"
@@ -21,7 +22,12 @@ if not file_list:
     exit(1)
 for file in file_list:
     print(f"timing {file}", end="... ")
+    with open(file, "r") as f:
+        header = "{" + f.readline().split("{")[1]
+    header = json.loads(header)
     sys.stdout.flush()
     t = timeit.Timer(lambda: subprocess.call(['./target/release/lulz', file], stdout=subprocess.DEVNULL))
-    r = t.repeat(3, 100)
-    print(f"done, min time: {min(r)}")
+    trials = int(header["trials"])
+    reps = int(header["reps"])
+    r = t.repeat(trials, reps)
+    print(f"done, best of {trials}, run {reps} times each: {min(r)/reps}")

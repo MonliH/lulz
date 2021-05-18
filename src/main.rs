@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate derivative;
 mod diagnostics;
 mod err;
 mod frontend;
@@ -76,7 +78,8 @@ fn main() {
 fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Failible<()> {
     let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
     let mut parser = parse::Parser::new(lexer);
-    let ast = parser.parse()?;
+    let mut ast = parser.parse()?;
+    ast.opt();
     let mut bytecode_compiler = middle::BytecodeCompiler::new();
     bytecode_compiler.compile_start(ast)?;
     let mut bytecode: lolbc::Chunk = bytecode_compiler.take_chunk();

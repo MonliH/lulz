@@ -48,6 +48,7 @@ pub enum OpCode {
     FnDef = 29,
 
     JmpFalse = 30,
+    JmpFalseIt = 40,
     Jmp = 31,
 
     WriteIt = 32,
@@ -61,11 +62,14 @@ pub enum OpCode {
     Cast = 37,
     CastMut = 38,
     CastMutLong = 39,
+
+    GT = 41,
+    LT = 42,
+    LTE = 43,
+    GTE = 44,
 }
 
 use OpCode::*;
-
-pub const NUM_CODES: u8 = CastMutLong as u8;
 
 impl OpCode {
     pub fn arity(self) -> usize {
@@ -75,10 +79,10 @@ impl OpCode {
             // 24-bit index
             CastMutLong | ReadLineLong | ReadStLong | WriteStLong | PopNLong | LoadConstLong => 3,
 
-            JmpFalse | Jmp => 4,
+            JmpFalseIt | JmpFalse | Jmp => 4,
 
-            InterpStr | Equals | ReadIt | WriteIt | Return | Prt | PrtL | Not | Xor | Or | And
-            | Add | Mul | Div | Sub | Mod | Min | Max | Concat => 0,
+            GT | LT | LTE | GTE | InterpStr | Equals | ReadIt | WriteIt | Return | Prt | PrtL
+            | Not | Xor | Or | And | Add | Mul | Div | Sub | Mod | Min | Max | Concat => 0,
         }
     }
 }
@@ -106,6 +110,11 @@ impl Display for OpCode {
                 And => "and",
                 Or => "or",
 
+                LTE => "lte",
+                GTE => "gte",
+                LT => "lt",
+                GT => "gt",
+
                 Equals => "eq",
 
                 Not => "not",
@@ -130,6 +139,7 @@ impl Display for OpCode {
                 Call => "call",
 
                 JmpFalse => "jmpf",
+                JmpFalseIt => "jpfi",
                 Jmp => "jmp",
 
                 ReadIt => "rit",
@@ -144,15 +154,9 @@ impl Display for OpCode {
     }
 }
 
-pub fn byte_to_opcode(instr: u8) -> Option<OpCode> {
-    if instr > NUM_CODES {
-        None
-    } else {
-        // SAFTEY: the opcode we are transmuting into is literally
-        // a u8, and is represented as a u8, so this is sound.
-        //
-        // We also do bounds checking above, so if it's an invalid
-        // u8 it's also sound.
-        Some(unsafe { transmute(instr) })
-    }
+#[inline(always)]
+pub unsafe fn byte_to_opcode(instr: u8) -> OpCode {
+    // SAFTEY: the opcode we are transmuting into is literally
+    // a u8, and is represented as a u8, so this is sound.
+    transmute(instr)
 }

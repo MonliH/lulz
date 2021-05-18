@@ -34,15 +34,18 @@ macro_rules! binary_bool {
 }
 
 macro_rules! binary_num {
-    ($stack: expr, $floatf: expr, $intf: expr, $span: expr, $name: expr) => {{
+    ($stack: expr, $floatf: expr, $intf: expr, $span: expr, $name: expr) => {
+        binary_num!($stack, $floatf, $intf, $span, $name, Float, Int)
+    };
+    ($stack: expr, $floatf: expr, $intf: expr, $span: expr, $name: expr, $floatout: ident, $intout: ident) => {{
         let snd = $stack.pop().cast_try_num($span, "second operand")?;
         let fst = $stack.pop().cast_try_num($span, "first operand")?;
 
         let new_val = match (fst, snd) {
-            (Float(f1), Float(f2)) => Float($floatf(f1, f2)),
-            (Int(i), Float(f)) => Float($floatf(i as f64, f)),
-            (Float(f), Int(i)) => Float($floatf(f, i as f64)),
-            (Int(i1), Int(i2)) => Int($intf(i1, i2)),
+            (Float(f1), Float(f2)) => $floatout($floatf(f1, f2)),
+            (Int(i), Float(f)) => $floatout($floatf(i as f64, f)),
+            (Float(f), Int(i)) => $floatout($floatf(f, i as f64)),
+            (Int(i1), Int(i2)) => $intout($intf(i1, i2)),
             (fst, snd) => {
                 return Err(Diagnostic::build(Level::Error, DiagnosticType::Type, $span)
                     .annotation(
@@ -129,7 +132,7 @@ impl LolVm {
             }
 
             let op_loc = self.frame().ip;
-            let op = byte_to_opcode(self.read_8b()).expect("Internal error: unknown opcode");
+            let op = unsafe { byte_to_opcode(self.read_8b()) };
             match op {
                 Return => {
                     let res = self.st.pop();
@@ -208,6 +211,46 @@ impl LolVm {
                     (|a, b| i64::max(a, b)),
                     self.c.pos.get(op_loc),
                     "get BIGGR of"
+                ),
+
+                GTE => binary_num!(
+                    self.st,
+                    (|a, b| a >= b),
+                    (|a, b| a >= b),
+                    self.c.pos.get(op_loc),
+                    "compare with SAEM + BIGGR to",
+                    Bool,
+                    Bool
+                ),
+
+                LTE => binary_num!(
+                    self.st,
+                    (|a, b| a <= b),
+                    (|a, b| a <= b),
+                    self.c.pos.get(op_loc),
+                    "compare with SAEM + SMALLR to",
+                    Bool,
+                    Bool
+                ),
+
+                LT => binary_num!(
+                    self.st,
+                    (|a, b| a < b),
+                    (|a, b| a < b),
+                    self.c.pos.get(op_loc),
+                    "compare with DIFFRINT + BIGGR to",
+                    Bool,
+                    Bool
+                ),
+
+                GT => binary_num!(
+                    self.st,
+                    (|a, b| a > b),
+                    (|a, b| a > b),
+                    self.c.pos.get(op_loc),
+                    "compare with DIFFRINT + BIGGR to",
+                    Bool,
+                    Bool
                 ),
 
                 Not => {
@@ -295,6 +338,14 @@ impl LolVm {
                 Jmp => {
                     let offset = self.read_32b();
                     self.frame_mut().ip += offset;
+                }
+
+                JmpFalseIt => {
+                    let cond = self.it.to_bool();
+                    let offset = self.read_32b();
+                    if !cond {
+                        self.frame_mut().ip += offset;
+                    }
                 }
 
                 JmpFalse => {

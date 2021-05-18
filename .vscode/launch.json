@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["tests/it/basic_expr.lol"],
+            "args": ["perfs/fib.lol"],
             "cwd": "${workspaceFolder}"
         },
         {

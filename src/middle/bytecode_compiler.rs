@@ -127,7 +127,10 @@ impl BytecodeCompiler {
             ExprKind::InterpStr(s, interps) => {
                 let new_interps = interps
                     .into_iter()
-                    .map(|(str_idx, var, sp): (usize, String, Span)| {
+                    .map(|interp| {
+                        let str_idx = interp.0;
+                        let var = interp.1;
+                        let sp = interp.2;
                         let interned = self.c.write_interned(&var);
                         let output: (usize, usize) = (str_idx, self.resolve_local(interned, sp)?);
                         Ok(output)
@@ -216,6 +219,11 @@ impl BytecodeCompiler {
                             self.write_instr(OpCode::Not, expr.span);
                             return Ok(());
                         }
+
+                        OpTy::GT => OpCode::GT,
+                        OpTy::LT => OpCode::LT,
+                        OpTy::GTE => OpCode::GTE,
+                        OpTy::LTE => OpCode::LTE,
                     },
                     expr.span,
                 );
@@ -343,8 +351,7 @@ impl BytecodeCompiler {
                     //
                     // 4:
                     // <g>
-                    self.write_instr(OpCode::ReadIt, stmt.span);
-                    let then_jmp = self.emit_jmp(OpCode::JmpFalse, stmt.span);
+                    let then_jmp = self.emit_jmp(OpCode::JmpFalseIt, stmt.span);
                     if let Some(true_block) = if_e {
                         self.begin_scope();
                         self.compile(true_block)?;

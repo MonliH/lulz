@@ -7,6 +7,8 @@ use std::str::Chars;
 
 use crate::diagnostics::prelude::*;
 
+use super::ast::InterpEntry;
+
 #[derive(Eq, Debug, PartialEq, Clone)]
 pub enum TokenKind {
     // Oh my goodness there are so many tokens
@@ -80,7 +82,7 @@ pub enum TokenKind {
     Number(SmolStr),
     String(String),
     /// An interpolated string
-    InterpStr(String, Vec<(usize, String, Span)>),
+    InterpStr(String, Vec<InterpEntry>),
     Ident(SmolStr),
 
     Eof,
@@ -372,7 +374,7 @@ impl<'a> Lexer<'a> {
                 if peeked == '{' {
                     let (esc, span) = self.get_str_esc('}')?;
                     if Self::validate_id(&esc) {
-                        interps.push((acc.len(), esc, span));
+                        interps.push(InterpEntry(acc.len(), esc, span));
                         continue;
                     } else {
                         return Err(Diagnostic::build(
