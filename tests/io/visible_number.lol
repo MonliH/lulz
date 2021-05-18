@@ -1,0 +1,4 @@
+BTW { "output": "1234\n" }
+HAI 1.3
+VISIBLE 1234
+KTHXBYE

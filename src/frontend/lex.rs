@@ -74,6 +74,11 @@ pub enum TokenKind {
     Smallr,
     Of,
 
+    Les,
+    Greter,
+    Eq,
+    Then,
+
     Both,
     Either,
     Won,
@@ -154,6 +159,11 @@ impl Display for TokenKind {
                 TokenKind::Mkay => "token `MKAY`",
                 TokenKind::Smoosh => "token `SMOOSH`",
                 TokenKind::Maek => "token `MAEK`",
+
+                TokenKind::Les => "token `LES`",
+                TokenKind::Greter => "token `GRETER`",
+                TokenKind::Eq => "token `EQ`",
+                TokenKind::Then => "token `THEN`",
 
                 TokenKind::Put => "token `PUT`",
                 TokenKind::Chain => "token `CHAIN`",
@@ -439,15 +449,14 @@ impl<'a> Lexer<'a> {
                         interps.push(InterpEntry(acc.len(), esc, span));
                         continue;
                     } else {
-                        return Err(Diagnostic::build(
-                            DiagnosticType::InvalidEscapeSequence,
-                            span,
-                        )
-                        .annotation(
-                            Cow::Owned(format!("`{}` is not a valid identifier", esc)),
-                            span,
-                        )
-                        .into());
+                        return Err(
+                            Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span)
+                                .annotation(
+                                    Cow::Owned(format!("`{}` is not a valid identifier", esc)),
+                                    span,
+                                )
+                                .into(),
+                        );
                     }
                 }
 
@@ -578,6 +587,11 @@ impl<'a> Lexer<'a> {
                 "MKAY" => TokenKind::Mkay,
                 "SMOOSH" => TokenKind::Smoosh,
 
+                "GRETER" => TokenKind::Greter,
+                "LES" => TokenKind::Les,
+                "EQ" => TokenKind::Eq,
+                "THEN" => TokenKind::Then,
+
                 "PUT" => TokenKind::Put,
                 "INTO" => TokenKind::Into,
                 "CHAIN" => TokenKind::Chain,
@@ -692,6 +706,10 @@ mod lexer_test {
             ("NO", TokenKind::No),
             ("A", TokenKind::A),
             ("R", TokenKind::R),
+            ("YA", TokenKind::Ya),
+            ("NO", TokenKind::No),
+            ("A", TokenKind::A),
+            ("R", TokenKind::R),
             ("MAEK", TokenKind::Maek),
             ("GIMMEH", TokenKind::Gimmeh),
             ("MKAY", TokenKind::Mkay),
@@ -724,6 +742,10 @@ mod lexer_test {
             ("SHUV", TokenKind::Shuv),
             ("FRUM", TokenKind::Frum),
             ("CHAIN", TokenKind::Chain),
+            ("THEN", TokenKind::Then),
+            ("EQ", TokenKind::Eq),
+            ("GRETER", TokenKind::Greter),
+            ("LES", TokenKind::Les),
         ]);
     }
 
