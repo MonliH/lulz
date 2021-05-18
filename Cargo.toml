@@ -16,3 +16,6 @@ typed-arena = "2.0"
 rustc-hash = "1.1.0"
 unicode_names2 = "0.4.0"
 derivative = "2.2.0"
+
+[profile.release]
+debug = true

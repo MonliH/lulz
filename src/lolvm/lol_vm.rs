@@ -19,7 +19,7 @@ use crate::{
 
 pub struct LolVm {
     st: Stack,
-    call_st: SmallVec<[CallFrame; 256]>,
+    call_st: SmallVec<[CallFrame; 1024]>,
     it: Value,
     c: Chunk,
 }
@@ -38,14 +38,37 @@ macro_rules! binary_num {
         binary_num!($stack, $floatf, $intf, $span, $name, Float, Int)
     };
     ($stack: expr, $floatf: expr, $intf: expr, $span: expr, $name: expr, $floatout: ident, $intout: ident) => {{
-        let snd = $stack.pop().cast_try_num($span, "second operand")?;
-        let fst = $stack.pop().cast_try_num($span, "first operand")?;
+        let snd_st = $stack.pop();
+        let snd = snd_st.clone().cast_try_num().ok_or_else(|| {
+            Diagnostics::from(
+                Diagnostic::build(Level::Error, DiagnosticType::Runtime, $span).annotation(
+                    Cow::Owned(format!(
+                        "could not convert second operand {} to a NUMBR or NUMBAR",
+                        snd_st.ty()
+                    )),
+                    $span,
+                ),
+            )
+        })?;
+
+        let fst_st = $stack.pop();
+        let fst = fst_st.clone().cast_try_num().ok_or_else(|| {
+            Diagnostics::from(
+                Diagnostic::build(Level::Error, DiagnosticType::Runtime, $span).annotation(
+                    Cow::Owned(format!(
+                        "could not convert second operand {} to a NUMBR or NUMBAR",
+                        snd_st.ty()
+                    )),
+                    $span,
+                ),
+            )
+        })?;
 
         let new_val = match (fst, snd) {
+            (Int(i1), Int(i2)) => $intout($intf(i1, i2)),
             (Float(f1), Float(f2)) => $floatout($floatf(f1, f2)),
             (Int(i), Float(f)) => $floatout($floatf(i as f64, f)),
             (Float(f), Int(i)) => $floatout($floatf(f, i as f64)),
-            (Int(i1), Int(i2)) => $intout($intf(i1, i2)),
             (fst, snd) => {
                 return Err(Diagnostic::build(Level::Error, DiagnosticType::Type, $span)
                     .annotation(
@@ -66,25 +89,25 @@ macro_rules! binary_num {
 }
 
 impl LolVm {
-    #[inline]
+    #[inline(always)]
     fn frame_mut(&mut self) -> &mut CallFrame {
         let len = self.call_st.len();
         &mut self.call_st[len - 1]
     }
 
-    #[inline]
+    #[inline(always)]
     fn frame(&self) -> &CallFrame {
         &self.call_st[self.call_st.len() - 1]
     }
 
-    #[inline]
+    #[inline(always)]
     fn read_8b(&mut self) -> u8 {
         let b = self.c.bytecode[self.frame().ip];
         self.frame_mut().ip += 1;
         b
     }
 
-    #[inline]
+    #[inline(always)]
     fn read_32b(&mut self) -> usize {
         let hi = self.read_8b();
         let mih = self.read_8b();
@@ -93,7 +116,7 @@ impl LolVm {
         u32::from_le_bytes([hi, mih, mil, lo]) as usize
     }
 
-    #[inline]
+    #[inline(always)]
     fn read_24b(&mut self) -> usize {
         let hi = self.read_8b();
         let mi = self.read_8b();
@@ -101,6 +124,7 @@ impl LolVm {
         usize_from_u8(hi, mi, lo)
     }
 
+    #[inline(always)]
     fn peek_st(&mut self, idx: usize) -> Value {
         self.st[self.st.len() - idx - 1].clone()
     }
@@ -403,15 +427,16 @@ impl LolVm {
         }
     }
 
-    fn call(&mut self, mem_pos: usize, args: usize) -> Failible<()> {
+    #[inline]
+    fn call(&mut self, mem_pos: usize, args: usize) {
         self.call_st.push(CallFrame {
             ret_ip: self.frame().ip,
             ip: mem_pos,
             st_offset: self.st.len() - 1 - args,
         });
-        Ok(())
     }
 
+    #[inline]
     fn call_value(&mut self, fun: Value, args: u8, call_instr: usize) -> Failible<()> {
         if let Fun(mem_pos) = fun {
             let func_args = self.c.bytecode[mem_pos + 1];
@@ -440,7 +465,7 @@ impl LolVm {
                 )
                 .into());
             }
-            self.call(mem_pos, args as usize)?;
+            self.call(mem_pos, args as usize);
             Ok(())
         } else {
             let span = self.c.pos.get(call_instr);
