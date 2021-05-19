@@ -5,7 +5,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::diagnostics::Span;
+use crate::{diagnostics::Span, middle::StrId};
 
 #[derive(Derivative, Debug, Clone)]
 #[derivative(PartialEq)]
@@ -14,6 +14,12 @@ pub struct Ident(pub SmolStr, #[derivative(PartialEq = "ignore")] pub Span);
 impl Hash for Ident {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state);
+    }
+}
+
+impl AsRef<str> for Ident {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
     }
 }
 
@@ -103,6 +109,8 @@ pub enum ExprKind {
     All(Vec<Expr>),
     Any(Vec<Expr>),
     Not(Box<Expr>),
+
+    Function(StrId, u8),
 }
 
 impl ExprKind {
@@ -115,6 +123,7 @@ impl ExprKind {
             | Self::InterpStr(..)
             | Self::Bool(..)
             | Self::Null
+            | Self::Function(..)
             | Self::Variable(..) => false,
             Self::FunctionCall(..) => true,
             Self::Concat(es) | Self::All(es) | Self::Any(es) => {

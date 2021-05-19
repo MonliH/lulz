@@ -1,4 +1,5 @@
-mod bytecode_compiler;
+mod interner;
+mod lower;
 mod optimize_ast;
-mod optimize_bc;
-pub use bytecode_compiler::BytecodeCompiler;
+pub use interner::{Interner, StrId};
+pub use lower::LowerCompiler;
