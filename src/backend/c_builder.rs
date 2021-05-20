@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::{diagnostics::Span, middle::StrId};
+use crate::{diagnostics::Span, frontend::ast::LolTy, middle::StrId};
 
 #[derive(Debug)]
 pub struct CBuilder {
@@ -8,27 +8,6 @@ pub struct CBuilder {
     pub fn_id: usize,
     pub debug: bool,
     pub main_fn: String,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum LolTy {
-    Troof,
-    Noob,
-    Numbar,
-    Numbr,
-    Func,
-}
-
-impl LolTy {
-    fn as_macro(&self) -> &'static str {
-        match self {
-            LolTy::Noob => "NULL",
-            LolTy::Troof => "BOOL",
-            LolTy::Numbar => "DOUBLE",
-            LolTy::Numbr => "INT",
-            LolTy::Func => "FUN",
-        }
-    }
 }
 
 impl CBuilder {
@@ -91,6 +70,11 @@ impl CBuilder {
         self.ws("}\n")
     }
 
+    pub fn cast(&mut self, ty: LolTy) {
+        self.ws("to_lol_");
+        self.ws(ty.as_cast());
+    }
+
     fn literal(&mut self, ty: LolTy, val: &str) {
         self.ws(ty.as_macro());
         self.ws("_VALUE");
@@ -109,7 +93,7 @@ impl CBuilder {
         self.literal(LolTy::Troof, if b { "1" } else { "0" })
     }
     pub fn null(&mut self) {
-        self.literal(LolTy::Noob, "0")
+        self.ws("NULL_VALUE");
     }
     pub fn function_ptr(&mut self, id: StrId) {
         self.literal(LolTy::Func, &format!("(LolFn)(lol_{}_fn)", id.get_id()))

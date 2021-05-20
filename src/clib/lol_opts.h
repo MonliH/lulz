@@ -1,7 +1,8 @@
 #ifndef LOL_OPTS_H_INCLUDED
 #define LOL_OPTS_H_INCLUDED
 #include "lol_runtime.h"
-#define OPT_FN(fn_name) LolValue lol_ ## fn_name(LolValue left, LolValue right, LolSpan sp);
+#define OPT_FN(fn_name)                                                        \
+  LolValue lol_##fn_name(LolValue left, LolValue right, LolSpan sp);
 
 OPT_FN(add)
 OPT_FN(sub)
@@ -23,5 +24,9 @@ OPT_FN(lt)
 OPT_FN(lte)
 OPT_FN(gt)
 OPT_FN(gte)
+
+LolValue to_lol_troof(LolValue value);
+LolValue to_lol_numbr(LolValue value);
+LolValue to_lol_numbar(LolValue value);
 
 #endif

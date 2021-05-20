@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["perfs/fib.lol"],
+            "args": ["tests/control/if_scoping.lol"],
             "cwd": "${workspaceFolder}"
         },
         {
