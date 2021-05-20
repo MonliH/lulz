@@ -96,7 +96,7 @@ impl CBuilder {
         self.ws("NULL_VALUE");
     }
     pub fn function_ptr(&mut self, id: StrId) {
-        self.literal(LolTy::Func, &format!("(LolFn)(lol_{}_fn)", id.get_id()))
+        self.literal(LolTy::Func, &format!("(LolFn)(lol_{}_fn_dyn)", id.get_id()))
     }
 
     pub fn ret(&mut self) {
@@ -134,6 +134,13 @@ impl CBuilder {
             self.name(*arg);
         }
         self.wc(')');
+    }
+
+    pub fn fn_dec_dyn(&mut self, name: StrId) {
+        self.ws(&format!(
+            include_str!("../clib/dec_dyn_function.clol"),
+            name.get_id()
+        ));
     }
 
     pub fn it(&mut self) {

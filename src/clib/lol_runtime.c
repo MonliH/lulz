@@ -5,7 +5,7 @@
 
 LolValue lol_it = NULL_VALUE;
 
-LolValue lol_call(unsigned short args, LolValue fn, LolValue *values,
+LolValue lol_call(uint8_t args, LolValue fn, LolValue *values,
                   LolSpan sp) {
   if (!IS_FUN(fn)) {
     exit(1);
