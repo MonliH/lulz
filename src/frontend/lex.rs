@@ -44,6 +44,7 @@ pub enum TokenKind {
     If,
     U,
     Say,
+    Noob,
     So,
     Found,
     Ya,
@@ -123,6 +124,7 @@ impl Display for TokenKind {
                 TokenKind::Has => "token `HAS`",
                 TokenKind::Itz => "token `ITZ`",
                 TokenKind::Win => "token `WIN`",
+                TokenKind::Noob => "token `NOOB`",
                 TokenKind::Fail => "token `FAIL`",
                 TokenKind::Iz => "token `IZ`",
                 TokenKind::Is => "token `IS`",
@@ -497,6 +499,7 @@ impl<'a> Lexer<'a> {
                 "OMGWTF" => TokenKind::Omgwtf,
                 "RLY" => TokenKind::Rly,
                 "MAEK" => TokenKind::Maek,
+                "NOOB" => TokenKind::Noob,
                 "O" => TokenKind::O,
                 "MEBBE" => TokenKind::Mebbe,
                 "WAI" => TokenKind::Wai,
@@ -650,6 +653,7 @@ mod lexer_test {
             ("ALL", TokenKind::All),
             ("ANY", TokenKind::Any),
             ("SAEM", TokenKind::Saem),
+            ("NOOB", TokenKind::Noob),
             ("DIFFRINT", TokenKind::Diffrint),
         ]);
     }

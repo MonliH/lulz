@@ -20,22 +20,13 @@ enum LolTy {
 }
 
 impl LolTy {
-    fn enum_str(&self) -> &'static str {
+    fn as_macro(&self) -> &'static str {
         match self {
-            LolTy::Noob => "NOOB",
-            LolTy::Troof => "TROOF",
-            LolTy::Numbar => "NUMBAR",
-            LolTy::Numbr => "NUMBR",
-            LolTy::Func => "FUNKSHON",
-        }
-    }
-    fn field_str(&self) -> &'static str {
-        match self {
-            LolTy::Noob => "numbr",
-            LolTy::Troof => "troof",
-            LolTy::Numbar => "numbar",
-            LolTy::Numbr => "numbr",
-            LolTy::Func => "funkshon",
+            LolTy::Noob => "NULL",
+            LolTy::Troof => "BOOL",
+            LolTy::Numbar => "DOUBLE",
+            LolTy::Numbr => "INT",
+            LolTy::Func => "FUN",
         }
     }
 }
@@ -100,28 +91,16 @@ impl CBuilder {
         self.ws("}\n")
     }
 
-    fn lol_value_ty_enum(&mut self, ty: LolTy) {
-        self.ws("LOL_");
-        self.ws(ty.enum_str());
-    }
-
     fn literal(&mut self, ty: LolTy, val: &str) {
+        self.ws(ty.as_macro());
+        self.ws("_VALUE");
         self.wc('(');
-        self.lol_value_cast();
-        self.wc('{');
-        self.lol_value_ty_enum(ty);
-        self.wc(',');
-        self.ws("{.");
-        self.ws(ty.field_str());
-        self.wc('=');
         self.ws(val);
-        self.wc('}');
-        self.wc('}');
         self.wc(')');
     }
 
     pub fn float(&mut self, float: f64) {
-        self.literal(LolTy::Numbar, &float.to_string())
+        self.literal(LolTy::Numbar, &format!("{:e}", float))
     }
     pub fn int(&mut self, int: i64) {
         self.literal(LolTy::Numbr, &int.to_string())
@@ -132,11 +111,8 @@ impl CBuilder {
     pub fn null(&mut self) {
         self.literal(LolTy::Noob, "0")
     }
-    pub fn function_ptr(&mut self, id: StrId, args: u8) {
-        self.literal(
-            LolTy::Func,
-            &format!("{{.fn=(LolFn)(lol_{}_fn), .args={}}}", id.get_id(), args),
-        )
+    pub fn function_ptr(&mut self, id: StrId) {
+        self.literal(LolTy::Func, &format!("(LolFn)(lol_{}_fn)", id.get_id()))
     }
 
     pub fn ret(&mut self) {
@@ -168,14 +144,21 @@ impl CBuilder {
         self.wspc();
     }
 
-    pub fn fn_dec(&mut self, name: StrId) {
+    pub fn fn_dec(&mut self, name: StrId, args: &[StrId]) {
         self.lol_value_ty();
         self.name(name);
         self.ws("_fn");
         self.wc('(');
-        self.ws("unsigned short args");
-        self.ws(", LolValue* ");
-        self.fn_values();
+        let mut args = args.iter();
+        if let Some(arg) = args.next() {
+            self.lol_value_ty();
+            self.name(*arg);
+        }
+        for arg in args {
+            self.ws(", ");
+            self.lol_value_ty();
+            self.name(*arg);
+        }
         self.wc(')');
     }
 
@@ -187,8 +170,26 @@ impl CBuilder {
         self.ws("lol_it");
     }
 
+    fn span_ty(&mut self) {
+        self.ws("LolSpan");
+    }
+
+    pub fn span(&mut self, sp: Span) {
+        self.wc('(');
+        self.span_ty();
+        self.wc(')');
+        self.wc('{');
+        self.ws(&sp.s.to_string());
+        self.wc(',');
+        self.ws(&sp.e.to_string());
+        self.wc('}');
+    }
+
     pub fn stdlib(&mut self) {
-        self.fns[0].push_str(r#"#include "src/clib/lol_runtime.h""#);
+        self.fns[0].push_str(
+            r#"#include "src/clib/lol_runtime.h"
+#include "src/clib/lol_opts.h""#,
+        );
         self.fn_id += 1;
         self.fns
             .push(format!(include_str!("../clib/main.clol"), self.main_fn));

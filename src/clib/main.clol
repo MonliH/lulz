@@ -1,4 +1,3 @@
 int main() {{
-    {}(0, NULL);
-    return 0;
+    {}();
 }}
