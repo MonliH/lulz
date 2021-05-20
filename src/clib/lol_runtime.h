@@ -38,12 +38,12 @@ typedef LolValue (*LolFn)(unsigned short args, LolValue *values);
 #define IS_TRUE(v) ((v).as_u64 == TRUE_BITS)
 #define IS_FALSE(v) ((v).as_u64 == FALSE_BITS)
 #define IS_INT(v) (((v).as_u64 & NAN_MASK) == INTEGER_MASK)
+#define IS_FUN(v) (((v).as_u64 & NAN_MASK) == FUN_MASK)
 
 #define AS_BOOL(v) ((bool)((v).as_u64 & 0x1))
 #define AS_INT(v) ((int32_t)((v).as_u64))
 
 #define FUN_MASK 0xfffc000000000000
-#define IS_FUN(v) (((v).as_u64 & NAN_MASK) == FUN_MASK)
 #define AS_FUN(v) ((LolFn)((v).as_u64 & 0xFFFFFFFFFFFF))
 
 #define INT_VALUE(i) ((LolValue){.as_u64 = ((uint64_t)(i) | INTEGER_MASK)})

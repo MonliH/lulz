@@ -17,6 +17,7 @@ OPT_FN(or)
 OPT_FN(and)
 
 OPT_FN(eq)
+OPT_FN(neq)
 
 OPT_FN(lt)
 OPT_FN(lte)

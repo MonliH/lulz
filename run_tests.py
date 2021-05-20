@@ -26,6 +26,15 @@ def run_file(filename, stdin) -> (str, int):
         stdin=PIPE,
         stderr=PIPE,
     )
+    out, err = p.communicate()
+    if p.returncode != 0:
+        return (out, p.returncode, err)
+    p = Popen(
+        ["./lol.out"],
+        stdout=PIPE,
+        stdin=PIPE,
+        stderr=PIPE,
+    )
     out, err = p.communicate(input=bytes(stdin, encoding="utf8"))
     return (out, p.returncode, err)
 

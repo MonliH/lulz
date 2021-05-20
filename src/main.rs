@@ -6,6 +6,7 @@ mod diagnostics;
 mod err;
 mod frontend;
 mod middle;
+mod opts;
 
 use clap::Clap;
 use codespan_reporting::files::SimpleFiles;
@@ -13,38 +14,15 @@ use codespan_reporting::{
     term,
     term::termcolor::{ColorChoice, StandardStream},
 };
-use std::fs::read_to_string;
+use std::fs::{read_to_string, write};
 use std::io::{self, Read};
 use std::{borrow::Cow, process::exit};
 
 use crate::diagnostics::Failible;
 use frontend::*;
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-
-#[derive(Clap, Debug)]
-#[clap(version = VERSION, author = "Jonathan Li")]
-struct Opts {
-    #[clap(
-        short = 'D',
-        long = "dump-c",
-        about = "Prints the generated C code into stdout"
-    )]
-    dump_c: bool,
-
-    #[clap(
-        short = 'd',
-        long = "emit-debug",
-        about = "Emit some debug info into the generated C code (extra commenents)"
-    )]
-    debug_c_gen: bool,
-
-    #[clap(about = "Input file to interpret. Use `-` to read from stdin")]
-    input: String,
-}
-
 fn main() {
-    let mut opts: Opts = Opts::parse();
+    let mut opts = opts::Opts::parse();
     let source: String = if &opts.input == "-" {
         let mut buffer = String::new();
         let stdin = io::stdin();
@@ -80,7 +58,7 @@ fn main() {
     };
 }
 
-fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Failible<()> {
+fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: opts::Opts) -> Failible<()> {
     let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
     let mut parser = parse::Parser::new(lexer);
     let mut ast = parser.parse()?;
@@ -91,5 +69,13 @@ fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Fai
     if opts.dump_c {
         println!("{}", c_code);
     }
+    if let Some(path) = opts.write_c {
+        err::report(
+            write(path, &c_code),
+            Cow::Borrowed("Failed to write c file"),
+        );
+    }
+    let compiler = backend::Compile::new(&opts.backend);
+    compiler.compile(c_code, opts.output, opts.opt);
     Ok(())
 }
