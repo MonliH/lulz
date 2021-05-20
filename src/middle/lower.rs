@@ -179,7 +179,7 @@ impl LowerCompiler {
                 }
                 self.c
                     .debug_symbol("funkshon call", self.interner.lookup(interned), span);
-                self.build_call(interned, args, expr.span)?;
+                self.build_call(interned, args)?;
             }
             ExprKind::Function(fid, args) => self.c.function_ptr(fid),
 
@@ -264,9 +264,9 @@ impl LowerCompiler {
         }
     }
 
-    fn validate_local(&mut self, id: StrId, span: Span) -> Failible<()> {
+    fn validate_local(&mut self, id: StrId, span: Span) -> Failible<ValueTy> {
         if id == self.it {
-            return Ok(());
+            return Ok(ValueTy::Value);
         }
         self.valid_locals.get(&id).map(|i| *i).ok_or_else(|| {
             Diagnostics::from(
@@ -278,8 +278,7 @@ impl LowerCompiler {
                     span,
                 ),
             )
-        })?;
-        Ok(())
+        })
     }
 
     fn resolve_local(&mut self, id: StrId, span: Span) -> Failible<()> {
@@ -287,7 +286,17 @@ impl LowerCompiler {
             self.c.it();
         } else {
             self.c.name(id);
-            self.validate_local(id, span)?;
+            if let ValueTy::Function(..) = self.validate_local(id, span)? {
+                return Err(Diagnostic::build(Level::Error, DiagnosticType::Type, span)
+                    .annotation(
+                        Cow::Owned(format!(
+                            "the symbol `{}` is a FUNKSHON, not a value",
+                            self.interner.lookup(id)
+                        )),
+                        span,
+                    )
+                    .into());
+            }
         }
 
         Ok(())
@@ -308,15 +317,25 @@ impl LowerCompiler {
         Ok(())
     }
 
-    fn compile_assign(&mut self, id: StrId, expr: Expr) -> Failible<()> {
-        self.c.name(id);
+    fn compile_assign(&mut self, id: StrId, expr: Expr, span: Span) -> Failible<()> {
+        self.resolve_local(id, span)?;
         self.c.ws(" = ");
         self.compile_expr(expr)?;
         self.c.semi();
         Ok(())
     }
 
-    fn build_call(&mut self, id: StrId, args: Vec<Expr>, span: Span) -> Failible<()> {
+    fn compile_dec(&mut self, id: StrId, expr: Expr) -> Failible<()> {
+        self.c.name(id);
+        self.c.ws(" = ");
+        self.compile_expr(expr)?;
+        self.c.semi();
+        self.valid_locals.insert(id, ValueTy::Value);
+        self.locals.push((id, self.depth));
+        Ok(())
+    }
+
+    fn build_call(&mut self, id: StrId, args: Vec<Expr>) -> Failible<()> {
         self.c.name(id);
         self.c.ws("_fn(");
         let mut args = args.into_iter();
@@ -367,20 +386,19 @@ impl LowerCompiler {
                     self.c.debug_symbol("declare", id.0.as_str(), stmt.span);
                     self.c.lol_value_ty();
                     let ident = self.intern(id);
-                    self.compile_assign(
+                    self.compile_dec(
                         ident,
                         e.unwrap_or(Expr {
                             span: stmt.span,
                             expr_kind: ExprKind::Null,
                         }),
                     )?;
-                    self.valid_locals.insert(ident, ValueTy::Value);
-                    self.locals.push((ident, self.depth));
                 }
                 StatementKind::Assignment(id, e) => {
                     self.c.debug_symbol("assign", id.0.as_str(), stmt.span);
+                    let span = id.1;
                     let ident = self.intern(id);
-                    self.compile_assign(ident, e)?;
+                    self.compile_assign(ident, e, span)?;
                 }
                 StatementKind::Input(id) => {}
                 StatementKind::Print(e, no_newline) => {
@@ -400,7 +418,25 @@ impl LowerCompiler {
                     let args = args.into_iter().map(|arg| self.intern(arg)).collect();
                     self.compile_func(fn_name, args, block, true, stmt.span)?
                 }
-                StatementKind::MutCast(id, ty) => {}
+                StatementKind::MutCast(id, ty) => {
+                    self.c.debug_symbol("mut cast", id.0.as_str(), stmt.span);
+                    let span = id.1;
+                    let ident = self.intern(id.clone());
+                    self.compile_assign(
+                        ident,
+                        Expr {
+                            span: stmt.span,
+                            expr_kind: ExprKind::Cast(
+                                Box::new(Expr {
+                                    span: stmt.span,
+                                    expr_kind: ExprKind::Variable(id),
+                                }),
+                                ty,
+                            ),
+                        },
+                        span,
+                    )?;
+                }
                 _ => {}
             }
         }

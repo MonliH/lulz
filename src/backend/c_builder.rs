@@ -109,18 +109,8 @@ impl CBuilder {
         self.ws(&name.get_id().to_string());
     }
 
-    fn lol_value_cast(&mut self) {
-        self.wc('(');
-        self.lol_value();
-        self.wc(')');
-    }
-
     fn lol_value(&mut self) {
         self.ws("LolValue")
-    }
-
-    pub fn args_check(&mut self, args: u8) {
-        self.ws(&format!(include_str!("../clib/check_args.clol"), args));
     }
 
     pub fn lol_value_ty(&mut self) {
@@ -144,10 +134,6 @@ impl CBuilder {
             self.name(*arg);
         }
         self.wc(')');
-    }
-
-    pub fn fn_values(&mut self) {
-        self.ws("values");
     }
 
     pub fn it(&mut self) {
