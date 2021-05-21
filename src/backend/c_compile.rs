@@ -21,7 +21,7 @@ impl Backend {
         }
     }
 
-    fn command(&self, opt: &str, output: &str) -> io::Result<Child> {
+    fn command(&self, opt: &str, output: &str, args: Option<&str>) -> io::Result<Child> {
         Command::new(self.compiler_cmd())
             .arg(&format!("-O{}", opt))
             .args(&[
@@ -31,6 +31,7 @@ impl Backend {
                 "-",
                 "src/clib/lol_runtime.c",
                 "src/clib/lol_opts.c",
+                args.unwrap_or(""),
             ])
             .stdin(Stdio::piped())
             .stdout(Stdio::inherit())
@@ -58,9 +59,9 @@ impl Compile {
         Self(Backend::from_str(backend).expect("Invalid backend"))
     }
 
-    pub fn compile(&self, source: String, output: String, opt: String) {
+    pub fn compile(&self, source: String, output: String, opt: String, args: Option<String>) {
         let mut child = err::report(
-            self.0.command(&opt, &output),
+            self.0.command(&opt, &output, args.as_deref()),
             Cow::Owned(format!(
                 "failed to spawn compiler `{}`",
                 self.0.compiler_cmd()

@@ -98,6 +98,9 @@ impl CBuilder {
     pub fn function_ptr(&mut self, id: StrId) {
         self.literal(LolTy::Func, &format!("(LolFn)(lol_{}_fn_dyn)", id.get_id()))
     }
+    pub fn string_lit(&mut self, s: &str) {
+        self.literal(LolTy::Yarn, &format!("(char*)\"{}\"", s))
+    }
 
     pub fn ret(&mut self) {
         self.ws("return");

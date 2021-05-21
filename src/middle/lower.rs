@@ -193,7 +193,7 @@ impl LowerCompiler {
             ExprKind::Bool(b) => self.c.bool(b),
             ExprKind::Null => self.c.null(),
 
-            ExprKind::String(s) => {}
+            ExprKind::String(s) => self.c.string_lit(&s),
 
             ExprKind::Not(e) => {}
 

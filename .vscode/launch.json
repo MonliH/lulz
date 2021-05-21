@@ -35,7 +35,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["tests/control/if_scoping.lol"],
+            "args": ["basic.lol"],
             "cwd": "${workspaceFolder}"
         },
         {

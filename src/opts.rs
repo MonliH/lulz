@@ -49,4 +49,12 @@ pub struct Opts {
 
     #[clap(about = "Input file to compile. Use `-` to read from stdin")]
     pub input: String,
+
+    #[clap(
+        short = 'A',
+        long = "backend-args",
+        about = "Foward these arguments to the backend. You should surround in qoutes if there are spaces",
+        allow_hyphen_values = true
+    )]
+    pub backend_args: Option<String>,
 }

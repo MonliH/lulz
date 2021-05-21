@@ -76,6 +76,6 @@ fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: opts::Opts) 
         );
     }
     let compiler = backend::Compile::new(&opts.backend);
-    compiler.compile(c_code, opts.output, opts.opt);
+    compiler.compile(c_code, opts.output, opts.opt, opts.backend_args);
     Ok(())
 }
