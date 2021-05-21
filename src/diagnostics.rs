@@ -1,7 +1,5 @@
 pub mod prelude {
-    pub use super::{
-        plural, Annotation, Diagnostic, DiagnosticType, Diagnostics, Failible, Level, Span,
-    };
+    pub use super::{Annotation, Diagnostic, DiagnosticType, Diagnostics, Failible, Level, Span};
     pub use std::borrow::Cow;
 }
 
@@ -74,14 +72,6 @@ impl From<Diagnostic> for Diagnostics {
 impl From<SmallVec<[Diagnostic; 1]>> for Diagnostics {
     fn from(diagnostics: SmallVec<[Diagnostic; 1]>) -> Self {
         Self(diagnostics)
-    }
-}
-
-pub fn plural<'a>(num: usize, word: &'a str) -> Cow<'a, str> {
-    if num == 1 {
-        Cow::Borrowed(word)
-    } else {
-        Cow::Owned(format!("{}s", word))
     }
 }
 

@@ -1,11 +1,10 @@
 use smol_str::SmolStr;
 use std::{
     hash::{Hash, Hasher},
-    intrinsics::transmute,
     ops::{Deref, DerefMut},
 };
 
-use crate::{diagnostics::Span, middle::StrId};
+use crate::diagnostics::Span;
 
 #[derive(Derivative, Debug, Clone)]
 #[derivative(PartialEq)]

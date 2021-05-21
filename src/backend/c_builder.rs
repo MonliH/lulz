@@ -98,8 +98,13 @@ impl CBuilder {
     pub fn function_ptr(&mut self, id: StrId) {
         self.literal(LolTy::Func, &format!("(LolFn)(lol_{}_fn_dyn)", id.get_id()))
     }
-    pub fn string_lit(&mut self, s: &str) {
-        self.literal(LolTy::Yarn, &format!("(char*)\"{}\"", s))
+    pub fn string_lit(&mut self, s: &str, len: usize) {
+        self.ws("OBJ_VALUE(");
+        self.ws("lol_allocate_lit_str((char*)\"");
+        self.ws(s);
+        self.ws("\", ");
+        self.ws(&(len + 1).to_string());
+        self.ws("))");
     }
 
     pub fn ret(&mut self) {

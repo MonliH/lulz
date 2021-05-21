@@ -20,16 +20,6 @@ pub struct Interner {
 }
 
 impl Interner {
-    pub fn with_capacity(cap: usize) -> Interner {
-        let cap = cap.next_power_of_two();
-        Interner {
-            map: FxHashMap::default(),
-            vec: Vec::new(),
-            buf: String::with_capacity(cap),
-            full: Vec::new(),
-        }
-    }
-
     pub fn intern(&mut self, name: &str) -> StrId {
         if let Some(&id) = self.map.get(name) {
             return id;
