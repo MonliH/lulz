@@ -1,32 +1,23 @@
 use crate::err;
 use std::{
     borrow::Cow,
-    io::{self, Write},
-    process::{exit, Child, Command, Stdio},
-    str::FromStr,
+    io::Write,
+    process::{exit, Command, Stdio},
 };
 
-pub enum Backend {
-    Clang,
-    Gcc,
-    Tcc,
-}
+pub struct Compile(String);
 
-impl Backend {
-    fn compiler_cmd(&self) -> &'static str {
-        match self {
-            Self::Clang => "clang",
-            Self::Gcc => "gcc",
-            Self::Tcc => "tcc",
-        }
+impl Compile {
+    pub fn new(backend: String) -> Self {
+        Self(backend)
     }
 
-    fn command(&self, opt: &str, output: &str, args: Option<&str>) -> io::Result<Child> {
-        let mut proc = Command::new(self.compiler_cmd());
+    pub fn compile(&self, source: String, output: String, opt: String, args: Option<String>) {
+        let mut proc = Command::new(&self.0);
         proc.arg(&format!("-O{}", opt)).args(&[
             "-xc",
             "-o",
-            output,
+            &output,
             "-",
             "src/clib/lol_runtime.c",
             "src/clib/lol_opts.c",
@@ -34,37 +25,9 @@ impl Backend {
         if let Some(arg) = args {
             proc.arg(arg);
         }
-        proc.stdin(Stdio::piped()).stdout(Stdio::inherit()).spawn()
-    }
-}
-
-impl FromStr for Backend {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match &s.to_lowercase()[..] {
-            "clang" => Ok(Self::Clang),
-            "gcc" => Ok(Self::Gcc),
-            "tcc" => Ok(Self::Tcc),
-            _ => Err("invalid backend"),
-        }
-    }
-}
-
-pub struct Compile(Backend);
-
-impl Compile {
-    pub fn new(backend: &str) -> Self {
-        Self(Backend::from_str(backend).expect("Invalid backend"))
-    }
-
-    pub fn compile(&self, source: String, output: String, opt: String, args: Option<String>) {
         let mut child = err::report(
-            self.0.command(&opt, &output, args.as_deref()),
-            Cow::Owned(format!(
-                "failed to spawn compiler `{}`",
-                self.0.compiler_cmd()
-            )),
+            proc.stdin(Stdio::piped()).stdout(Stdio::inherit()).spawn(),
+            Cow::Owned(format!("failed to spawn compiler `{}`", &self.0)),
         );
         let child_stdin = err::report(
             child

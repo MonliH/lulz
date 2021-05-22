@@ -100,7 +100,7 @@ impl CBuilder {
     }
     pub fn string_lit(&mut self, s: &str, len: usize) {
         self.ws("OBJ_VALUE(");
-        self.ws("lol_allocate_lit_str((char*)\"");
+        self.ws("lol_alloc_lit_str((char*)\"");
         self.ws(s);
         self.ws("\", ");
         self.ws(&(len + 1).to_string());

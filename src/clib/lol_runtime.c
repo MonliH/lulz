@@ -1,5 +1,6 @@
 #include "lol_runtime.h"
 #include <inttypes.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -16,32 +17,56 @@ LolValue lol_call(uint8_t args, LolValue fn, LolValue *values, LolSpan sp) {
   return func(args, values);
 }
 
-char *lol_to_str(LolValue value) {
+StringObj lol_to_str(LolValue value) {
   if (IS_INT(value)) {
     int i = AS_INT(value);
-    int length = snprintf(NULL, 0, "%" PRId32 "", i);
-    char *str = malloc(length + 1);
+    size_t length = snprintf(NULL, 0, "%" PRId32 "", i);
+    char *str = ALLOCATE(char, length + 1);
     snprintf(str, length + 1, "%" PRId32 "", i);
-    return str;
+    return MAKE_STR_OBJ(str, length, false);
   } else if (IS_DOUBLE(value)) {
     double dbl = AS_DOUBLE(value);
-    int length = snprintf(NULL, 0, "%g", dbl);
-    char *str = malloc(length + 1);
+    size_t length = snprintf(NULL, 0, "%g", dbl);
+    char *str = ALLOCATE(char, length + 1);
     snprintf(str, length + 1, "%g", dbl);
-    return str;
+    return MAKE_STR_OBJ(str, length, false);
   } else if (IS_BOOL(value)) {
-    return AS_BOOL(value) ? "WIN" : "FAIL";
+    return AS_BOOL(value) ? MAKE_STR_OBJ("WIN", 3, true)
+                          : MAKE_STR_OBJ("FAIL", 4, true);
   } else if (IS_NULL(value)) {
-    return "NOOB";
+    return MAKE_STR_OBJ("NOOB", 4, true);
   } else if (IS_FUN(value)) {
     uint64_t fn_id = (uint64_t)AS_FUN(value);
     char format_str[] = "<FUNKSHON at 0x%08lx>";
-    int length = snprintf(NULL, 0, format_str, fn_id);
-    char *str = malloc(length + 1);
+    size_t length = snprintf(NULL, 0, format_str, fn_id);
+    char *str = ALLOCATE(char, length + 1);
     snprintf(str, length + 1, format_str, fn_id);
-    return str;
+    return MAKE_STR_OBJ(str, length, false);
   } else if (IS_STR(value)) {
-    return AS_CSTR(value);
+    return *AS_STR(value);
+  }
+}
+
+size_t lol_str_len(LolValue value) {
+  if (IS_INT(value)) {
+    int i = AS_INT(value);
+    size_t length = snprintf(NULL, 0, "%" PRId32 "", i);
+    return length;
+  } else if (IS_DOUBLE(value)) {
+    double dbl = AS_DOUBLE(value);
+    size_t length = snprintf(NULL, 0, "%g", dbl);
+    return length;
+  } else if (IS_BOOL(value)) {
+    return AS_BOOL(value) ? 3 : 4;
+  } else if (IS_NULL(value)) {
+    return 4;
+  } else if (IS_FUN(value)) {
+    uint64_t fn_id = (uint64_t)AS_FUN(value);
+    char format_str[] = "<FUNKSHON at 0x%08lx>";
+    size_t length = snprintf(NULL, 0, format_str, fn_id);
+    return length;
+  } else if (IS_STR(value)) {
+    return AS_STR(value)->len;
   }
 }
 
@@ -89,29 +114,30 @@ void lol_println(LolValue value) {
   printf("\n");
 }
 
-Obj *lol_allocate_obj(size_t size, ObjType type) {
-  Obj *object = (Obj *)lol_reallocate(NULL, 0, size);
+Obj *lol_alloc_obj(size_t size, ObjType type, bool constant) {
+  Obj *object = (Obj *)lol_realloc(NULL, 0, size);
   object->ty = type;
+  object->constant = constant;
   return object;
 }
 
-StringObj *lol_allocate_lit_str(char *chars, int length) {
-  StringObj *string = ALLOCATE_OBJ(StringObj, OBJ_STRING);
+StringObj *lol_alloc_lit_str(char *chars, int length) {
+  StringObj *string = ALLOCATE_OBJ(StringObj, OBJ_STRING, true);
   string->len = length;
-  char *mchars = malloc(length);
+  char *mchars = ALLOCATE(char, length);
   strncpy(mchars, chars, length);
   string->chars = mchars;
   return string;
 }
 
-StringObj *lol_allocate_str(char *chars, int length) {
-  StringObj *string = ALLOCATE_OBJ(StringObj, OBJ_STRING);
+StringObj *lol_alloc_str(char *chars, int length) {
+  StringObj *string = ALLOCATE_OBJ(StringObj, OBJ_STRING, false);
   string->len = length;
   string->chars = chars;
   return string;
 }
 
-void *lol_reallocate(void *pointer, size_t oldSize, size_t newSize) {
+void *lol_realloc(void *pointer, size_t oldSize, size_t newSize) {
   if (newSize == 0) {
     free(pointer);
     return NULL;
@@ -121,4 +147,36 @@ void *lol_reallocate(void *pointer, size_t oldSize, size_t newSize) {
   if (result == NULL)
     exit(1);
   return result;
+}
+
+StringObj *lol_alloc_stack_str(StringObj obj) {
+  StringObj *o = (StringObj *)lol_alloc_obj(sizeof(StringObj), obj.obj.ty,
+                                            obj.obj.constant);
+  *o = obj;
+  return o;
+}
+
+StringObj lol_concat_str(size_t length, ...) {
+  size_t str_lens = 1;
+  va_list args;
+  va_start(args, length);
+  for (size_t i = 0; i < length; i++) {
+    LolValue v = va_arg(args, LolValue);
+    str_lens += lol_str_len(v);
+  }
+  va_end(args);
+  char *final_str = lol_realloc(NULL, 0, str_lens + 1);
+  char *end = final_str;
+
+  va_start(args, length);
+  for (size_t i = 0; i < length; i++) {
+    LolValue v = va_arg(args, LolValue);
+    StringObj s = lol_to_str(v);
+    end = stpncpy(end, s.chars, s.len);
+  }
+  va_end(args);
+
+  final_str[str_lens] = '\0';
+
+  return MAKE_STR_OBJ(final_str, str_lens, false);
 }

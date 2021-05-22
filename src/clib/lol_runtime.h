@@ -71,11 +71,13 @@ typedef LolValue (*LolFn)(uint8_t args, LolValue *values);
 #define AS_STR(value) ((StringObj *)AS_OBJ(value))
 #define AS_CSTR(value) (((StringObj *)AS_OBJ(value))->chars)
 
-#define ALLOCATE(type, count)                                                  \
-  (type *)lol_reallocate(NULL, 0, sizeof(type) * (count))
+#define ALLOCATE(ty, count) (ty *)(lol_realloc(NULL, 0, sizeof(ty) * (count)))
 
-#define ALLOCATE_OBJ(type, objectType) \
-    (type*)lol_allocate_obj(sizeof(type), objectType)
+#define ALLOCATE_OBJ(ty, objectType, constant)                                 \
+  (ty *)(lol_alloc_obj(sizeof(ty), objectType, constant))
+
+#define MAKE_STR_OBJ(str, len, constant)                                       \
+  (StringObj) { OBJ_STRING, constant, (len), (str) }
 
 typedef enum {
   OBJ_STRING,
@@ -83,11 +85,12 @@ typedef enum {
 
 typedef struct {
   ObjType ty;
+  bool constant;
 } Obj;
 
 typedef struct {
   Obj obj;
-  int len;
+  size_t len;
   char *chars;
 } StringObj;
 
@@ -104,11 +107,13 @@ void lol_print(LolValue value);
 void lol_println(LolValue value);
 bool lol_to_bool(LolValue value);
 bool lol_is_obj_ty(LolValue, ObjType);
-char *lol_to_str(LolValue value);
 
-void* lol_reallocate(void* pointer, size_t oldSize, size_t newSize);
+void *lol_realloc(void *pointer, size_t oldSize, size_t newSize);
 
-StringObj *lol_allocate_lit_str(char *chars, int length);
-Obj *lol_allocate_obj(size_t size, ObjType type);
-StringObj *lol_allocate_str(char *chars, int length);
+StringObj lol_to_str(LolValue value);
+StringObj *lol_alloc_lit_str(char *chars, int length);
+Obj *lol_alloc_obj(size_t size, ObjType type, bool constant);
+StringObj *lol_alloc_str(char *chars, int length);
+StringObj lol_concat_str(size_t len, ...);
+StringObj *lol_alloc_stack_str(StringObj obj);
 #endif
