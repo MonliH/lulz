@@ -116,4 +116,6 @@ Obj *lol_alloc_obj(size_t size, ObjType type, bool constant);
 StringObj *lol_alloc_str(char *chars, int length);
 StringObj lol_concat_str(size_t len, ...);
 StringObj *lol_alloc_stack_str(StringObj obj);
+
+void lol_readline(LolValue *val);
 #endif
