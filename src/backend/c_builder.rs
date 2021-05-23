@@ -173,7 +173,7 @@ impl CBuilder {
     pub fn stdlib(&mut self) {
         self.fns[0].push_str(
             r#"#include "src/clib/lol_runtime.h"
-#include "src/clib/lol_opts.h""#,
+#include "src/clib/lol_ops.h""#,
         );
         self.fn_id += 1;
         self.fns

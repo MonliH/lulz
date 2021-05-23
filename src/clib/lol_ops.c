@@ -1,7 +1,7 @@
 #include "lol_runtime.h"
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
 
 LolValue to_numeric(LolValue val) {
   if (IS_INT(val) || IS_DOUBLE(val))
@@ -17,7 +17,7 @@ LolValue to_numeric(LolValue val) {
       char *e;
       errno = 0;
       double value = strtod(str, &e);
-      if (*e != '\0' || errno != 0) { 
+      if (*e != '\0' || errno != 0) {
         exit(1);
       }
       return DOUBLE_VALUE(value);
@@ -25,7 +25,7 @@ LolValue to_numeric(LolValue val) {
       char *e;
       errno = 0;
       int32_t value = strtol(str, &e, 10);
-      if (*e != '\0' || errno != 0) { 
+      if (*e != '\0' || errno != 0) {
         exit(1);
       }
       return INT_VALUE(value);
@@ -88,6 +88,10 @@ BOOL_NUM_OP(lte, <=)
       return BOOL_VALUE(AS_INT(l) op AS_INT(r));                               \
     else if (IS_DOUBLE(l) && IS_DOUBLE(r))                                     \
       return BOOL_VALUE(AS_DOUBLE(l) op AS_DOUBLE(r));                         \
+    else if (IS_DOUBLE(l) && IS_INT(r))                                        \
+      return BOOL_VALUE(AS_DOUBLE(l) op(double) AS_INT(r));                    \
+    else if (IS_INT(l) && IS_DOUBLE(r))                                        \
+      return BOOL_VALUE((double)AS_INT(l) op AS_DOUBLE(r));                    \
     else if (IS_BOOL(l) && IS_BOOL(r))                                         \
       return BOOL_VALUE(AS_BOOL(l) op AS_BOOL(r));                             \
     else if (IS_FUN(l) && IS_FUN(r))                                           \
@@ -119,6 +123,11 @@ LolValue to_lol_numbr(LolValue value) {
     num = INT_VALUE((int64_t)(AS_DOUBLE(num)));
   }
   return num;
+}
+
+LolValue to_lol_yarn(LolValue value) {
+  StringObj *yarn = lol_alloc_stack_str(lol_to_str(value));
+  return OBJ_VALUE(yarn);
 }
 
 #define CMP_OP(name, cmp)                                                      \

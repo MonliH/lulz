@@ -20,7 +20,7 @@ impl Compile {
             &output,
             "-",
             "src/clib/lol_runtime.c",
-            "src/clib/lol_opts.c",
+            "src/clib/lol_ops.c",
         ]);
         if let Some(arg) = args {
             proc.arg(arg);
