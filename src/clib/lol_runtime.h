@@ -27,6 +27,8 @@ typedef LolValue (*LolFn)(uint8_t args, LolValue *values);
 #define BOOLEAN_MASK 0x7ffe000000000002
 // AKA, 0 1111 1111 1111 100000000000000000000000000000000000000000000000000
 #define INTEGER_MASK 0x7ffc000000000000
+// AKA, 0 1111 1111 1111 100000000000000000011111111111111111111111111111111
+#define INTEGER_OVERFLOW 0x7ffc0000ffffffff
 
 #define TRUE_BITS (BOOLEAN_MASK | 3)
 #define FALSE_BITS (BOOLEAN_MASK | 2)
@@ -59,7 +61,8 @@ typedef LolValue (*LolFn)(uint8_t args, LolValue *values);
 #define AS_OBJ(v) ((Obj *)((v).as_u64 & 0xFFFFFFFFFFFF))
 #define IS_OBJ(v) (((v).as_u64 & NAN_MASK) == OBJ_MASK)
 
-#define INT_VALUE(i) ((LolValue){.as_u64 = ((uint64_t)(i) | INTEGER_MASK)})
+#define INT_VALUE(i)                                                           \
+  ((LolValue){.as_u64 = (((int32_t)(i) | INTEGER_MASK) & INTEGER_OVERFLOW)})
 #define FUN_VALUE(f) ((LolValue){.as_u64 = ((uint64_t)(f) | FUN_MASK)})
 #define OBJ_VALUE(o) ((LolValue){.as_u64 = ((uint64_t)(o) | OBJ_MASK)})
 #define DOUBLE_VALUE(d) ((LolValue){.as_f64 = (d)})

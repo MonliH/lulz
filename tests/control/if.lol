@@ -6,7 +6,7 @@ VAR, O RLY?
         VISIBLE "HELLO"
 OIC
 
-I HAS A VAR ITZ 0
+VAR R 0
 VAR, O RLY?
     YA RLY
         VISIBLE "HELLO2"
