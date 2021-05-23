@@ -17,36 +17,6 @@ LolValue lol_call(uint8_t args, LolValue fn, LolValue *values, LolSpan sp) {
   return func(args, values);
 }
 
-StringObj lol_to_str(LolValue value) {
-  if (IS_INT(value)) {
-    int32_t i = AS_INT(value);
-    size_t length = snprintf(NULL, 0, "%" PRId32 "", i);
-    char *str = ALLOCATE(char, length + 1);
-    snprintf(str, length + 1, "%" PRId32 "", i);
-    return MAKE_STR_OBJ(str, length, false);
-  } else if (IS_DOUBLE(value)) {
-    double dbl = AS_DOUBLE(value);
-    size_t length = snprintf(NULL, 0, "%g", dbl);
-    char *str = ALLOCATE(char, length + 1);
-    snprintf(str, length + 1, "%g", dbl);
-    return MAKE_STR_OBJ(str, length, false);
-  } else if (IS_BOOL(value)) {
-    return AS_BOOL(value) ? MAKE_STR_OBJ("WIN", 3, true)
-                          : MAKE_STR_OBJ("FAIL", 4, true);
-  } else if (IS_NULL(value)) {
-    return MAKE_STR_OBJ("NOOB", 4, true);
-  } else if (IS_FUN(value)) {
-    uint64_t fn_id = (uint64_t)AS_FUN(value);
-    char format_str[] = "<FUNKSHON at 0x%08lx>";
-    size_t length = snprintf(NULL, 0, format_str, fn_id);
-    char *str = ALLOCATE(char, length + 1);
-    snprintf(str, length + 1, format_str, fn_id);
-    return MAKE_STR_OBJ(str, length, false);
-  } else if (IS_STR(value)) {
-    return *AS_STR(value);
-  }
-}
-
 size_t lol_str_len(LolValue value) {
   if (IS_INT(value)) {
     int32_t i = AS_INT(value);
@@ -67,6 +37,30 @@ size_t lol_str_len(LolValue value) {
     return length;
   } else if (IS_STR(value)) {
     return AS_STR(value)->len;
+  }
+}
+
+StringObj lol_to_str(LolValue value) {
+  size_t length = lol_str_len(value);
+  if (IS_INT(value)) {
+    char *str = ALLOCATE(char, length + 1);
+    snprintf(str, length + 1, "%" PRId32 "", AS_INT(value));
+    return MAKE_STR_OBJ(str, length, false);
+  } else if (IS_DOUBLE(value)) {
+    char *str = ALLOCATE(char, length + 1);
+    snprintf(str, length + 1, "%g", AS_DOUBLE(value));
+    return MAKE_STR_OBJ(str, length, false);
+  } else if (IS_BOOL(value)) {
+    return AS_BOOL(value) ? MAKE_STR_OBJ("WIN", 3, true)
+                          : MAKE_STR_OBJ("FAIL", 4, true);
+  } else if (IS_NULL(value)) {
+    return MAKE_STR_OBJ("NOOB", 4, true);
+  } else if (IS_FUN(value)) {
+    char *str = ALLOCATE(char, length + 1);
+    snprintf(str, length + 1,  "<FUNKSHON at 0x%08lx>", (uint64_t)AS_FUN(value));
+    return MAKE_STR_OBJ(str, length, false);
+  } else if (IS_STR(value)) {
+    return *AS_STR(value);
   }
 }
 

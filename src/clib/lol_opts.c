@@ -1,6 +1,7 @@
 #include "lol_runtime.h"
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 LolValue to_numeric(LolValue val) {
   if (IS_INT(val) || IS_DOUBLE(val))
@@ -9,6 +10,27 @@ LolValue to_numeric(LolValue val) {
     return INT_VALUE(val.as_u64);
   else if (IS_NULL(val))
     return INT_VALUE(0);
+  else if (IS_STR(val)) {
+    char *str = AS_CSTR(val);
+    bool has_decimal = strchr(str, '.') != NULL;
+    if (has_decimal) {
+      char *e;
+      errno = 0;
+      double value = strtod(str, &e);
+      if (*e != '\0' || errno != 0) { 
+        exit(1);
+      }
+      return DOUBLE_VALUE(value);
+    } else {
+      char *e;
+      errno = 0;
+      int32_t value = strtol(str, &e, 10);
+      if (*e != '\0' || errno != 0) { 
+        exit(1);
+      }
+      return INT_VALUE(value);
+    }
+  }
   exit(1);
 }
 
@@ -119,4 +141,3 @@ LolValue to_lol_numbr(LolValue value) {
 
 CMP_OP(min, (cl < cr))
 CMP_OP(max, (cl > cr))
-
