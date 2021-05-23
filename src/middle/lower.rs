@@ -25,17 +25,14 @@ enum ValueTy {
 }
 
 #[derive(Debug)]
-struct Local {
-    depth: usize,
-    name: StrId,
-}
-
-#[derive(Debug)]
 pub struct LowerCompiler {
     c: CBuilder,
+
     // map from interned string to it's stack position
-    valid_locals: FxHashMap<StrId, ValueTy>,
+    valid_locals: FxHashMap<StrId, (ValueTy, usize)>,
     locals: SmallVec<[(StrId, usize); 16]>,
+    overwritten: SmallVec<[Vec<(StrId, (ValueTy, usize))>; 8]>,
+
     depth: usize,
     interner: Interner,
     it: StrId,
@@ -48,8 +45,11 @@ impl LowerCompiler {
     pub fn new(debug: bool) -> Self {
         let mut new = Self {
             c: CBuilder::new(debug),
+
             valid_locals: FxHashMap::default(),
             locals: SmallVec::new(),
+            overwritten: SmallVec::new(),
+
             depth: 0,
             interner: Interner::default(),
             it: StrId::default(),
@@ -64,6 +64,7 @@ impl LowerCompiler {
     fn begin_scope(&mut self) {
         self.c.begin_scope();
         self.depth += 1;
+        self.overwritten.push(Vec::new());
     }
 
     fn end_scope(&mut self) {
@@ -74,6 +75,17 @@ impl LowerCompiler {
             self.locals.pop();
         }
         self.c.end_scope();
+        let additionals = self.overwritten.pop().unwrap();
+        self.valid_locals.extend(additionals);
+    }
+
+    fn insert_local(&mut self, name: StrId, value: ValueTy) {
+        if let Some(val) = self.valid_locals.get(&name) {
+            let len = self.overwritten.len() - 1;
+            self.overwritten[len].push((name, *val));
+        }
+        self.valid_locals.insert(name, (value, self.depth));
+        self.locals.push((name, self.depth));
     }
 
     fn compile_func(
@@ -114,12 +126,10 @@ impl LowerCompiler {
         let old_locals = mem::take(&mut self.valid_locals);
         let function_val = ValueTy::Function(args_len as u8);
         if rec {
-            self.valid_locals.insert(name, function_val);
-            self.locals.push((name, self.depth));
+            self.insert_local(name, function_val)
         }
         for argument in args.into_iter() {
-            self.valid_locals.insert(argument, ValueTy::Value);
-            self.locals.push((argument, self.depth));
+            self.insert_local(argument, ValueTy::Value);
         }
         self.compile(block)?;
 
@@ -130,8 +140,7 @@ impl LowerCompiler {
         self.end_scope();
         self.valid_locals = old_locals;
         if rec {
-            self.valid_locals.insert(name, function_val);
-            self.locals.push((name, self.depth));
+            self.insert_local(name, function_val)
         }
         mem::swap(&mut old_len, &mut self.c.fn_id);
         Ok(())
@@ -260,7 +269,7 @@ impl LowerCompiler {
         if id == self.it {
             return Ok(ValueTy::Value);
         }
-        self.valid_locals.get(&id).map(|i| *i).ok_or_else(|| {
+        self.valid_locals.get(&id).map(|i| (*i).0).ok_or_else(|| {
             Diagnostics::from(
                 Diagnostic::build(Level::Error, DiagnosticType::Scope, span).annotation(
                     Cow::Owned(format!(
@@ -357,8 +366,7 @@ impl LowerCompiler {
         self.c.ws(" = ");
         self.compile_expr(expr)?;
         self.c.semi();
-        self.valid_locals.insert(id, ValueTy::Value);
-        self.locals.push((id, self.depth));
+        self.insert_local(id, ValueTy::Value);
         Ok(())
     }
 
@@ -448,6 +456,23 @@ impl LowerCompiler {
                     self.c.debug_symbol("declare", id.0.as_str(), stmt.span);
                     self.c.lol_value_ty();
                     let ident = self.intern(id);
+                    if let Some((_, depth)) = self.valid_locals.get(&ident) {
+                        if *depth == self.depth {
+                            return Err(Diagnostic::build(
+                                Level::Error,
+                                DiagnosticType::Scope,
+                                stmt.span,
+                            )
+                            .annotation(
+                                Cow::Owned(format!(
+                                    "variable `{}` already declared in this scope",
+                                    self.interner.lookup(ident)
+                                )),
+                                stmt.span,
+                            )
+                            .into());
+                        }
+                    }
                     self.compile_dec(
                         ident,
                         e.unwrap_or(Expr {

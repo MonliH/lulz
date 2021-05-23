@@ -1,0 +1,9 @@
+BTW { "output": "123\n" }
+HAI 1.2
+I HAS A TEST ITZ 123
+WIN, O RLY?
+    YA RLY
+        I HAS A TEST ITZ 456
+OIC
+VISIBLE TEST
+KTHXBYE
