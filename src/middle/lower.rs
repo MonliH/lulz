@@ -432,12 +432,21 @@ impl LowerCompiler {
                 StatementKind::If(then, elif_es, else_block) => {
                     self.c.ws("if (lol_to_bool(");
                     self.c.it();
-                    self.c.ws("))");
+                    self.c.ws(")) ");
                     self.begin_scope();
                     if let Some(th) = then {
                         self.compile(th)?;
                     }
                     self.end_scope();
+
+                    for elif in elif_es {
+                        self.c.ws("else if (lol_to_bool(");
+                        self.compile_expr(elif.0)?;
+                        self.c.ws(")) ");
+                        self.begin_scope();
+                        self.compile(elif.1)?;
+                        self.end_scope();
+                    }
 
                     self.c.ws("else");
                     self.begin_scope();
