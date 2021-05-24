@@ -1,4 +1,4 @@
-name: Test
+name: Benchmarks
 
 on:
   push:
@@ -19,10 +19,8 @@ jobs:
     - name: Install compilers
       run: sudo apt-get install tcc gcc clang cmake
     - name: Build
-      run: cmake . && make && sudo make install
-    - name: Run tests
-      run: cargo test
-    - name: Run test suite (gcc)
-      run: python3 tests/run_tests.py gcc
-    - name: Run test suite (clang)
-      run: python3 tests/run_tests.py clang
+      run: cmake . && make && make install
+    - name: Run benchmarks (gcc)
+      run: python3 benches/run_benches.py all gcc
+    - name: Run benchmarks (clang)
+      run: python3 benches/run_benches.py all clang

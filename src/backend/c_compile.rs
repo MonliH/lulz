@@ -14,14 +14,8 @@ impl Compile {
 
     pub fn compile(&self, source: String, output: String, opt: String, args: Option<String>) {
         let mut proc = Command::new(&self.0);
-        proc.arg(&format!("-O{}", opt)).args(&[
-            "-xc",
-            "-o",
-            &output,
-            "-",
-            "src/clib/lol_runtime.c",
-            "src/clib/lol_ops.c",
-        ]);
+        proc.arg(&format!("-O{}", opt))
+            .args(&["-xc", "-o", &output, "-", "-llulzrt"]);
         if let Some(arg) = args {
             proc.arg(arg);
         }

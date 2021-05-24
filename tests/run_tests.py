@@ -1,4 +1,5 @@
 import os
+from os import path
 import sys
 import textwrap
 import json
@@ -6,7 +7,6 @@ import subprocess
 import difflib
 from subprocess import Popen, PIPE, STDOUT
 from glob import iglob
-import build_api
 
 if len(sys.argv) == 2:
     compiler = sys.argv[1]
@@ -28,7 +28,12 @@ def colored(s: str, c: str) -> str:
 
 def run_file(filename, stdin) -> (str, int):
     p = Popen(
-        ["./target/release/lulz", filename, "-b", compiler],
+        [
+            "lulz",
+            filename,
+            "-b",
+            compiler,
+        ],
         stdout=PIPE,
         stdin=PIPE,
         stderr=PIPE,
@@ -46,7 +51,7 @@ def run_file(filename, stdin) -> (str, int):
     return (out, p.returncode, err)
 
 
-rootdir_glob = "tests/**/*.lol"
+rootdir_glob = path.join(path.dirname(__file__), "**/*.lol")
 file_list = (f for f in iglob(rootdir_glob, recursive=True) if os.path.isfile(f))
 failed = 0
 passed = 0
