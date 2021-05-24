@@ -36,7 +36,7 @@ where
         let kind = stmt.statement_kind;
         let statement_kind = match kind {
             Assignment(id, e) => Assignment(id, self.rew(e)),
-            DecAssign(id, e) => DecAssign(id, e.map(|ex| self.rew(ex))),
+            DecAssign(id, e) => DecAssign(id, e.map(|ex| ex.map(|expr| self.rew(expr)))),
             FunctionDef(id, args, bl) => FunctionDef(id, args, self.apply(bl)),
             Expr(e) => Expr(self.rew(e)),
             Case(conds, def) => Case(

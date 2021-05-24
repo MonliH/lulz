@@ -385,7 +385,11 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::A)?;
         let ident = self.ident()?;
         let expr = if self.check(&TokenKind::Itz)? {
-            Some(self.expr()?)
+            if self.check(&TokenKind::A)? {
+                Some(Err(self.ty()?))
+            } else {
+                Some(Ok(self.expr()?))
+            }
         } else {
             None
         };
@@ -450,13 +454,15 @@ impl<'a> Parser<'a> {
     }
 
     fn ty(&mut self) -> Failible<LolTy> {
+        if self.check(&TokenKind::Noob)? {
+            return Ok(LolTy::Noob);
+        }
         let id = self.ident()?;
         Ok(match id.0.as_str() {
             "TROOF" => LolTy::Troof,
             "YARN" => LolTy::Yarn,
             "NUMBR" => LolTy::Numbr,
             "NUMBAR" => LolTy::Numbar,
-            "NOOB" => LolTy::Noob,
             s => {
                 return Err(
                     Diagnostic::build(Level::Error, DiagnosticType::UnknownSymbol, id.1)

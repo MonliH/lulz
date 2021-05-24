@@ -48,7 +48,7 @@ pub struct Statement {
 #[derive(Debug, PartialEq, Clone)]
 pub enum StatementKind {
     Assignment(Ident, Expr),
-    DecAssign(Ident, Option<Expr>),
+    DecAssign(Ident, Option<Result<Expr, LolTy>>),
     Import(Ident),
     FunctionDef(Ident, Vec<Ident>, Block),
     Expr(Expr),
@@ -185,6 +185,16 @@ impl LolTy {
             LolTy::Yarn => "STR",
             LolTy::Numbr => "INT",
             LolTy::Func => "FUN",
+        }
+    }
+
+    pub fn default_expr_kind(&self) -> ExprKind {
+        match self {
+            LolTy::Troof => ExprKind::Bool(false),
+            LolTy::Numbar => ExprKind::Float(0.0),
+            LolTy::Numbr => ExprKind::Int(0),
+            LolTy::Yarn => ExprKind::String("".to_string()),
+            LolTy::Func | LolTy::Noob => ExprKind::Null,
         }
     }
 }
