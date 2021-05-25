@@ -68,7 +68,7 @@ where
                 block: self.apply(block),
             },
             Return(e) => Return(self.rew(e)),
-            Print(e, ln) => Print(self.rew(e), ln),
+            Print(es, ln) => Print(es.into_iter().map(|e| self.rew(e)).collect(), ln),
             Input(..) | Import(..) | MutCast(..) | Break => kind,
         };
         Statement {

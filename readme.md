@@ -6,6 +6,12 @@
 <br>
 <br>
 
+## design
+
+* Compiles to assembly, using C as a compiler backend
+
+<br>
+
 ## installation 📦
 
 Currently, building form source is the only way to install the compiler.
@@ -26,6 +32,8 @@ make
 make install  # may need sudo
 ```
 
+<br>
+
 ### usage
 
 ```bash
@@ -38,6 +46,8 @@ For more options,
 ```bash
 lulz --help
 ```
+
+<br>
 
 ### changing the install directory
 
