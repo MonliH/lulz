@@ -1,8 +1,12 @@
-# lulz
+<div align=center>
+    <h1>lulz <kbd>🐱</kbd></h1>
+    a <b><a href="http://www.lolcode.org/">LOLCODE</a> compiler</b> written in rust.
+</div>
 
-`lulz` is a **[LOLCODE](http://www.lolcode.org/) compiler** written in rust.
+<br>
+<br>
 
-## installation
+## installation 📦
 
 Currently, building form source is the only way to install the compiler.
 
