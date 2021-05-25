@@ -1,5 +1,5 @@
 pub mod prelude {
-    pub use super::{Annotation, Diagnostic, DiagnosticType, Diagnostics, Failible, Level, Span};
+    pub use super::{Annotation, Diagnostic, DiagnosticType, Diagnostics, Failible, Span};
     pub use std::borrow::Cow;
 }
 
@@ -35,29 +35,6 @@ pub type Failible<T> = Result<T, Diagnostics>;
 pub struct Diagnostics(SmallVec<[Diagnostic; 1]>);
 
 impl Diagnostics {
-    pub fn extend(&mut self, other: &mut Self) {
-        self.0.append(&mut other.0);
-    }
-
-    pub fn push(&mut self, other: Diagnostic) {
-        self.0.push(other);
-    }
-
-    pub fn map<F>(&mut self, f: F)
-    where
-        F: Fn(Diagnostic) -> Diagnostic,
-    {
-        let mut new_arr = SmallVec::with_capacity(self.0.len());
-        for ann in std::mem::take(&mut self.0).into_iter() {
-            new_arr.push(f(ann));
-        }
-        self.0 = new_arr;
-    }
-
-    pub fn inner(&self) -> &SmallVec<[Diagnostic; 1]> {
-        &self.0
-    }
-
     pub fn into_inner(self) -> SmallVec<[Diagnostic; 1]> {
         self.0
     }
@@ -83,12 +60,9 @@ pub enum DiagnosticType {
     Syntax = 3,
     UnmatchedBlockName = 4,
     UnknownSymbol = 5,
-    Cast = 6,
-    Type = 7,
-    FunctionArgumentMismatch = 8,
-    Runtime = 9,
-    Scope = 10,
-    FunctionArgumentMany = 11,
+    Runtime = 6,
+    Scope = 7,
+    FunctionArgumentMany = 8,
 }
 
 impl DiagnosticType {
@@ -99,10 +73,7 @@ impl DiagnosticType {
             DiagnosticType::Syntax => "syntax error",
             DiagnosticType::UnmatchedBlockName => "block names specified do not match",
             DiagnosticType::UnknownSymbol => "unknown symbol",
-            DiagnosticType::Cast => "casting error, invalid cast",
-            DiagnosticType::Type => "type error",
             DiagnosticType::Runtime => "runtime error",
-            DiagnosticType::FunctionArgumentMismatch => "funkshion argument mismatch",
             DiagnosticType::FunctionArgumentMany => "too many funkshion arguments",
             DiagnosticType::Scope => "scope error",
         }
@@ -115,20 +86,11 @@ impl DiagnosticType {
             DiagnosticType::Syntax => "syntax",
             DiagnosticType::UnmatchedBlockName => "unmatched_block_name",
             DiagnosticType::UnknownSymbol => "unknown_symbol",
-            DiagnosticType::Cast => "casting",
-            DiagnosticType::Type => "type",
             DiagnosticType::Runtime => "runtime",
-            DiagnosticType::FunctionArgumentMismatch => "funk_arg_mismatch",
             DiagnosticType::FunctionArgumentMany => "funk_arg_many",
             DiagnosticType::Scope => "scope",
         }
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Level {
-    Error,
-    Warning,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -142,7 +104,6 @@ pub struct Annotation {
 pub struct Diagnostic {
     pub span: Span,
     pub ty: DiagnosticType,
-    pub level: Level,
     pub annotations: SmallVec<[Annotation; 1]>,
 }
 
@@ -157,12 +118,11 @@ impl Annotation {
 }
 
 impl Diagnostic {
-    pub fn build(level: Level, ty: DiagnosticType, span: Span) -> Self {
+    pub fn build(ty: DiagnosticType, span: Span) -> Self {
         Self {
             annotations: SmallVec::new(),
             ty,
             span,
-            level,
         }
     }
 
@@ -177,10 +137,7 @@ impl Diagnostic {
     }
 
     pub fn into_codespan(self) -> diagnostic::Diagnostic<usize> {
-        let initial = match self.level {
-            Level::Error => diagnostic::Diagnostic::error(),
-            Level::Warning => diagnostic::Diagnostic::warning(),
-        };
+        let initial = diagnostic::Diagnostic::error();
         initial
             .with_message(self.ty.description())
             .with_code(&format!("E{:0>3}: {}", self.ty as usize, self.ty.name()))

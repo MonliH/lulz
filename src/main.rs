@@ -1,27 +1,35 @@
-#[macro_use]
-extern crate derivative;
 mod backend;
+mod color;
 mod diagnostics;
 mod err;
 mod frontend;
 mod middle;
 mod opts;
 
-use clap::Clap;
 use codespan_reporting::files::SimpleFiles;
 use codespan_reporting::{
     term,
     term::termcolor::{ColorChoice, StandardStream},
 };
-use std::fs::{read_to_string, write};
-use std::io::{self, Read};
-use std::{borrow::Cow, mem, process::exit};
+use std::{
+    borrow::Cow,
+    fs::{read_to_string, write},
+    io::{self, Read},
+    mem,
+    process::exit,
+};
 
 use crate::diagnostics::Failible;
 use frontend::*;
 
 fn main() {
-    let mut opts = opts::Opts::parse();
+    let mut opts = err::report(
+        opts::parse().map_err(|e| {
+            eprint!("{}", opts::HELP);
+            e
+        }),
+        Cow::Borrowed("Failed to parse arguments"),
+    );
     let source: String = if &opts.input == "-" {
         let mut buffer = String::new();
         let stdin = io::stdin();

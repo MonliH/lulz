@@ -6,9 +6,18 @@ use std::{
 
 use crate::diagnostics::Span;
 
-#[derive(Derivative, Debug, Clone)]
-#[derivative(PartialEq)]
-pub struct Ident(pub SmolStr, #[derivative(PartialEq = "ignore")] pub Span);
+#[derive(Debug, Clone)]
+pub struct Ident(pub SmolStr, pub Span);
+
+impl std::cmp::PartialEq for Ident {
+    fn eq(&self, other: &Self) -> bool {
+        true && match *self {
+            Ident(ref __self_0, _) => match *other {
+                Ident(ref __other_0, _) => true && &(*__self_0) == &(*__other_0),
+            },
+        }
+    }
+}
 
 impl Hash for Ident {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -71,24 +80,44 @@ pub enum StatementKind {
     Input(Ident),
 }
 
-#[derive(Derivative, Debug, Clone)]
-#[derivative(PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Expr {
     pub expr_kind: ExprKind,
-    #[derivative(PartialEq = "ignore")]
     pub span: Span,
 }
 
-#[derive(Derivative, Debug, Clone, Eq)]
-#[derivative(PartialEq)]
-pub struct InterpEntry(
-    pub usize,
-    pub String,
-    #[derivative(PartialEq = "ignore")] pub Span,
-);
+impl std::cmp::PartialEq for Expr {
+    fn eq(&self, other: &Self) -> bool {
+        true && match *self {
+            Expr {
+                expr_kind: ref __self_0,
+                span: _,
+            } => match *other {
+                Expr {
+                    expr_kind: ref __other_0,
+                    span: _,
+                } => true && &(*__self_0) == &(*__other_0),
+            },
+        }
+    }
+}
 
-#[derive(Derivative, Debug, Clone)]
-#[derivative(PartialEq)]
+#[derive(Debug, Clone, Eq)]
+pub struct InterpEntry(pub usize, pub String, pub Span);
+
+impl std::cmp::PartialEq for InterpEntry {
+    fn eq(&self, other: &Self) -> bool {
+        true && match *self {
+            InterpEntry(ref __self_0, ref __self_1, _) => match *other {
+                InterpEntry(ref __other_0, ref __other_1, _) => {
+                    true && &(*__self_0) == &(*__other_0) && &(*__self_1) == &(*__other_1)
+                }
+            },
+        }
+    }
+}
+
+#[derive(PartialEq, Debug, Clone)]
 pub enum ExprKind {
     Float(f64),
     Int(i64),

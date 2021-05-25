@@ -97,16 +97,14 @@ impl LowerCompiler {
         span: Span,
     ) -> Failible<()> {
         if args.len() > 255 {
-            return Err(Diagnostic::build(
-                Level::Error,
-                DiagnosticType::FunctionArgumentMany,
-                span,
-            )
-            .annotation(
-                Cow::Borrowed("a funkshon's parameters are limited to 255 in length"),
-                span,
-            )
-            .into());
+            return Err(
+                Diagnostic::build(DiagnosticType::FunctionArgumentMany, span)
+                    .annotation(
+                        Cow::Borrowed("a funkshon's parameters are limited to 255 in length"),
+                        span,
+                    )
+                    .into(),
+            );
         }
         let args_len = args.len();
 
@@ -178,19 +176,15 @@ impl LowerCompiler {
                     println!("{:?}", &interp);
                     let interned = self.intern(interp.1);
                     if let None = self.valid_locals.get(&interned) {
-                        return Err(Diagnostic::build(
-                            Level::Error,
-                            DiagnosticType::UnknownSymbol,
-                            interp.2,
-                        )
-                        .annotation(
-                            Cow::Owned(format!(
-                                "unknown symbol `{}`",
-                                self.interner.lookup(interned)
-                            )),
-                            interp.2,
-                        )
-                        .into());
+                        return Err(Diagnostic::build(DiagnosticType::UnknownSymbol, interp.2)
+                            .annotation(
+                                Cow::Owned(format!(
+                                    "unknown symbol `{}`",
+                                    self.interner.lookup(interned)
+                                )),
+                                interp.2,
+                            )
+                            .into());
                     }
                     let (fragment, new_str) = running_str.split_at(interp.0 - idx);
                     running_str = new_str;
@@ -212,16 +206,16 @@ impl LowerCompiler {
                 let arg_len = args.len();
                 if arg_len > 255 {
                     let span = expr.span;
-                    return Err(Diagnostic::build(
-                        Level::Error,
-                        DiagnosticType::FunctionArgumentMany,
-                        span,
-                    )
-                    .annotation(
-                        Cow::Borrowed("a FUNKSHON can only be called with up to 255 arguments"),
-                        span,
-                    )
-                    .into());
+                    return Err(
+                        Diagnostic::build(DiagnosticType::FunctionArgumentMany, span)
+                            .annotation(
+                                Cow::Borrowed(
+                                    "a FUNKSHON can only be called with up to 255 arguments",
+                                ),
+                                span,
+                            )
+                            .into(),
+                    );
                 }
                 let span = id.1;
                 let interned = self.intern(id);
@@ -230,19 +224,17 @@ impl LowerCompiler {
                 if let ValueTy::Function(arity) = self.validate_local(interned, span)? {
                     if (arg_len as u8) != arity {
                         let span = expr.span;
-                        return Err(Diagnostic::build(
-                            Level::Error,
-                            DiagnosticType::FunctionArgumentMany,
-                            span,
-                        )
-                        .annotation(
-                            Cow::Owned(format!(
+                        return Err(
+                            Diagnostic::build(DiagnosticType::FunctionArgumentMany, span)
+                                .annotation(
+                                    Cow::Owned(format!(
                                 "this FUNKSHON should take {} arugument(s), but it recived {}",
                                 arity, arg_len,
                             )),
-                            span,
-                        )
-                        .into());
+                                    span,
+                                )
+                                .into(),
+                        );
                     }
                     self.build_call(interned, args)?;
                 } else {
@@ -323,15 +315,13 @@ impl LowerCompiler {
             return Ok(ValueTy::Value);
         }
         self.valid_locals.get(&id).map(|i| (*i).0).ok_or_else(|| {
-            Diagnostics::from(
-                Diagnostic::build(Level::Error, DiagnosticType::Scope, span).annotation(
-                    Cow::Owned(format!(
-                        "cannot resolve the variable `{}`",
-                        self.interner.lookup(id)
-                    )),
-                    span,
-                ),
-            )
+            Diagnostics::from(Diagnostic::build(DiagnosticType::Scope, span).annotation(
+                Cow::Owned(format!(
+                    "cannot resolve the variable `{}`",
+                    self.interner.lookup(id)
+                )),
+                span,
+            ))
         })
     }
 
@@ -527,19 +517,15 @@ impl LowerCompiler {
                     let ident = self.intern(id);
                     if let Some((_, depth)) = self.valid_locals.get(&ident) {
                         if *depth == self.depth {
-                            return Err(Diagnostic::build(
-                                Level::Error,
-                                DiagnosticType::Scope,
-                                stmt.span,
-                            )
-                            .annotation(
-                                Cow::Owned(format!(
-                                    "variable `{}` already declared in this scope",
-                                    self.interner.lookup(ident)
-                                )),
-                                stmt.span,
-                            )
-                            .into());
+                            return Err(Diagnostic::build(DiagnosticType::Scope, stmt.span)
+                                .annotation(
+                                    Cow::Owned(format!(
+                                        "variable `{}` already declared in this scope",
+                                        self.interner.lookup(ident)
+                                    )),
+                                    stmt.span,
+                                )
+                                .into());
                         }
                     }
                     let span = stmt.span;

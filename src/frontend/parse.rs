@@ -54,14 +54,12 @@ impl<'a> Parser<'a> {
         if std::mem::discriminant(&token) == std::mem::discriminant(&next.token_kind) {
             Ok(next)
         } else {
-            Err(
-                Diagnostic::build(Level::Error, DiagnosticType::Syntax, next.span)
-                    .annotation(
-                        Cow::Owned(format!("expected {}, but found {}", token, next.token_kind)),
-                        next.span,
-                    )
-                    .into(),
-            )
+            Err(Diagnostic::build(DiagnosticType::Syntax, next.span)
+                .annotation(
+                    Cow::Owned(format!("expected {}, but found {}", token, next.token_kind)),
+                    next.span,
+                )
+                .into())
         }
     }
 
@@ -199,23 +197,21 @@ impl<'a> Parser<'a> {
         let block_name2 = self.ident()?;
 
         if block_name2.0 != block_name.0 {
-            return Err(Diagnostic::build(
-                Level::Error,
-                DiagnosticType::UnmatchedBlockName,
-                block_name2.1,
-            )
-            .annotation(
-                Cow::Owned(format!("the block is called `{}` here", &block_name.0)),
-                block_name.1,
-            )
-            .annotation(
-                Cow::Owned(format!(
-                    "but the block is closed with `{}` here",
-                    &block_name2.0
-                )),
-                block_name2.1,
-            )
-            .into());
+            return Err(
+                Diagnostic::build(DiagnosticType::UnmatchedBlockName, block_name2.1)
+                    .annotation(
+                        Cow::Owned(format!("the block is called `{}` here", &block_name.0)),
+                        block_name.1,
+                    )
+                    .annotation(
+                        Cow::Owned(format!(
+                            "but the block is closed with `{}` here",
+                            &block_name2.0
+                        )),
+                        block_name2.1,
+                    )
+                    .into(),
+            );
         }
 
         Ok(Statement {
@@ -464,11 +460,9 @@ impl<'a> Parser<'a> {
             "NUMBR" => LolTy::Numbr,
             "NUMBAR" => LolTy::Numbar,
             s => {
-                return Err(
-                    Diagnostic::build(Level::Error, DiagnosticType::UnknownSymbol, id.1)
-                        .annotation(Cow::Owned(format!("`{}` is not a TYPE", s)), id.1)
-                        .into(),
-                )
+                return Err(Diagnostic::build(DiagnosticType::UnknownSymbol, id.1)
+                    .annotation(Cow::Owned(format!("`{}` is not a TYPE", s)), id.1)
+                    .into())
             }
         })
     }
@@ -611,7 +605,6 @@ impl<'a> Parser<'a> {
                             ),
                             _ => {
                                 return Err(Diagnostic::build(
-                                    Level::Error,
                                     DiagnosticType::Syntax,
                                     to_match.span,
                                 )
@@ -627,17 +620,15 @@ impl<'a> Parser<'a> {
                 }
             }
             _ => {
-                return Err(
-                    Diagnostic::build(Level::Error, DiagnosticType::Syntax, to_match.span)
-                        .annotation(
-                            Cow::Owned(format!(
-                                "expected an expression, found {}",
-                                to_match.token_kind
-                            )),
-                            to_match.span,
-                        )
-                        .into(),
-                )
+                return Err(Diagnostic::build(DiagnosticType::Syntax, to_match.span)
+                    .annotation(
+                        Cow::Owned(format!(
+                            "expected an expression, found {}",
+                            to_match.token_kind
+                        )),
+                        to_match.span,
+                    )
+                    .into())
             }
         };
 
@@ -662,8 +653,11 @@ mod parse_test {
                 match ast {
                     Ok(val) => panic!("Expected Err value, found {:?}", val),
                     Err(e) => {
-                        assert_eq!(e.inner()[0].annotations.len(), $no_of_annotations);
-                        assert_eq!(e.inner()[0].ty, $err_ty);
+                        assert_eq!(
+                            e.clone().into_inner()[0].annotations.len(),
+                            $no_of_annotations
+                        );
+                        assert_eq!(e.into_inner()[0].ty, $err_ty);
                     }
                 }
             }
