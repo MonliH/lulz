@@ -173,7 +173,6 @@ impl LowerCompiler {
                 let mut running_str = &s[..];
                 let mut idx = 0;
                 for interp in interps {
-                    println!("{:?}", &interp);
                     let interned = self.intern(interp.1);
                     if let None = self.valid_locals.get(&interned) {
                         return Err(Diagnostic::build(DiagnosticType::UnknownSymbol, interp.2)
@@ -189,14 +188,14 @@ impl LowerCompiler {
                     let (fragment, new_str) = running_str.split_at(interp.0 - idx);
                     running_str = new_str;
                     idx = interp.0;
-                    self.c.ws(", ");
+                    self.c.ws(", (size_t)");
                     self.c.ws(&fragment.len().to_string());
                     self.c.ws(", ");
                     self.compile_str_lit(fragment);
                     self.c.ws(", ");
                     self.c.name(interned);
                 }
-                self.c.ws(", ");
+                self.c.ws(", (size_t)");
                 self.c.ws(&running_str.len().to_string());
                 self.c.ws(", ");
                 self.compile_str_lit(running_str);

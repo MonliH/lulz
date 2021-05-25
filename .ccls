@@ -1,0 +1,4 @@
+gcc
+-Wall
+-Wextra
+-std=gnu99
