@@ -1,6 +1,7 @@
 use crate::err;
 use std::{
     borrow::Cow,
+    ffi::OsString,
     io::Write,
     process::{exit, Command, Stdio},
 };
@@ -12,13 +13,11 @@ impl Compile {
         Self(backend)
     }
 
-    pub fn compile(&self, source: String, output: String, opt: String, args: Option<String>) {
+    pub fn compile(&self, source: String, output: String, opt: String, args: Vec<OsString>) {
         let mut proc = Command::new(&self.0);
         proc.arg(&format!("-O{}", opt))
-            .args(&["-xc", "-o", &output, "-", "-llulzrt"]);
-        if let Some(arg) = args {
-            proc.arg(arg);
-        }
+            .args(&["-xc", "-o", &output, "-", "-llulzrt"])
+            .args(&args);
         let mut child = err::report(
             proc.stdin(Stdio::piped()).stdout(Stdio::inherit()).spawn(),
             Cow::Owned(format!("failed to spawn compiler `{}`", &self.0)),
