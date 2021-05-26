@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 LolValue to_numeric(LolValue val) {
   if (IS_INT(val) || IS_DOUBLE(val))
@@ -181,3 +182,30 @@ UNARY_MATH(nerfin, -1, -1.0)
 BOOL_OP(and, &&)
 BOOL_OP(or, ||)
 BOOL_OP(xor, !=)
+
+LolValue lol_any(size_t length, ...) {
+  va_list args;
+  va_start(args, length);
+  for (size_t i = 0; i < length; i++) {
+    LolValue boolish = va_arg(args, LolValue);
+    if (lol_to_bool(boolish)) {
+      return TRUE_VALUE;
+    }
+  }
+  va_end(args);
+  return FALSE_VALUE;
+}
+
+LolValue lol_all(size_t length, ...) {
+  va_list args;
+  va_start(args, length);
+  for (size_t i = 0; i < length; i++) {
+    LolValue boolish = va_arg(args, LolValue);
+    if (!lol_to_bool(boolish)) {
+      return FALSE_VALUE;
+    }
+  }
+  va_end(args);
+  return TRUE_VALUE;
+}
+

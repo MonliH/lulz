@@ -6,10 +6,12 @@
 <br>
 <br>
 
-## features
+## features ✨
 
-* Compiles to assembly, using C as a compiler backend
-* [An extensive test suite](./tests/)
+- Compiles to assembly, using C as a compiler backend
+- Has an [extensive test suite](./tests/)
+- Compliant to the [1.2 spec](https://github.com/justinmeza/lolcode-spec/blob/master/v1.2/lolcode-spec-v1.2.md),
+  with a few backwards compatible additions
 
 <br>
 
