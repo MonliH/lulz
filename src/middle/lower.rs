@@ -40,6 +40,8 @@ pub struct LowerCompiler {
     recent_block: RecentBlock,
 
     deced_dyns: FxHashSet<StrId>,
+    case_id: usize,
+    end_case_id: usize,
 }
 
 impl LowerCompiler {
@@ -57,6 +59,9 @@ impl LowerCompiler {
             it: StrId::default(),
             recent_block: RecentBlock::Function,
             deced_dyns: FxHashSet::default(),
+
+            case_id: 0,
+            end_case_id: 0,
         };
 
         new.it = new.interner.intern("IT");
@@ -156,7 +161,7 @@ impl LowerCompiler {
         self.c.ws("OBJ_VALUE(");
         self.c.ws("lol_alloc_lit_str((char*)");
         self.compile_str_lit(s);
-        self.c.ws(", ");
+        self.c.comma();
         self.c.ws(&(len + 1).to_string());
         self.c.ws("))");
     }
@@ -192,14 +197,14 @@ impl LowerCompiler {
                     idx = interp.0;
                     self.c.ws(", (size_t)");
                     self.c.ws(&fragment.len().to_string());
-                    self.c.ws(", ");
+                    self.c.comma();
                     self.compile_str_lit(fragment);
-                    self.c.ws(", ");
+                    self.c.comma();
                     self.c.name(interned);
                 }
                 self.c.ws(", (size_t)");
                 self.c.ws(&running_str.len().to_string());
-                self.c.ws(", ");
+                self.c.comma();
                 self.compile_str_lit(running_str);
                 self.c.ws(")))");
             }
@@ -267,7 +272,7 @@ impl LowerCompiler {
                 self.c.ws("OBJ_VALUE(lol_alloc_stack_str(lol_concat_str(");
                 self.c.ws(&es.len().to_string());
                 for e in es {
-                    self.c.ws(", ");
+                    self.c.comma();
                     self.compile_expr(e)?;
                 }
                 self.c.ws(")))");
@@ -301,9 +306,9 @@ impl LowerCompiler {
                 self.c.ws(fn_name);
                 self.c.wc('(');
                 self.compile_expr(*e1)?;
-                self.c.ws(", ");
+                self.c.comma();
                 self.compile_expr(*e2)?;
-                self.c.ws(", ");
+                self.c.comma();
                 self.c.span(expr.span);
                 self.c.wc(')');
             }
@@ -448,7 +453,7 @@ impl LowerCompiler {
             self.compile_expr(arg)?;
         }
         for arg in args {
-            self.c.ws(", ");
+            self.c.comma();
             self.compile_expr(arg)?;
         }
         self.c.wc(')');
@@ -458,9 +463,9 @@ impl LowerCompiler {
     fn build_dynamic_call(&mut self, id: StrId, args: Vec<Expr>, span: Span) -> Failible<()> {
         self.c.ws("lol_call(");
         self.c.ws(&args.len().to_string());
-        self.c.ws(", ");
+        self.c.comma();
         self.c.name(id);
-        self.c.ws(", ");
+        self.c.comma();
         if !args.is_empty() {
             self.c.wc('(');
             self.c.lol_value_ty();
@@ -470,14 +475,14 @@ impl LowerCompiler {
                 self.compile_expr(arg)?;
             }
             for arg in args {
-                self.c.ws(", ");
+                self.c.comma();
                 self.compile_expr(arg)?;
             }
             self.c.wc('}');
         } else {
             self.c.ws("NULL");
         }
-        self.c.ws(", ");
+        self.c.comma();
         self.c.span(span);
         self.c.ws(")");
         Ok(())
@@ -497,6 +502,11 @@ impl LowerCompiler {
                     RecentBlock::Function => {
                         self.c.ws("return ");
                         self.c.null();
+                        self.c.semi();
+                    }
+                    RecentBlock::Case => {
+                        self.c.ws("goto ");
+                        self.c.lol_case_jmp(self.end_case_id);
                         self.c.semi();
                     }
                     _ => {}
@@ -618,10 +628,62 @@ impl LowerCompiler {
                         span,
                     )?;
                 }
+                StatementKind::Case(cases, default) => {
+                    let prev_block = mem::replace(&mut self.recent_block, RecentBlock::Case);
+                    self.end_case_id = self.case_id + cases.len();
+                    if default.is_some() {
+                        self.end_case_id += 1;
+                    }
+                    let mut cases_iter = cases.into_iter();
+                    if let Some((value, block)) = cases_iter.next() {
+                        self.c.ws("if");
+                        self.conditional_case_branch(value)?;
+                        self.case_branch(block)?;
+                    }
+
+                    for (value, block) in cases_iter {
+                        self.c.ws("else if");
+                        self.conditional_case_branch(value)?;
+                        self.case_branch(block)?;
+                    }
+
+                    if let Some(block) = default {
+                        self.c.ws("else");
+                        self.case_branch(block)?;
+                    }
+                    self.c.lol_case_jmp(self.case_id);
+                    self.c.ws(":\n");
+                    self.recent_block = prev_block;
+                }
                 _ => {}
             }
         }
 
+        Ok(())
+    }
+
+    fn conditional_case_branch(&mut self, expr: Expr) -> Failible<()> {
+        self.c.ws("(lol_to_bool(lol_eq(");
+        self.c.it();
+        self.c.comma();
+        let span = expr.span;
+        self.compile_expr(expr)?;
+        self.c.comma();
+        self.c.span(span);
+        self.c.ws(")))");
+        Ok(())
+    }
+
+    fn case_branch(&mut self, block: Block) -> Failible<()> {
+        self.c.begin_scope();
+        self.c.lol_case_jmp(self.case_id);
+        self.c.ws(":\n");
+        self.compile(block)?;
+        self.c.ws("goto ");
+        self.case_id += 1;
+        self.c.lol_case_jmp(self.case_id);
+        self.c.semi();
+        self.c.end_scope();
         Ok(())
     }
 

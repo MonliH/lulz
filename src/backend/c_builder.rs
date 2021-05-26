@@ -99,6 +99,10 @@ impl CBuilder {
         self.literal(LolTy::Func, &format!("(LolFn)(lol_{}_fn_dyn)", id.get_id()))
     }
 
+    pub fn comma(&mut self) {
+        self.ws(", ");
+    }
+
     pub fn ret(&mut self) {
         self.ws("return");
         self.wspc();
@@ -111,6 +115,10 @@ impl CBuilder {
 
     fn lol_value(&mut self) {
         self.ws("LolValue")
+    }
+
+    pub fn lol_case_jmp(&mut self, id: usize) {
+        self.ws(&format!("lol_case_{}", id));
     }
 
     pub fn lol_value_ty(&mut self) {
