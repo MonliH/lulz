@@ -170,14 +170,12 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::In)?;
         self.expect(TokenKind::Yr)?;
         let block_name = self.ident()?;
-        let mut func = None;
-        let mut index = None;
-        let mut pred = None;
+        let mut fn_id = None;
         if TokenKind::Ident(SmolStr::default()).eq(&self.peek_token()?.token_kind) {
-            func = Some(self.ident()?);
+            let func = self.ident()?;
             self.expect(TokenKind::Yr)?;
-            index = Some(self.ident()?);
-            pred = match self.peek_token()?.token_kind {
+            let index = self.ident()?;
+            let pred = match self.peek_token()?.token_kind {
                 TokenKind::Till => {
                     self.next_token()?;
                     Some((true, self.expr()?))
@@ -188,6 +186,7 @@ impl<'a> Parser<'a> {
                 }
                 _ => None,
             };
+            fn_id = Some((func, index, pred));
         }
         self.expect_lines()?;
         let block = self.block(Some(&[TokenKind::Im]))?;
@@ -217,9 +216,7 @@ impl<'a> Parser<'a> {
         Ok(Statement {
             statement_kind: StatementKind::Loop {
                 block_name,
-                func,
-                index,
-                pred,
+                fn_id,
                 block,
             },
             span: Span::new(span.s, self.current_span.e, self.source_id),

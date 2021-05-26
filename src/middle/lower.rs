@@ -514,6 +514,26 @@ impl LowerCompiler {
     fn compile(&mut self, ast: Block) -> Failible<()> {
         for stmt in ast.0.into_iter() {
             match stmt.statement_kind {
+                StatementKind::Loop {
+                    block_name,
+                    fn_id,
+                    block,
+                } => {
+                    let prev_block = mem::replace(&mut self.recent_block, RecentBlock::Loop);
+                    match fn_id {
+                        Some((fn_name, var_name, pred)) => {
+                            // for loop
+                        }
+                        None => {
+                            // while loop
+                            self.c.ws("while (1)");
+                            self.begin_scope();
+                            self.compile(block)?;
+                            self.end_scope();
+                        }
+                    }
+                    self.recent_block = prev_block;
+                }
                 StatementKind::Break => match self.recent_block {
                     RecentBlock::Function => {
                         self.c.ws("return ");
@@ -525,7 +545,10 @@ impl LowerCompiler {
                         self.c.lol_case_jmp(self.end_case_id);
                         self.c.semi();
                     }
-                    _ => {}
+                    RecentBlock::Loop => {
+                        self.c.ws("break");
+                        self.c.semi();
+                    }
                 },
                 StatementKind::Return(e) => {
                     self.c.ret();
