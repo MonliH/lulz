@@ -26,7 +26,10 @@ OP_FN(lte)
 OP_FN(gt)
 OP_FN(gte)
 
-LolValue lol_not(LolValue val);
+#define OP_FN_UNARY(fn_name) LolValue lol_##fn_name(LolValue value);
+OP_FN_UNARY(not)
+OP_FN_UNARY(uppin)
+OP_FN_UNARY(nerfin)
 
 LolValue to_lol_troof(LolValue value);
 LolValue to_lol_numbr(LolValue value);
