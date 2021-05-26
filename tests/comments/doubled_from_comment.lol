@@ -2,7 +2,7 @@ BTW {"output": "hello\n"}
 HAI 1.2
 HOW IZ I TEST
     BTW VISIBLE "HELLO"!a
-    "hello", WTF?
-    OIC
+    VISIBLE "hello"
 IF U SAY SO
+I IZ TEST MKAY
 KTHXBYE
