@@ -74,22 +74,36 @@ typedef LolValue (*LolFn)(uint8_t args, LolValue *values);
 #define AS_STR(value) ((StringObj *)AS_OBJ(value))
 #define AS_CSTR(value) (((StringObj *)AS_OBJ(value))->chars)
 
+#define IS_VEC(value) lol_is_obj_ty(value, OBJ_VECTOR)
+#define AS_VEC(value) ((VectorObj *)AS_OBJ(value))
+
 #define ALLOCATE(ty, count) (ty *)(lol_realloc(NULL, 0, sizeof(ty) * (count)))
 
-#define ALLOCATE_OBJ(ty, objectType, constant)                                 \
-  (ty *)(lol_alloc_obj(sizeof(ty), objectType, constant))
+#define ALLOCATE_OBJ(ty, object_type, constant)                                \
+  (ty *)(lol_alloc_obj(sizeof(ty), object_type, constant))
 
 #define MAKE_STR_OBJ(str, len, constant)                                       \
   (StringObj) { OBJ_STRING, constant, (len), (str) }
 
+#define GROW_VEC(ty, ptr, old_len, new_len)                                    \
+  (ty *)lol_realloc(ptr, sizeof(ty) * (old_len), sizeof(ty) * (new_len))
+
 typedef enum {
   OBJ_STRING,
+  OBJ_VECTOR,
 } ObjType;
 
 typedef struct {
   ObjType ty;
   bool constant;
 } Obj;
+
+typedef struct {
+  Obj obj;
+  size_t len;
+  size_t cap;
+  LolValue *items;
+} VectorObj;
 
 typedef struct {
   Obj obj;
@@ -122,4 +136,8 @@ StringObj lol_interp_str(size_t fragments, ...);
 StringObj *lol_alloc_stack_str(StringObj obj);
 
 void lol_readline(LolValue *val);
+
+VectorObj lol_init_vec();
+VectorObj *lol_alloc_stack_vec(VectorObj obj);
+void lol_append_vec(VectorObj *vec, LolValue val);
 #endif

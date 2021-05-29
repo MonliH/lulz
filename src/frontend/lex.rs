@@ -56,6 +56,15 @@ pub enum TokenKind {
     Smoosh,
     Maek,
 
+    Put,
+    Into,
+    Frum,
+    Grab,
+    Shuv,
+    Frunt,
+    Bak,
+    Chain,
+
     Sum,
     Diff,
     Produkt,
@@ -144,6 +153,15 @@ impl Display for TokenKind {
                 TokenKind::Mkay => "token `MKAY`",
                 TokenKind::Smoosh => "token `SMOOSH`",
                 TokenKind::Maek => "token `MAEK`",
+
+                TokenKind::Put => "token `PUT`",
+                TokenKind::Chain => "token `CHAIN`",
+                TokenKind::Into => "token `INTO`",
+                TokenKind::Shuv => "token `SHUV`",
+                TokenKind::Frunt => "token `FRUNT`",
+                TokenKind::Bak => "token `BAK`",
+                TokenKind::Grab => "token `GRAB`",
+                TokenKind::Frum => "token `FRUM`",
 
                 TokenKind::Sum => "token `SUM`",
                 TokenKind::Diff => "token `DIFF`",
@@ -558,6 +576,16 @@ impl<'a> Lexer<'a> {
                 "MKAY" => TokenKind::Mkay,
                 "SMOOSH" => TokenKind::Smoosh,
 
+                "PUT" => TokenKind::Put,
+                "INTO" => TokenKind::Into,
+                "CHAIN" => TokenKind::Chain,
+
+                "GRAB" => TokenKind::Grab,
+                "SHUV" => TokenKind::Shuv,
+                "FRUNT" => TokenKind::Frunt,
+                "BAK" => TokenKind::Bak,
+                "FRUM" => TokenKind::Frum,
+
                 "SUM" => TokenKind::Sum,
                 "DIFF" => TokenKind::Diff,
                 "PRODUKT" => TokenKind::Produkt,
@@ -684,6 +712,14 @@ mod lexer_test {
             ("SAEM", TokenKind::Saem),
             ("NOOB", TokenKind::Noob),
             ("DIFFRINT", TokenKind::Diffrint),
+            ("INTO", TokenKind::Into),
+            ("PUT", TokenKind::Put),
+            ("GRAB", TokenKind::Grab),
+            ("FRUNT", TokenKind::Frunt),
+            ("BAK", TokenKind::Bak),
+            ("SHUV", TokenKind::Shuv),
+            ("FRUM", TokenKind::Frum),
+            ("CHAIN", TokenKind::Chain),
         ]);
     }
 
