@@ -44,6 +44,18 @@ size_t lol_str_len(LolValue value) {
     return length;
   } else if (IS_STR(value)) {
     return AS_STR(value)->len;
+  } else if (IS_VEC(value)) {
+    VectorObj *vec = AS_VEC(value);
+    // "[]"
+    size_t len = 2;
+    if (vec->len > 0) {
+      // ", "
+      len += (vec->len - 1) * 2;
+    }
+    for (size_t i = 0; i < vec->len; i++) {
+      len += lol_str_len(vec->items[i]);
+    }
+    return len;
   }
 }
 
@@ -68,6 +80,21 @@ StringObj lol_to_str(LolValue value) {
     return MAKE_STR_OBJ(str, length, false);
   } else if (IS_STR(value)) {
     return *AS_STR(value);
+  } else if (IS_VEC(value)) {
+    VectorObj *vec = AS_VEC(value);
+    char *str = ALLOCATE(char, length + 1);
+    str[0] = '[';
+    char *end = str+sizeof(char);
+    StringObj s = lol_to_str(vec->items[0]);
+    end = stpncpy(end, s.chars, s.len);
+    for (size_t i = 1; i < vec->len; i++) {
+      end = stpncpy(end, ", ", 2);
+      StringObj s = lol_to_str(vec->items[i]);
+      end = stpncpy(end, s.chars, s.len);
+    }
+    end[0] = ']';
+    end[1] = '\0';
+    return MAKE_STR_OBJ(str, length, false);
   }
 }
 
@@ -125,8 +152,8 @@ Obj *lol_alloc_obj(size_t size, ObjType type, bool constant) {
 StringObj *lol_alloc_lit_str(char *chars, int length) {
   StringObj *string = ALLOCATE_OBJ(StringObj, OBJ_STRING, true);
   string->len = length;
-  char *mchars = ALLOCATE(char, length);
-  strncpy(mchars, chars, length);
+  char *mchars = ALLOCATE(char, length+1);
+  strncpy(mchars, chars, length+1);
   string->chars = mchars;
   return string;
 }
@@ -159,7 +186,7 @@ StringObj *lol_alloc_stack_str(StringObj obj) {
 }
 
 StringObj lol_concat_str(size_t length, ...) {
-  size_t str_lens = 1;
+  size_t str_lens = 0;
   va_list args;
   va_start(args, length);
   for (size_t i = 0; i < length; i++) {
@@ -200,7 +227,7 @@ void lol_readline(LolValue *val) {
 }
 
 StringObj lol_interp_str(size_t length, ...) {
-  size_t str_lens = 1;
+  size_t str_lens = 0;
   va_list args;
   va_start(args, length);
   for (size_t i = 0; i < length; i++) {
@@ -248,13 +275,38 @@ VectorObj lol_init_vec() {
 
 size_t grow_cap(size_t cap) { return (cap < 8) ? 8 : (cap * 2); }
 
-void lol_append_vec(VectorObj *vec, LolValue val) {
+void lol_vec_capacity(VectorObj *vec, size_t new_size) {
+#ifdef LOL_DEBUG_CHECK
+  if (vec->cap > new_size) {
+    printf("internal error lol_vec_capacity\n");
+    exit(1);
+  }
+#endif
+  size_t old_cap = vec->cap;
+  vec->cap = new_size;
+  vec->items = GROW_VEC(LolValue, vec->items, old_cap, vec->cap);
+}
+
+void lol_vec_append(VectorObj *vec, LolValue val) {
   if (vec->cap < (vec->len + 1)) {
-    size_t old_cap = vec->cap;
-    vec->cap = grow_cap(old_cap);
-    vec->items = GROW_VEC(LolValue, vec->items, old_cap, vec->cap);
+    lol_vec_capacity(vec, grow_cap(vec->cap));
   }
 
   vec->items[vec->len] = val;
   vec->len++;
+}
+
+LolValue lol_vec_lit(size_t cap, size_t length, ...) {
+  VectorObj *vec = lol_alloc_stack_vec(lol_init_vec());
+  lol_vec_capacity(vec, cap);
+
+  va_list args;
+  va_start(args, length);
+
+  for (size_t i = 0; i < length; i++) {
+    lol_vec_append(vec, va_arg(args, LolValue));
+  }
+  va_end(args);
+
+  return OBJ_VALUE((Obj *)vec);
 }

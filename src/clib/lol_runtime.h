@@ -1,5 +1,6 @@
 #ifndef LOL_RUNTIME_H_INCLUDED
 #define LOL_RUNTIME_H_INCLUDED
+#define LOL_DEBUG_CHECK
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -140,4 +141,6 @@ void lol_readline(LolValue *val);
 VectorObj lol_init_vec();
 VectorObj *lol_alloc_stack_vec(VectorObj obj);
 void lol_append_vec(VectorObj *vec, LolValue val);
+
+LolValue lol_vec_lit(size_t cap, size_t len, ...);
 #endif

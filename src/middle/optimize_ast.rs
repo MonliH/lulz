@@ -204,7 +204,7 @@ impl ExprRewrite for CmpRewrite {
                     (_, op, e1, e2) => Operator(op, Box::new(e1), Box::new(e2)),
                 }
             }
-            Not(e) => Not(Box::new(self.rewrite(*e))),
+            UnaryOp(op, e) => UnaryOp(op, Box::new(self.rewrite(*e))),
             All(es) => All(es.into_iter().map(|e| self.rewrite(e)).collect()),
             Any(es) => Any(es.into_iter().map(|e| self.rewrite(e)).collect()),
             GetItem(e1, Ok(e2)) => {

@@ -153,10 +153,16 @@ pub enum ExprKind {
 
     All(Vec<Expr>),
     Any(Vec<Expr>),
-    Not(Box<Expr>),
+    UnaryOp(UnOpTy, Box<Expr>),
 
     /// GetItem(source, index)
     GetItem(Box<Expr>, Result<Box<Expr>, bool>),
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum UnOpTy {
+    Not,
+    Length,
 }
 
 impl ExprKind {
@@ -174,11 +180,8 @@ impl ExprKind {
             Self::Concat(es) | Self::All(es) | Self::Any(es) | Self::List(es) => {
                 es.iter().any(|e| e.expr_kind.side_effects())
             }
-            Self::Cast(e, _) | Self::Not(e) => e.expr_kind.side_effects(),
-            Self::Operator(_, e1, e2) => {
-                e1.expr_kind.side_effects() || e2.expr_kind.side_effects()
-            }
-            Self::GetItem(e1, Ok(e2)) => {
+            Self::Cast(e, _) | Self::UnaryOp(_, e) => e.expr_kind.side_effects(),
+            Self::Operator(_, e1, e2) | Self::GetItem(e1, Ok(e2)) => {
                 e1.expr_kind.side_effects() || e2.expr_kind.side_effects()
             }
             Self::GetItem(e, _) => e.expr_kind.side_effects(),

@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use crate::{
     backend::CBuilder,
     diagnostics::prelude::*,
-    frontend::ast::{Block, Expr, ExprKind, LolTy, OpTy, StatementKind},
+    frontend::ast::{Block, Expr, ExprKind, LolTy, OpTy, StatementKind, UnOpTy},
 };
 
 use super::{Interner, StrId};
@@ -162,7 +162,7 @@ impl LowerCompiler {
         self.c.ws("lol_alloc_lit_str((char*)");
         self.compile_str_lit(s);
         self.c.comma();
-        self.c.ws(&(len + 1).to_string());
+        self.c.ws(&len.to_string());
         self.c.ws("))");
     }
 
@@ -255,8 +255,12 @@ impl LowerCompiler {
 
             ExprKind::String(s) => self.string_lit(&s, s.len()),
 
-            ExprKind::Not(e) => {
-                self.c.ws("lol_not(");
+            ExprKind::UnaryOp(opty, e) => {
+                self.c.ws(match opty {
+                    UnOpTy::Not => "lol_not",
+                    UnOpTy::Length => "lol_length",
+                });
+                self.c.wc('(');
                 self.compile_expr(*e)?;
                 self.c.wc(')');
             }
@@ -326,6 +330,23 @@ impl LowerCompiler {
                 self.compile_expr(*e2)?;
                 self.c.comma();
                 self.c.span(expr.span);
+                self.c.wc(')');
+            }
+            ExprKind::List(exprs) => {
+                self.c.ws("lol_vec_lit(");
+                let mut cap = 1;
+                while cap < exprs.len() {
+                    cap <<= 2;
+                }
+                self.c.ws("(size_t)");
+                self.c.ws(&cap.to_string());
+                self.c.comma();
+                self.c.ws("(size_t)");
+                self.c.ws(&exprs.len().to_string());
+                for expr in exprs {
+                    self.c.comma();
+                    self.compile_expr(expr)?;
+                }
                 self.c.wc(')');
             }
             _ => {}
