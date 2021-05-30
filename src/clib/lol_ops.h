@@ -26,6 +26,8 @@ OP_FN(lte)
 OP_FN(gt)
 OP_FN(gte)
 
+void lol_append(LolValue source, LolValue item, LolSpan sp);
+
 #define OP_FN_UNARY(fn_name) LolValue lol_##fn_name(LolValue value);
 OP_FN_UNARY(not)
 OP_FN_UNARY(length)
@@ -40,4 +42,11 @@ LolValue to_lol_yarn(LolValue value);
 LolValue lol_any(size_t number, ...);
 LolValue lol_all(size_t number, ...);
 
+LolValue lol_vec_index(LolValue vec, LolValue idx, LolSpan sp);
+LolValue lol_vec_first(LolValue vec, LolSpan sp);
+LolValue lol_vec_last(LolValue vec, LolSpan sp);
+
+LolValue lol_vec_set(LolValue vec, LolValue idx, LolValue value, LolSpan sp);
+LolValue lol_vec_set_first(LolValue vec, LolValue value, LolSpan sp);
+LolValue lol_vec_set_last(LolValue vec, LolValue value, LolSpan sp);
 #endif

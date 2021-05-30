@@ -1,8 +1,8 @@
 #include "lol_runtime.h"
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdarg.h>
 
 LolValue to_numeric(LolValue val) {
   if (IS_INT(val) || IS_DOUBLE(val))
@@ -219,3 +219,100 @@ LolValue lol_all(size_t length, ...) {
   return TRUE_VALUE;
 }
 
+void lol_append(LolValue source, LolValue item, LolSpan sp) {
+  if (IS_VEC(source)) {
+    VectorObj *vec = AS_VEC(source);
+    lol_vec_append(vec, item);
+  } else {
+    exit(1);
+  }
+}
+
+LolValue lol_vec_index(LolValue source, LolValue idx, LolSpan sp) {
+  if (IS_VEC(source)) {
+    VectorObj *vec = AS_VEC(source);
+    if (IS_INT(idx)) {
+      int32_t i = AS_INT(idx);
+      if (vec->len > i && i >= 0) {
+        return vec->items[i];
+      } else {
+        exit(1);
+      }
+    } else {
+      exit(1);
+    }
+  } else {
+    exit(1);
+  }
+}
+
+LolValue lol_vec_first(LolValue source, LolSpan sp) {
+  if (IS_VEC(source)) {
+    VectorObj *vec = AS_VEC(source);
+    if (vec->len > 0) {
+      return vec->items[0];
+    } else {
+      exit(1);
+    }
+  } else {
+    exit(1);
+  }
+}
+
+LolValue lol_vec_last(LolValue source, LolSpan sp) {
+  if (IS_VEC(source)) {
+    VectorObj *vec = AS_VEC(source);
+    if (vec->len > 0) {
+      return vec->items[vec->len - 1];
+    } else {
+      exit(1);
+    }
+  } else {
+    exit(1);
+  }
+}
+
+LolValue lol_vec_set(LolValue source, LolValue idx, LolValue value,
+                     LolSpan sp) {
+  if (IS_VEC(source)) {
+    VectorObj *vec = AS_VEC(source);
+    if (IS_INT(idx)) {
+      int32_t i = AS_INT(idx);
+      if (vec->len > i && i >= 0) {
+        vec->items[i] = value;
+      } else {
+        exit(1);
+      }
+    } else {
+      exit(1);
+    }
+  } else {
+    exit(1);
+  }
+}
+
+LolValue lol_vec_set_first(LolValue source, LolValue value, LolSpan sp) {
+  if (IS_VEC(source)) {
+    VectorObj *vec = AS_VEC(source);
+    if (vec->len > 0) {
+      vec->items[0] = value;
+    } else {
+      exit(1);
+    }
+  } else {
+    exit(1);
+  }
+}
+
+LolValue lol_vec_set_last(LolValue source, LolValue value, LolSpan sp) {
+  if (IS_VEC(source)) {
+    VectorObj *vec = AS_VEC(source);
+    if (vec->len > 0) {
+      vec->items[vec->len - 1] = value;
+    } else {
+      exit(1);
+    }
+  } else {
+    exit(1);
+  }
+}

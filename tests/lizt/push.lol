@@ -1,4 +1,4 @@
-BTW {"output": "[hi, BYE, 10, WIN, FAIL, NOOB]"}
+BTW {"output": "[hi, BYE, 10, WIN, FAIL, NOOB]\n"}
 HAI 1.3
 I HAS A ARRAY ITZ A LIZT
 PUT "hi" INTO ARRAY

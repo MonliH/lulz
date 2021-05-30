@@ -1,4 +1,4 @@
-BTW {"output": "[1, HAI, 3, 123]"}
+BTW {"output": "[1, HAI, 3, 123]\n"}
 HAI 1.3
 I HAS A ARRAY ITZ CHAIN OF 1 AN "HAI" AN 3 AN WIN MKAY
 SHUV 123 INTO BAK OF ARRAY
