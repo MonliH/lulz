@@ -1,7 +1,6 @@
 use std::mem;
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::SmallVec;
 
 use crate::{
     backend::CBuilder,
@@ -31,10 +30,15 @@ pub struct LowerCompiler {
     // map from interned string to it's stack position
     global_builtins: FxHashMap<StrId, ValueTy>,
     valid_locals: FxHashMap<StrId, (ValueTy, usize)>,
-    locals: SmallVec<[(StrId, usize); 16]>,
-    overwritten: SmallVec<[Vec<(StrId, (ValueTy, usize))>; 8]>,
+    locals: Vec<(StrId, usize)>,
+    overwritten: Vec<Vec<(StrId, (ValueTy, usize))>>,
 
     depth: usize,
+    // map depth to fn_depth
+    fn_depth_map: FxHashMap<usize, usize>,
+    upvalues: Vec<(Vec<StrId>, StrId)>,
+    fn_depth: usize,
+
     interner: Interner,
     it: StrId,
     recent_block: RecentBlock,
@@ -51,10 +55,14 @@ impl LowerCompiler {
 
             global_builtins: FxHashMap::default(),
             valid_locals: FxHashMap::default(),
-            locals: SmallVec::new(),
-            overwritten: SmallVec::new(),
+            locals: Vec::new(),
+            overwritten: Vec::new(),
 
             depth: 0,
+            fn_depth: 0,
+            fn_depth_map: FxHashMap::default(),
+            upvalues: vec![(Vec::new(), StrId::default())],
+
             interner: Interner::default(),
             it: StrId::default(),
             recent_block: RecentBlock::Function,
@@ -71,10 +79,12 @@ impl LowerCompiler {
     fn begin_scope(&mut self) {
         self.c.begin_scope();
         self.depth += 1;
+        self.fn_depth_map.insert(self.depth, self.fn_depth);
         self.overwritten.push(Vec::new());
     }
 
     fn end_scope(&mut self) {
+        self.fn_depth_map.remove(&self.depth);
         self.depth -= 1;
         while self.locals.len() > 0 && self.locals[self.locals.len() - 1].1 > self.depth {
             let str_id = self.locals[self.locals.len() - 1].0;
@@ -119,35 +129,62 @@ impl LowerCompiler {
         mem::swap(&mut old_len, &mut self.c.fn_id);
         self.c.fns.push(String::new());
 
-        let before_dec = self.c.write_dec();
-        self.c.fn_dec(name, &args);
-        self.c.semi();
-        self.c.fn_id = before_dec;
-
-        self.c
-            .debug_symbol("funkshon def", self.interner.lookup(name), span);
-        self.c.fn_dec(name, &args);
+        self.fn_depth += 1;
+        self.upvalues.push((Vec::new(), name));
         self.begin_scope();
-        let old_locals = mem::take(&mut self.valid_locals);
         let function_val = ValueTy::Function(args_len as u8);
         if rec {
             self.insert_local(name, function_val)
         }
-        for argument in args.into_iter() {
-            self.insert_local(argument, ValueTy::Value);
+        for argument in args.iter() {
+            self.insert_local(*argument, ValueTy::Value);
         }
         self.compile(block)?;
+        println!("{:?}", self.upvalues);
 
         self.c.ret();
         self.c.it();
         self.c.semi();
 
         self.end_scope();
-        self.valid_locals = old_locals;
-        if rec {
-            self.insert_local(name, function_val)
+        self.fn_depth -= 1;
+        let upvalues = self.upvalues.pop().unwrap();
+
+        let old = mem::take(&mut self.c.fns[self.c.fn_id]);
+
+        if upvalues.0.is_empty() {
+            let before_dec = self.c.write_dec();
+            self.c.fn_dec(name, &args);
+            self.c.semi();
+            self.c.fn_id = before_dec;
+
+            self.c
+                .debug_symbol("funkshon def", self.interner.lookup(name), span);
+            self.c.fn_dec(name, &args);
+            self.c.ws(&old);
+            if rec {
+                self.insert_local(name, function_val)
+            }
+            mem::swap(&mut old_len, &mut self.c.fn_id);
+        } else {
+            let fn_name = self
+                .c
+                .closure_name(self.upvalues.iter().map(|(_, fn_name)| *fn_name));
+            let before_dec = self.c.write_dec();
+            self.c.dec_closure(&fn_name);
+            self.c.fn_id = before_dec;
+            self.c.def_closure(args.len(), &fn_name);
+            self.c.ws(&old[1..]);
+            self.insert_local(name, ValueTy::Value);
+            mem::swap(&mut old_len, &mut self.c.fn_id);
+            self.c.lol_value_ty();
+            self.c.name(name);
+            self.c.ws(" = ");
+            self.c
+                .closure_obj(&fn_name, upvalues.0.iter().copied(), upvalues.0.len());
+            self.c.semi();
         }
-        mem::swap(&mut old_len, &mut self.c.fn_id);
+
         Ok(())
     }
 
@@ -227,7 +264,7 @@ impl LowerCompiler {
                 let interned = self.intern(id);
                 self.c
                     .debug_symbol("funkshon call", self.interner.lookup(interned), span);
-                if let ValueTy::Function(arity) = self.validate_local(interned, span)? {
+                if let Ok(ValueTy::Function(arity)) = self.validate_local(interned, span)? {
                     if (arg_len as u8) != arity {
                         let span = expr.span;
                         return Err(
@@ -376,22 +413,41 @@ impl LowerCompiler {
         Ok(())
     }
 
-    fn validate_local(&mut self, id: StrId, span: Span) -> Failible<ValueTy> {
+    fn validate_local(&mut self, id: StrId, span: Span) -> Failible<Result<ValueTy, usize>> {
         if let Some(val) = self.global_builtins.get(&id) {
-            return Ok(*val);
+            return Ok(Ok(*val));
         }
         if id == self.it {
-            return Ok(ValueTy::Value);
+            return Ok(Ok(ValueTy::Value));
         }
-        self.valid_locals.get(&id).map(|i| (*i).0).ok_or_else(|| {
-            Diagnostics::from(Diagnostic::build(DiagnosticType::Scope, span).annotation(
-                Cow::Owned(format!(
-                    "cannot resolve the variable `{}`",
-                    self.interner.lookup(id)
-                )),
-                span,
-            ))
-        })
+        let res = self.valid_locals.get(&id);
+        match res {
+            Some((ty, depth)) => {
+                let ty_depth = self.fn_depth_map.get(&depth).unwrap();
+                if *ty_depth == self.fn_depth {
+                    return Ok(Ok(*ty));
+                }
+                match ty {
+                    ValueTy::Function(..) => Ok(Ok(*ty)),
+                    ValueTy::Value if !self.upvalues[self.fn_depth].0.iter().any(|i| *i == id) => {
+                        for d in (*ty_depth + 1)..=self.fn_depth {
+                            self.upvalues[d].0.push(id);
+                        }
+                        Ok(Err(self.upvalues[self.fn_depth].0.len() - 1))
+                    }
+                    ValueTy::Value => Ok(Ok(ValueTy::Value)),
+                }
+            }
+            None => Err(Diagnostics::from(
+                Diagnostic::build(DiagnosticType::Scope, span).annotation(
+                    Cow::Owned(format!(
+                        "cannot resolve the variable `{}`",
+                        self.interner.lookup(id)
+                    )),
+                    span,
+                ),
+            )),
+        }
     }
 
     fn build_dynamic_fn(&mut self, id: StrId, arity: u8) {
@@ -428,23 +484,30 @@ impl LowerCompiler {
         if id == self.it {
             self.c.it();
         } else {
-            if let ValueTy::Function(arity) = self.validate_local(id, span)? {
-                if !self.deced_dyns.contains(&id) {
-                    self.deced_dyns.insert(id);
-                    let before_dec = self.c.write_dec();
-                    self.c.fn_dec_dyn(id);
-                    self.c.fn_id = before_dec;
+            let value = self.validate_local(id, span)?;
+            match value {
+                Ok(ValueTy::Function(arity)) => {
+                    if !self.deced_dyns.contains(&id) {
+                        self.deced_dyns.insert(id);
+                        let before_dec = self.c.write_dec();
+                        self.c.fn_dec_dyn(id);
+                        self.c.fn_id = before_dec;
 
-                    let mut old_len = self.c.fns.len();
-                    mem::swap(&mut old_len, &mut self.c.fn_id);
-                    self.c.fns.push(String::new());
-                    self.build_dynamic_fn(id, arity);
-                    mem::swap(&mut old_len, &mut self.c.fn_id);
+                        let mut old_len = self.c.fns.len();
+                        mem::swap(&mut old_len, &mut self.c.fn_id);
+                        self.c.fns.push(String::new());
+                        self.build_dynamic_fn(id, arity);
+                        mem::swap(&mut old_len, &mut self.c.fn_id);
+                    }
+
+                    self.c.function_ptr(id)
                 }
-
-                self.c.function_ptr(id)
-            } else {
-                self.c.name(id);
+                Err(id) => {
+                    self.c.upvalue(id);
+                }
+                Ok(ValueTy::Value) => {
+                    self.c.name(id);
+                }
             }
         }
 
@@ -524,7 +587,7 @@ impl LowerCompiler {
         self.c.ws("lol_call(");
         self.c.ws(&args.len().to_string());
         self.c.comma();
-        self.c.name(id);
+        self.resolve_local(id, span)?;
         self.c.comma();
         if !args.is_empty() {
             self.c.wc('(');
@@ -829,7 +892,7 @@ impl LowerCompiler {
     }
 
     fn case_branch(&mut self, block: Block) -> Failible<()> {
-        self.c.begin_scope();
+        self.begin_scope();
         self.c.lol_case_jmp(self.case_id);
         self.c.ws(":\n");
         self.compile(block)?;
@@ -837,7 +900,7 @@ impl LowerCompiler {
         self.case_id += 1;
         self.c.lol_case_jmp(self.case_id);
         self.c.semi();
-        self.c.end_scope();
+        self.end_scope();
         Ok(())
     }
 

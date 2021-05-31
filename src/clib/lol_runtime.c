@@ -15,13 +15,16 @@ char *stpncpy(char *dst, const char *src, size_t len) {
 LolValue lol_it = NULL_VALUE;
 
 LolValue lol_call(uint8_t args, LolValue fn, LolValue *values, LolSpan sp) {
-  if (!IS_FUN(fn)) {
+  if (IS_FUN(fn)) {
+    LolFn func = AS_FUN(fn);
+
+    return func(args, values);
+  } else if (IS_CLOSURE(fn)) {
+    ClosureObj *closure = AS_CLOSURE(fn);
+    return closure->fn(args, values, closure->upvalues);
+  } else {
     exit(1);
   }
-
-  LolFn func = AS_FUN(fn);
-
-  return func(args, values);
 }
 
 size_t lol_str_len(LolValue value) {
@@ -84,7 +87,7 @@ StringObj lol_to_str(LolValue value) {
     VectorObj *vec = AS_VEC(value);
     char *str = ALLOCATE(char, length + 1);
     str[0] = '[';
-    char *end = str+sizeof(char);
+    char *end = str + sizeof(char);
     StringObj s = lol_to_str(vec->items[0]);
     end = stpncpy(end, s.chars, s.len);
     for (size_t i = 1; i < vec->len; i++) {
@@ -152,8 +155,8 @@ Obj *lol_alloc_obj(size_t size, ObjType type, bool constant) {
 StringObj *lol_alloc_lit_str(char *chars, int length) {
   StringObj *string = ALLOCATE_OBJ(StringObj, OBJ_STRING, true);
   string->len = length;
-  char *mchars = ALLOCATE(char, length+1);
-  strncpy(mchars, chars, length+1);
+  char *mchars = ALLOCATE(char, length + 1);
+  strncpy(mchars, chars, length + 1);
   string->chars = mchars;
   return string;
 }
@@ -310,3 +313,24 @@ LolValue lol_vec_lit(size_t cap, size_t length, ...) {
 
   return OBJ_VALUE((Obj *)vec);
 }
+
+ClosureObj lol_init_closure(LolClosureFn fn, size_t upvalue_count, ...) {
+  LolValue **upvalues = ALLOCATE(LolValue *, upvalue_count);
+  va_list args;
+  va_start(args, upvalue_count);
+
+  for (size_t i = 0; i < upvalue_count; i++) {
+    upvalues[i] = va_arg(args, LolValue*);
+  }
+  va_end(args);
+
+  return (ClosureObj){(Obj){OBJ_CLOSURE, false}, fn, upvalues, upvalue_count};
+}
+
+ClosureObj *lol_alloc_stack_closure(ClosureObj obj) {
+  ClosureObj *o = (ClosureObj *)lol_alloc_obj(sizeof(ClosureObj), obj.obj.ty,
+                                              obj.obj.constant);
+  *o = obj;
+  return o;
+}
+

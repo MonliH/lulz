@@ -83,6 +83,11 @@ for filename in file_list:
             print(colored("test passed.", GREEN))
             passed += 1
         continue
+    else:
+        if res[1] == 1:
+            print(colored("test failed.", RED))
+            failed += 1
+            continue
 
     if header["output"] != output:
         print(colored("test failed.", RED))

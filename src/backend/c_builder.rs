@@ -121,6 +121,24 @@ impl CBuilder {
         self.ws(&format!("lol_case_{}", id));
     }
 
+    pub fn closure_obj(
+        &mut self,
+        name: &str,
+        absorbed_vals: impl Iterator<Item = StrId>,
+        len: usize,
+    ) {
+        self.ws("OBJ_VALUE(lol_alloc_stack_closure(lol_init_closure(");
+        self.ws(name);
+        self.comma();
+        self.ws(&len.to_string());
+        for absorbed in absorbed_vals {
+            self.comma();
+            self.wc('&');
+            self.name(absorbed);
+        }
+        self.ws(")))");
+    }
+
     pub fn lol_value_ty(&mut self) {
         self.lol_value();
         self.wspc();
@@ -157,6 +175,29 @@ impl CBuilder {
 
     fn span_ty(&mut self) {
         self.ws("LolSpan");
+    }
+
+    pub fn upvalue(&mut self, id: usize) {
+        self.ws("*env[");
+        self.ws(&id.to_string());
+        self.wc(']');
+    }
+
+    pub fn closure_name(&mut self, fn_names: impl Iterator<Item = StrId>) -> String {
+        format!(
+            "lol_{}_fn_closure",
+            fn_names
+                .map(|i| i.get_id().to_string())
+                .collect::<Vec<_>>()
+                .join("_")
+        )
+    }
+
+    pub fn dec_closure(&mut self, fn_name: &str) {
+        self.ws(&format!(include_str!("../clib/dec_closure.clol"), fn_name));
+    }
+    pub fn def_closure(&mut self, len: usize, fn_name: &str) {
+        self.ws(&format!(include_str!("../clib/closure.clol"), fn_name, len));
     }
 
     pub fn span(&mut self, sp: Span) {

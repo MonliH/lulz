@@ -1,0 +1,4 @@
+LolValue {}(uint8_t args, LolValue *values, LolValue** env) {{
+    if (args != {}) {{
+        exit(1);
+    }}
