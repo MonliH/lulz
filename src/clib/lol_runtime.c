@@ -315,12 +315,12 @@ LolValue lol_vec_lit(size_t cap, size_t length, ...) {
 }
 
 ClosureObj lol_init_closure(LolClosureFn fn, size_t upvalue_count, ...) {
-  LolValue **upvalues = ALLOCATE(LolValue *, upvalue_count);
+  DynPtrObj **upvalues = ALLOCATE(DynPtrObj *, upvalue_count);
   va_list args;
   va_start(args, upvalue_count);
 
   for (size_t i = 0; i < upvalue_count; i++) {
-    upvalues[i] = va_arg(args, LolValue*);
+    upvalues[i] = va_arg(args, DynPtrObj*);
   }
   va_end(args);
 
@@ -329,6 +329,17 @@ ClosureObj lol_init_closure(LolClosureFn fn, size_t upvalue_count, ...) {
 
 ClosureObj *lol_alloc_stack_closure(ClosureObj obj) {
   ClosureObj *o = (ClosureObj *)lol_alloc_obj(sizeof(ClosureObj), obj.obj.ty,
+                                              obj.obj.constant);
+  *o = obj;
+  return o;
+}
+
+DynPtrObj lol_init_dyn_ptr(LolValue* ptr) {
+  return (DynPtrObj){(Obj){OBJ_PTR, false}, ptr};
+}
+
+DynPtrObj *lol_alloc_stack_dyn_ptr(DynPtrObj obj) {
+  DynPtrObj *o = (DynPtrObj *)lol_alloc_obj(sizeof(DynPtrObj), obj.obj.ty,
                                               obj.obj.constant);
   *o = obj;
   return o;
