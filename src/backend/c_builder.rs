@@ -121,24 +121,6 @@ impl CBuilder {
         self.ws(&format!("lol_case_{}", id));
     }
 
-    pub fn closure_obj(
-        &mut self,
-        name: &str,
-        absorbed_vals: impl Iterator<Item = StrId>,
-        len: usize,
-    ) {
-        self.ws("OBJ_VALUE(lol_alloc_stack_closure(lol_init_closure(");
-        self.ws(name);
-        self.comma();
-        self.ws(&len.to_string());
-        for absorbed in absorbed_vals {
-            self.comma();
-            self.wc('&');
-            self.name(absorbed);
-        }
-        self.ws(")))");
-    }
-
     pub fn lol_value_ty(&mut self) {
         self.lol_value();
         self.wspc();

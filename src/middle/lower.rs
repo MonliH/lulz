@@ -1,4 +1,4 @@
-use std::mem;
+use std::{iter::once, mem};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -36,7 +36,7 @@ pub struct LowerCompiler {
     depth: usize,
     // map depth to fn_depth
     fn_depth_map: FxHashMap<usize, usize>,
-    upvalues: Vec<(Vec<StrId>, StrId)>,
+    upvalues: Vec<(FxHashMap<StrId, usize>, StrId)>,
     fn_depth: usize,
 
     interner: Interner,
@@ -61,7 +61,7 @@ impl LowerCompiler {
             depth: 0,
             fn_depth: 0,
             fn_depth_map: FxHashMap::default(),
-            upvalues: vec![(Vec::new(), StrId::default())],
+            upvalues: vec![(FxHashMap::default(), StrId::default())],
 
             interner: Interner::default(),
             it: StrId::default(),
@@ -130,7 +130,7 @@ impl LowerCompiler {
         self.c.fns.push(String::new());
 
         self.fn_depth += 1;
-        self.upvalues.push((Vec::new(), name));
+        self.upvalues.push((FxHashMap::default(), name));
         self.begin_scope();
         let function_val = ValueTy::Function(args_len as u8);
         if rec {
@@ -139,8 +139,8 @@ impl LowerCompiler {
         for argument in args.iter() {
             self.insert_local(*argument, ValueTy::Value);
         }
+        println!("=== {} ===", self.interner.lookup(name));
         self.compile(block)?;
-        println!("{:?}", self.upvalues);
 
         self.c.ret();
         self.c.it();
@@ -167,12 +167,17 @@ impl LowerCompiler {
             }
             mem::swap(&mut old_len, &mut self.c.fn_id);
         } else {
-            let fn_name = self
-                .c
-                .closure_name(self.upvalues.iter().map(|(_, fn_name)| *fn_name));
+            let fn_name = self.c.closure_name(
+                self.upvalues
+                    .iter()
+                    .map(|(_, fn_name)| *fn_name)
+                    .chain(once(name)),
+            );
             let before_dec = self.c.write_dec();
             self.c.dec_closure(&fn_name);
             self.c.fn_id = before_dec;
+            self.c
+                .debug_symbol("closure def", self.interner.lookup(name), span);
             self.c.def_closure(args.len(), &fn_name);
             for (i, arg) in args.iter().enumerate() {
                 self.c.lol_value_ty();
@@ -189,7 +194,16 @@ impl LowerCompiler {
             self.c.name(name);
             self.c.ws(" = ");
             self.c
-                .closure_obj(&fn_name, upvalues.0.iter().copied(), upvalues.0.len());
+                .ws("OBJ_VALUE(lol_alloc_stack_closure(lol_init_closure(");
+            self.c.ws(&fn_name);
+            self.c.comma();
+            self.c.ws(&upvalues.0.len().to_string());
+            for absorbed in upvalues.0 {
+                self.c.comma();
+                self.c.ws("(LolValue*)&");
+                self.resolve_local(absorbed.0, Span::default())?;
+            }
+            self.c.ws(")))");
             self.c.semi();
         }
 
@@ -426,13 +440,15 @@ impl LowerCompiler {
                 }
                 match ty {
                     ValueTy::Function(..) => Ok(Ok(*ty)),
-                    ValueTy::Value if !self.upvalues[self.fn_depth].0.iter().any(|i| *i == id) => {
-                        for d in (*ty_depth + 1)..=self.fn_depth {
-                            self.upvalues[d].0.push(id);
+                    ValueTy::Value => {
+                        if !self.upvalues[self.fn_depth].0.contains_key(&id) {
+                            for d in (*ty_depth + 1)..=self.fn_depth {
+                                let idx = self.upvalues[d].0.len();
+                                self.upvalues[d].0.insert(id, idx);
+                            }
                         }
-                        Ok(Err(self.upvalues[self.fn_depth].0.len() - 1))
+                        Ok(Err(self.upvalues[self.fn_depth].0[&id]))
                     }
-                    ValueTy::Value => Ok(Ok(ValueTy::Value)),
                 }
             }
             None => Err(Diagnostics::from(

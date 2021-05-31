@@ -1,0 +1,17 @@
+BTW { "output": "1\n2\n3\n" }
+HAI 1.3
+HOW IZ I OUTER
+    I HAS A X ITZ 0
+
+    HOW IZ I TEST
+        X R SUM OF X AN 1
+        VISIBLE X
+    IF U SAY SO
+
+    I IZ TEST MKAY
+    I IZ TEST MKAY
+    I IZ TEST MKAY
+IF U SAY SO
+
+I IZ OUTER MKAY
+KTHXBYE
