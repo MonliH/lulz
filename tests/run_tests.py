@@ -84,8 +84,9 @@ for filename in file_list:
             passed += 1
         continue
     else:
-        if res[1] == 1:
-            print(colored("test failed.", RED))
+        if res[1] != 0:
+            print(output, stderr)
+            print(colored("test failed. compiler or code ran with non-zero exit.", RED))
             failed += 1
             continue
 

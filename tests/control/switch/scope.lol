@@ -1,11 +1,10 @@
-BTW { "output": "" }
+BTW { "output": "1\n" }
 HAI 1.3
 "FOO", WTF?
     OMG "FOO"
         I HAS A FOO ITZ 1
-        FOUND YR 123
+        VISIBLE FOO
     OMG "bar"
-        I HAS A FOO ITZ 1
-        FOUND YR 123
+        I HAS A FOO ITZ 2
 OIC
 KTHXBYE

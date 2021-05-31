@@ -1,4 +1,4 @@
-BTW { "output": "value" }
+BTW { "output": "value\n" }
 HAI 1.3
 HOW IZ I OUTER
     I HAS A X ITZ "value"
