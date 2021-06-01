@@ -345,3 +345,9 @@ DynPtrObj *lol_alloc_stack_dyn_ptr(DynPtrObj obj) {
   return o;
 }
 
+void lol_box_dyn_ptr(DynPtrObj *ptr) {
+  LolValue cpy = *ptr->ptr;
+  LolValue* new_loc = lol_realloc(NULL, 0, sizeof(LolValue));
+  *new_loc = cpy;
+  ptr->ptr = new_loc;
+}
