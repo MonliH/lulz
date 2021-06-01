@@ -99,7 +99,7 @@ impl CBuilder {
         self.literal(LolTy::Func, &format!("(LolFn)(lol_{}_fn_dyn)", id.get_id()))
     }
 
-    pub fn box_name(&mut self, closure_name: StrId, upvalue_idx: usize, name: StrId) {
+    pub fn box_name(&mut self, closure_name: StrId, upvalue_idx: usize) {
         self.ws("lol_box_dyn_ptr(AS_CLOSURE(");
         self.name(closure_name);
         self.ws(")->upvalues[");
