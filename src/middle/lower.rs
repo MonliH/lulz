@@ -1,6 +1,7 @@
 use std::{iter::once, mem};
 
 use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec::SmallVec;
 
 use crate::{
     backend::CBuilder,
@@ -29,6 +30,11 @@ struct Local {
     depth: usize,
 }
 
+type ClosurePath = SmallVec<[StrId; 8]>;
+
+// Wow, this code is really messy
+// It seriously needs to be split into multiple structs
+// and done in different passes
 #[derive(Debug)]
 pub struct LowerCompiler {
     c: CBuilder,
@@ -53,6 +59,8 @@ pub struct LowerCompiler {
     deced_dyns: FxHashSet<StrId>,
     case_id: usize,
     end_case_id: usize,
+
+    closures: FxHashSet<ClosurePath>,
 }
 
 impl LowerCompiler {
@@ -78,6 +86,8 @@ impl LowerCompiler {
 
             case_id: 0,
             end_case_id: 0,
+
+            closures: FxHashSet::default(),
         };
 
         new.it = new.interner.intern("IT");
@@ -121,8 +131,18 @@ impl LowerCompiler {
     }
 
     fn insert_local(&mut self, name: StrId, value: ValueTy, span: Span) -> Failible<()> {
+        self.insert_local_overwrite(name, value, span, false)
+    }
+
+    fn insert_local_overwrite(
+        &mut self,
+        name: StrId,
+        value: ValueTy,
+        span: Span,
+        overwrite: bool,
+    ) -> Failible<()> {
         if let Some(local) = self.valid_locals.get(&name) {
-            if local.depth == self.depth {
+            if !overwrite && local.depth == self.depth {
                 return Err(Diagnostic::build(DiagnosticType::Scope, span)
                     .annotation(
                         Cow::Owned(format!(
@@ -133,8 +153,10 @@ impl LowerCompiler {
                     )
                     .into());
             }
-            let len = self.overwritten.len() - 1;
-            self.overwritten[len].push((name, *local));
+            if local.depth != self.depth {
+                let len = self.overwritten.len() - 1;
+                self.overwritten[len].push((name, *local));
+            }
         }
         self.valid_locals.insert(
             name,
@@ -145,6 +167,22 @@ impl LowerCompiler {
         );
         self.locals.push((name, self.depth));
         Ok(())
+    }
+
+    fn compile_closure_def(
+        &mut self,
+        name: StrId,
+        fn_name: &str,
+        upvalues: &FxHashMap<StrId, usize>,
+    ) {
+        self.c.lol_value_ty();
+        self.c.name(name);
+        self.c.ws(" = ");
+        self.c
+            .ws("OBJ_VALUE(lol_alloc_stack_closure(lol_init_closure(");
+        self.c.ws(&fn_name);
+        self.c.comma();
+        self.c.ws(&upvalues.len().to_string());
     }
 
     fn compile_func(
@@ -174,7 +212,12 @@ impl LowerCompiler {
         self.fn_depth += 1;
         self.upvalues.push((FxHashMap::default(), name));
         self.begin_scope();
-        let function_val = ValueTy::Function(args_len as u8);
+        let function_val = if self.closures.contains(&self.curr_closure_path()) {
+            ValueTy::Value
+        } else {
+            ValueTy::Function(args_len as u8)
+        };
+
         if rec {
             self.insert_local(name, function_val, span)?;
         }
@@ -182,6 +225,8 @@ impl LowerCompiler {
             self.insert_local(*argument, ValueTy::Value, span)?;
         }
         self.compile(block)?;
+
+        self.box_all_upvalues();
 
         self.c.ret();
         self.c.it();
@@ -228,18 +273,27 @@ impl LowerCompiler {
                 self.c.wc(']');
                 self.c.semi();
             }
-            self.c.ws(&old[1..]);
-            self.insert_local(name, ValueTy::Value, span)?;
+            self.compile_closure_def(name, &fn_name, &upvalues.0);
+            for i in 0..upvalues.0.len() {
+                self.c.comma();
+                self.c.ws("env[");
+                self.c.ws(&i.to_string());
+                self.c.wc(']');
+            }
+            self.c.ws(")))");
+            self.c.semi();
+            if !old.is_empty() {
+                self.c.ws(&old[1..]);
+            }
+            self.insert_local_overwrite(name, ValueTy::Value, span, true)
+                .unwrap();
             mem::swap(&mut old_len, &mut self.c.fn_id);
-            self.c.lol_value_ty();
-            self.c.name(name);
-            self.c.ws(" = ");
-            self.c
-                .ws("OBJ_VALUE(lol_alloc_stack_closure(lol_init_closure(");
-            self.c.ws(&fn_name);
-            self.c.comma();
-            self.c.ws(&upvalues.0.len().to_string());
-            for (&name, _) in upvalues.0.iter() {
+            self.compile_closure_def(name, &fn_name, &upvalues.0);
+            let mut env_ordering = vec![StrId::default(); upvalues.0.len()];
+            for (&name, &idx) in upvalues.0.iter() {
+                env_ordering[idx] = name;
+            }
+            for name in env_ordering {
                 self.c.comma();
                 self.c.ws("lol_alloc_stack_dyn_ptr(lol_init_dyn_ptr(&");
                 self.resolve_local(name, Span::default())?;
@@ -255,8 +309,16 @@ impl LowerCompiler {
 
     fn escape(&mut self, s: &str) {
         for c in s.chars() {
-            self.c.ws("\\x");
-            self.c.ws(&format!("{:X}", u32::from(c)));
+            if c == '"' {
+                self.c.ws(r#"\""#);
+            } else if c == '\\' {
+                self.c.ws(r#"\\"#);
+            } else if c.is_ascii() {
+                self.c.wc(c);
+            } else {
+                self.c.ws("\\U");
+                self.c.ws(&format!("{:08X}", u32::from(c)));
+            }
         }
     }
 
@@ -322,27 +384,45 @@ impl LowerCompiler {
                     );
                 }
                 let span = id.1;
-                let interned = self.intern(id);
+                let interned = self.intern(id.0.as_str());
                 self.c
                     .debug_symbol("funkshon call", self.interner.lookup(interned), span);
-                if let Ok(ValueTy::Function(arity)) = self.validate_local(interned, span)? {
-                    if (arg_len as u8) != arity {
-                        let span = expr.span;
-                        return Err(
-                            Diagnostic::build(DiagnosticType::FunctionArgumentMany, span)
-                                .annotation(
-                                    Cow::Owned(format!(
-                                "this FUNKSHON should take {} arugument(s), but it recived {}",
-                                arity, arg_len,
-                            )),
+                match self.get_symbol_path(interned) {
+                    Some(path) if self.closures.contains(&path) => {
+                        self.build_dynamic_call(
+                            |s| s.resolve_local(interned, span),
+                            args,
+                            expr.span,
+                        )?;
+                    }
+                    _ => {
+                        if let Ok(ValueTy::Function(arity)) =
+                            self.validate_local(interned, span)?
+                        {
+                            if (arg_len as u8) != arity {
+                                let span = expr.span;
+                                return Err(Diagnostic::build(
+                                    DiagnosticType::FunctionArgumentMany,
                                     span,
                                 )
-                                .into(),
-                        );
+                                .annotation(
+                                    Cow::Owned(format!(
+                                    "this FUNKSHON should take {} arugument(s), but it recived {}",
+                                    arity, arg_len,
+                                )),
+                                    span,
+                                )
+                                .into());
+                            }
+                            self.build_call(interned, args)?;
+                        } else {
+                            self.build_dynamic_call(
+                                |s| s.resolve_local(interned, span),
+                                args,
+                                expr.span,
+                            )?;
+                        }
                     }
-                    self.build_call(interned, args)?;
-                } else {
-                    self.build_dynamic_call(interned, args, expr.span)?;
                 }
             }
 
@@ -493,6 +573,8 @@ impl LowerCompiler {
                     ValueTy::Value => {
                         if !self.upvalues[self.fn_depth].0.contains_key(&id) {
                             for d in (*ty_depth + 1)..=self.fn_depth {
+                                self.closures
+                                    .insert(self.upvalues[..=d].iter().map(|(_, n)| *n).collect());
                                 let idx = self.upvalues[d].0.len();
                                 self.upvalues[d].0.insert(id, idx);
                             }
@@ -568,7 +650,7 @@ impl LowerCompiler {
                 Err(id) => {
                     self.c.upvalue(id);
                 }
-                Ok(ValueTy::Value) => {
+                Ok(_) => {
                     self.c.name(id);
                 }
             }
@@ -605,12 +687,24 @@ impl LowerCompiler {
         mem::swap(&mut old_len, &mut self.c.fn_id);
     }
 
+    fn reset(&mut self) {
+        let old = mem::replace(self, Self::new(self.c.debug));
+        self.closures = old.closures;
+        self.interner = old.interner;
+    }
+
     pub fn compile_start(&mut self, ast: Block) -> Failible<()> {
+        self.c.should_emit(false);
         let interned = self.intern("main_lulz");
-        self.c.main_fn = format!("lol_{}_fn", interned.get_id());
+        let main_fn = format!("lol_{}_fn", interned.get_id());
+        self.compile_builtins();
+        self.compile_func(interned, Vec::new(), ast.clone(), false, Span::default())?;
+
+        self.reset();
+
         self.compile_builtins();
         self.compile_func(interned, Vec::new(), ast, false, Span::default())?;
-        self.c.stdlib();
+        self.c.stdlib(&main_fn);
         Ok(())
     }
 
@@ -646,11 +740,16 @@ impl LowerCompiler {
         Ok(())
     }
 
-    fn build_dynamic_call(&mut self, id: StrId, args: Vec<Expr>, span: Span) -> Failible<()> {
+    fn build_dynamic_call<T>(
+        &mut self,
+        fn_builder: impl Fn(&mut Self) -> Failible<T>,
+        args: Vec<Expr>,
+        span: Span,
+    ) -> Failible<()> {
         self.c.ws("lol_call(");
         self.c.ws(&args.len().to_string());
         self.c.comma();
-        self.resolve_local(id, span)?;
+        fn_builder(self)?;
         self.c.comma();
         if !args.is_empty() {
             self.c.wc('(');
@@ -679,6 +778,29 @@ impl LowerCompiler {
             span,
             expr_kind: ty.default_expr_kind(),
         }
+    }
+
+    fn curr_closure_path(&self) -> ClosurePath {
+        self.upvalues.iter().map(|(_, id)| *id).collect()
+    }
+
+    fn closure_path_with(&self, item: StrId) -> ClosurePath {
+        self.upvalues
+            .iter()
+            .map(|(_, id)| *id)
+            .chain(once(item))
+            .collect()
+    }
+
+    fn get_symbol_path(&self, symbol: StrId) -> Option<ClosurePath> {
+        let depth = self.valid_locals.get(&symbol)?.depth;
+        Some(
+            self.upvalues[0..=depth]
+                .iter()
+                .map(|(_, id)| *id)
+                .chain(once(symbol))
+                .collect(),
+        )
     }
 
     fn compile(&mut self, ast: Block) -> Failible<()> {
@@ -833,8 +955,13 @@ impl LowerCompiler {
                 }
                 StatementKind::FunctionDef(id, args, block) => {
                     let prev = mem::replace(&mut self.recent_block, RecentBlock::Function);
+                    let id_span = id.1;
                     let fn_name = self.intern(id);
                     let args = args.into_iter().map(|arg| self.intern(arg)).collect();
+                    if self.closures.contains(&self.closure_path_with(fn_name)) {
+                        self.insert_local_overwrite(fn_name, ValueTy::Value, id_span, true)
+                            .unwrap();
+                    }
                     self.compile_func(fn_name, args, block, true, stmt.span)?;
                     self.recent_block = prev;
                 }

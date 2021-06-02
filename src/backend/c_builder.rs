@@ -7,7 +7,7 @@ pub struct CBuilder {
     pub fns: Vec<String>,
     pub fn_id: usize,
     pub debug: bool,
-    pub main_fn: String,
+    pub should_emit: bool,
 }
 
 impl CBuilder {
@@ -16,8 +16,12 @@ impl CBuilder {
             fns: vec![String::new(), String::new()],
             fn_id: 0,
             debug,
-            main_fn: String::new(),
+            should_emit: true,
         }
+    }
+
+    pub fn should_emit(&mut self, should_emit: bool) {
+        self.should_emit = should_emit;
     }
 
     pub fn write_dec(&mut self) -> usize {
@@ -49,13 +53,19 @@ impl CBuilder {
     }
 
     /// Write string
+    #[inline(always)]
     pub fn ws(&mut self, s: &str) {
-        self.fns[self.fn_id].push_str(s)
+        if self.should_emit {
+            self.fns[self.fn_id].push_str(s)
+        }
     }
 
     /// Write character
+    #[inline(always)]
     pub fn wc(&mut self, c: char) {
-        self.fns[self.fn_id].push(c)
+        if self.should_emit {
+            self.fns[self.fn_id].push(c)
+        }
     }
 
     /// Write space
@@ -202,11 +212,11 @@ impl CBuilder {
         self.wc('}');
     }
 
-    pub fn stdlib(&mut self) {
+    pub fn stdlib(&mut self, main_fn: &str) {
         self.fns[0].push_str("#include <lol_runtime.h>\n#include <lol_ops.h>");
         self.fn_id += 1;
         self.fns
-            .push(format!(include_str!("../clib/main.clol"), self.main_fn));
+            .push(format!(include_str!("../clib/main.clol"), main_fn));
     }
 
     pub fn output(self) -> String {
