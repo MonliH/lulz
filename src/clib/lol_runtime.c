@@ -217,7 +217,7 @@ StringObj lol_concat_str(size_t length, ...) {
 
 void lol_readline(LolValue *val) {
   size_t n = 0, result;
-  char *buf;
+  char *buf = NULL;
 
   result = getline(&buf, &n, stdin);
   if (result < 0)
