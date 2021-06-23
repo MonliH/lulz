@@ -1,6 +1,7 @@
 #ifndef LOL_RUNTIME_H_INCLUDED
 #define LOL_RUNTIME_H_INCLUDED
 #define LOL_DEBUG_CHECK
+#define LOL_DEBUG_STRESS_GC
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
