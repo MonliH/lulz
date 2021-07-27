@@ -1,4 +1,0 @@
-LolValue {}(uint8_t args_count, LolValue *args, DynPtrObj** env) {{
-    if (args_count != {}) {{
-        exit(1);
-    }}
