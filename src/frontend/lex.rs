@@ -5,6 +5,7 @@ use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
 use std::str::Chars;
 
+use crate::backend::interner::{Interner, StrId};
 use crate::diagnostics::prelude::*;
 
 use super::ast::InterpEntry;
@@ -99,7 +100,7 @@ pub enum TokenKind {
     String(String),
     /// An interpolated string
     InterpStr(String, Vec<InterpEntry>),
-    Ident(SmolStr),
+    Ident(StrId),
 
     Eof,
 }
@@ -221,14 +222,8 @@ pub struct Lexer<'a> {
     position: usize,
     pub source_id: usize,
     had_newline: bool,
-}
-
-impl<'a> Iterator for Lexer<'a> {
-    type Item = Failible<Token>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        Some(self.next_token())
-    }
+    pub interner: &'a mut Interner,
+    peeked: Option<Failible<Token>>,
 }
 
 const EOF: char = '\0';
@@ -241,19 +236,36 @@ const ESCAPES: &[(char, char)] = &[
 ];
 
 impl<'a> Lexer<'a> {
-    pub fn new(chars: Chars<'a>, source_id: usize) -> Self {
+    pub fn new(chars: Chars<'a>, source_id: usize, interner: &'a mut Interner) -> Self {
         Self {
             stream: chars.peekable(),
             source_id,
             position: 0,
             had_newline: false,
+            peeked: None,
+            interner,
         }
     }
 
-    fn next_token(&mut self) -> Failible<Token> {
-        let tok = self.next_token_inner()?;
-        self.had_newline = tok.token_kind.eq(&TokenKind::Break);
-        Ok(tok)
+    pub fn peek(&mut self) -> &Failible<Token> {
+        match self.peeked {
+            Some(ref peeked) => peeked,
+            None => {
+                self.peeked = Some(self.next());
+                self.peeked.as_ref().unwrap()
+            }
+        }
+    }
+
+    pub fn next(&mut self) -> Failible<Token> {
+        match self.peeked.take() {
+            Some(v) => v,
+            None => {
+                let tok = self.next_token_inner()?;
+                self.had_newline = tok.token_kind.eq(&TokenKind::Break);
+                Ok(tok)
+            }
+        }
     }
 
     fn next_token_inner(&mut self) -> Failible<Token> {
@@ -261,10 +273,10 @@ impl<'a> Lexer<'a> {
         let kind = match self.eat() {
             c if Self::is_id_start(c) => return self.ident(c),
             '…' => return self.elipsis(),
-            '.' => match self.peek() {
+            '.' => match self.peek_char() {
                 '.' => {
                     self.eat();
-                    match self.peek() {
+                    match self.peek_char() {
                         '.' => {
                             self.eat();
                             return self.elipsis();
@@ -284,16 +296,16 @@ impl<'a> Lexer<'a> {
             '"' => self.eat_string()?,
             ',' => TokenKind::Break,
             '\n' => {
-                while self.peek() == '\n' {
+                while self.peek_char() == '\n' {
                     self.eat();
                 }
                 TokenKind::Break
             }
-            c if Self::is_whitespace(c) => return self.next_token(),
+            c if Self::is_whitespace(c) => return self.next(),
             '\0' => TokenKind::Eof,
             '-' => {
-                let c = self.peek();
-                match self.next_token()?.token_kind {
+                let c = self.peek_char();
+                match self.next()?.token_kind {
                     TokenKind::Number(s) => TokenKind::Number(SmolStr::new(format!("-{}", s))),
                     _ => {
                         return Err(Self::lexer_err(
@@ -333,7 +345,7 @@ impl<'a> Lexer<'a> {
 
     #[inline]
     /// Go forward one character without peeking
-    fn peek(&mut self) -> char {
+    fn peek_char(&mut self) -> char {
         *self.stream.peek().unwrap_or(&EOF)
     }
 
@@ -351,7 +363,7 @@ impl<'a> Lexer<'a> {
     fn consume_while(&mut self, first: char, predicate: impl Fn(char) -> bool) -> String {
         let mut acc = String::with_capacity(1);
         acc.push(first);
-        while predicate(self.peek()) && !self.is_eof() {
+        while predicate(self.peek_char()) && !self.is_eof() {
             acc.push(self.eat());
         }
         acc
@@ -359,7 +371,7 @@ impl<'a> Lexer<'a> {
 
     fn consume_until(&mut self, predicate: impl Fn(char) -> bool) -> String {
         let mut acc = String::with_capacity(1);
-        while predicate(self.peek()) && !self.is_eof() {
+        while predicate(self.peek_char()) && !self.is_eof() {
             acc.push(self.eat());
         }
         acc
@@ -368,7 +380,7 @@ impl<'a> Lexer<'a> {
     fn get_str_esc(&mut self, ch: char) -> Failible<(String, Span)> {
         self.eat();
         let esc = self.consume_until(|c| c != ch && c != '"');
-        if self.peek() == '"' {
+        if self.peek_char() == '"' {
             let span = Span::new(self.position, self.position + 1, self.source_id);
             return Err(
                 Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span)
@@ -412,7 +424,7 @@ impl<'a> Lexer<'a> {
                 .into());
         }
 
-        self.next_token()
+        self.next()
     }
 
     fn eat_string(&mut self) -> Failible<TokenKind> {
@@ -421,7 +433,7 @@ impl<'a> Lexer<'a> {
         'main: loop {
             let next = self.eat();
             if next == ':' {
-                let peeked = self.peek();
+                let peeked = self.peek_char();
                 for (k, v) in ESCAPES {
                     if peeked == *k {
                         self.eat();
@@ -503,20 +515,20 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_eof(&mut self) -> bool {
-        self.peek() == EOF
+        self.peek_char() == EOF
     }
 
     fn consume_multiline(&mut self) -> Failible<()> {
-        while self.peek() != 'T' && !self.is_eof() {
+        while self.peek_char() != 'T' && !self.is_eof() {
             self.eat();
         }
 
         self.eat();
-        if self.peek() == 'L' {
+        if self.peek_char() == 'L' {
             self.eat();
-            if self.peek() == 'D' {
+            if self.peek_char() == 'D' {
                 self.eat();
-                if self.peek() == 'R' {
+                if self.peek_char() == 'R' {
                     self.eat();
                     return Ok(());
                 }
@@ -537,11 +549,11 @@ impl<'a> Lexer<'a> {
                         // if there was already a newline before this comment, skip over the next
                         self.eat();
                     }
-                    return self.next_token();
+                    return self.next();
                 }
                 "OBTW" => {
                     self.consume_multiline()?;
-                    return self.next_token();
+                    return self.next();
                 }
                 "HAI" => TokenKind::Hai,
                 "KTHXBYE" => TokenKind::Kthxbye,
@@ -622,7 +634,7 @@ impl<'a> Lexer<'a> {
                 "SAEM" => TokenKind::Saem,
                 "DIFFRINT" => TokenKind::Diffrint,
 
-                _ => TokenKind::Ident(SmolStr::new(id)),
+                _ => TokenKind::Ident(self.interner.intern(&id)),
             },
         })
     }
@@ -634,9 +646,10 @@ mod lexer_test {
 
     fn assert_err(map: &[(&'static str, DiagnosticType)]) {
         for (source, err) in map.iter() {
-            let mut lexer = Lexer::new(source.chars(), 0);
+            let mut interner = Interner::default();
+            let mut lexer = Lexer::new(source.chars(), 0, &mut interner);
             assert_eq!(
-                lexer.next().unwrap().map_err(|e| e.into_inner()[0].ty),
+                lexer.next().map_err(|e| e.into_inner()[0].ty),
                 Err(err.clone())
             );
         }
@@ -644,11 +657,9 @@ mod lexer_test {
 
     fn assert_map(map: &[(&'static str, TokenKind)]) {
         for (source, token) in map.iter() {
-            let mut lexer = Lexer::new(source.chars(), 0);
-            assert_eq!(
-                lexer.next().unwrap().map(|t| t.token_kind),
-                Ok(token.clone())
-            );
+            let mut interner = Interner::default();
+            let mut lexer = Lexer::new(source.chars(), 0, &mut interner);
+            assert_eq!(lexer.next().map(|t| t.token_kind), Ok(token.clone()));
         }
     }
 
@@ -774,10 +785,12 @@ mod lexer_test {
 
     #[test]
     fn ident() {
-        assert_map(&[(
-            "helloWorldIdent",
-            TokenKind::Ident(SmolStr::new("helloWorldIdent")),
-        )]);
+        let mut interner = Interner::default();
+        let mut lexer = Lexer::new("helloWorldIdent".chars(), 0, &mut interner);
+        assert_eq!(
+            lexer.next().map(|t| t.token_kind),
+            Ok(TokenKind::Ident(interner.intern("helloWorldIdent")))
+        );
     }
 
     #[test]

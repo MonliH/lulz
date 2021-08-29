@@ -1,8 +1,8 @@
+mod backend;
 mod color;
 mod diagnostics;
 mod err;
 mod frontend;
-mod middle;
 mod opts;
 
 use codespan_reporting::files::SimpleFiles;
@@ -16,7 +16,10 @@ use std::{
     io::{self, Read},
     process::exit,
 };
+use toolshed::Arena;
 
+use crate::backend::interner::Interner;
+use crate::backend::translate::translate_ast;
 use crate::diagnostics::Failible;
 use frontend::*;
 
@@ -63,14 +66,16 @@ fn main() {
     };
 }
 
-fn pipeline(
-    sources: &SimpleFiles<String, String>,
-    id: usize,
-    mut opts: opts::Opts,
-) -> Failible<()> {
-    let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
+fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: opts::Opts) -> Failible<()> {
+    let mut interner = Interner::default();
+    let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id, &mut interner);
     let mut parser = parse::Parser::new(lexer);
-    let mut ast = parser.parse()?;
+    let ast = parser.parse()?;
+
+    let arena = Arena::new();
+    let lco = translate_ast(&ast.0, &arena);
+
+    println!("{:#?}", lco);
 
     Ok(())
 }
