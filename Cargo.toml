@@ -8,11 +8,13 @@ edition = "2018"
 codespan-reporting = "0.11.1"
 smallvec = "1"
 smol_str = "0.1"
-rustc-hash = "1.1.0"
 unicode_names2 = "0.4.0"
 pico-args = { version = "0.4.1", features = ["short-space-opt"] }
-toolshed = "0.8.1"
-lightning-sys = { git = "https://github.com/Petelliott/lightning-sys", branch = "master" }
+libc = "0.2"
+dynasm = "1.1.0"
+hashbrown = "0.11.2"
+dynasmrt = "1.1.0"
+bumpalo = "3.7.0"
 
 [profile.release]
 lto = true

@@ -5,23 +5,27 @@ mod err;
 mod frontend;
 mod opts;
 
+use crate::backend::interner::Interner;
+use crate::backend::translate::{dump_hex, translate_ast};
+use crate::diagnostics::Failible;
+use backend::lco::{CompilationCtx, LazyCode};
 use codespan_reporting::files::SimpleFiles;
 use codespan_reporting::{
     term,
     term::termcolor::{ColorChoice, StandardStream},
 };
+use dynasm::dynasm;
+use dynasmrt::DynasmApi;
+use frontend::*;
+use libc::c_void;
+use std::rc::Rc;
 use std::{
     borrow::Cow,
     fs::read_to_string,
     io::{self, Read},
+    mem,
     process::exit,
 };
-use toolshed::Arena;
-
-use crate::backend::interner::Interner;
-use crate::backend::translate::translate_ast;
-use crate::diagnostics::Failible;
-use frontend::*;
 
 fn main() {
     let mut opts = err::report(
@@ -71,11 +75,26 @@ fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: opts::Opts) 
     let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id, &mut interner);
     let mut parser = parse::Parser::new(lexer);
     let ast = parser.parse()?;
+    let main_strid = interner.intern("");
 
-    let arena = Arena::new();
-    let lco = translate_ast(&ast.0, &arena);
+    let mut ctx = CompilationCtx::new(main_strid);
+    let start = ctx.f.asm.offset();
 
-    println!("{:#?}", lco);
+    translate_ast(
+        &ast.0,
+        LazyCode(Rc::new(|ctx| {
+            dynasm!( ctx.f.asm
+            // Return 0
+            ; xor rax, rax
+            ; ret
+            );
+            ctx.f.asm.commit().unwrap();
+            let main_buf = ctx.f.asm.reader();
+            let main_fn: extern "sysv64" fn() -> c_void =
+                unsafe { mem::transmute(main_buf.lock().ptr(start)) };
+            main_fn();
+        })),
+    )(&mut ctx);
 
     Ok(())
 }

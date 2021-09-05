@@ -1,13 +1,14 @@
-use rustc_hash::FxHashMap;
-use std::mem;
 // Credit to https://matklad.github.io/2020/03/22/fast-simple-rust-interner.html
+use std::mem;
+
+use hashbrown::HashMap;
 
 #[derive(Default, Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub struct StrId(usize);
 
 #[derive(Default, Debug)]
 pub struct Interner {
-    map: FxHashMap<&'static str, StrId>,
+    map: HashMap<&'static str, StrId>,
     vec: Vec<&'static str>,
     buf: String,
     full: Vec<String>,
@@ -17,7 +18,7 @@ impl Interner {
     pub fn with_capacity(cap: usize) -> Interner {
         let cap = cap.next_power_of_two();
         Interner {
-            map: FxHashMap::default(),
+            map: HashMap::default(),
             vec: Vec::new(),
             buf: String::with_capacity(cap),
             full: Vec::new(),

@@ -5,44 +5,121 @@
 //! compilers for dynamic languages with low development effort.
 //! In Proceedings of the 10th ACM SIGPLAN International Workshop
 //! on Virtual Machines and Intermediate Languages (pp. 36-46).
+use std::{fmt::Debug, mem, ops::Deref, rc::Rc};
 
-use lightning_sys::JitState;
-use rustc_hash::FxHashMap;
+use bumpalo::Bump;
+use dynasmrt::{
+    dynasm,
+    x64::{Rq, X64Relocation},
+    Assembler, DynasmApi,
+};
+use hashbrown::HashMap;
 
 use crate::frontend::ast::LolTy;
 
 use super::interner::StrId;
 
-pub type LcoRef<'a> = Option<&'a Lco<'a>>;
+pub type Lazy<'a> = dyn Fn(&mut CompilationCtx) + 'a;
+#[derive(Clone)]
+pub struct LazyCode<'a>(pub Rc<Lazy<'a>>);
 
-#[derive(Clone, Copy, Debug)]
-pub enum Lco<'a> {
-    Float(f32, LcoRef<'a>),
-    Int(i64, LcoRef<'a>),
-    Bool(bool, LcoRef<'a>),
-    Null(LcoRef<'a>),
-    Variable(StrId, LcoRef<'a>),
+impl<'a> Deref for LazyCode<'a> {
+    type Target = Lazy<'a>;
 
-    NewVariable(StrId, LcoRef<'a>),
-    Print(LcoRef<'a>),
-
-    HasType {
-        ty: LolTy,
-        yes: LcoRef<'a>,
-        no: LcoRef<'a>,
-    },
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
+    }
 }
 
+#[derive(Debug)]
+pub struct Function {
+    pub env: HashMap<StrId, usize>,
+    pub stack: Vec<ValueInfo>,
+    pub asm: Assembler<X64Relocation>,
+}
+
+impl Function {
+    pub fn new() -> Self {
+        Self {
+            env: HashMap::default(),
+            stack: Vec::new(),
+            asm: Assembler::new().expect("Failed to create assembler"),
+        }
+    }
+
+    pub fn insert_var(&mut self, name: StrId, idx: usize) {
+        self.env.insert(name, idx);
+    }
+
+    pub fn push(&mut self, value: ValueInfo) {
+        self.stack.push(value);
+    }
+
+    pub fn pop(&mut self) -> Option<ValueInfo> {
+        self.stack.pop()
+    }
+}
+
+#[derive(Debug)]
+#[repr(C)]
 pub struct CompilationCtx {
-    stack: Vec<ValueInfo>,
-    env: FxHashMap<StrId, ValueInfo>,
+    pub functions: HashMap<StrId, Function>,
+    pub fid: StrId,
+    pub f: Function,
+    pub bump: Bump,
 }
 
-#[derive(Clone, Copy, Debug)]
+impl CompilationCtx {
+    pub fn new(main_strid: StrId) -> Self {
+        Self {
+            functions: HashMap::default(),
+            fid: main_strid,
+            f: Function::new(),
+            bump: Bump::new(),
+        }
+    }
+
+    pub fn define_var(&mut self, var_id: StrId, value: ValueInfo) {
+        let position = self.f.stack.len();
+        self.f.push(value);
+        self.f.insert_var(var_id, position);
+    }
+
+    pub fn var_pos(&self, var_id: &StrId) -> usize {
+        *self.f.env.get(var_id).unwrap()
+    }
+
+    pub fn var_type(&self, var_id: StrId) -> &ValueInfo {
+        &self.f.stack[*self.f.env.get(&var_id).unwrap()]
+    }
+
+    pub fn push(&mut self, value: ValueInfo) {
+        self.f.push(value);
+    }
+
+    pub fn pop(&mut self) -> Option<ValueInfo> {
+        self.f.pop()
+    }
+
+    pub fn commit_current(&mut self, old_id: StrId, old_fn: Function) -> StrId {
+        let current_fn = mem::replace(&mut self.f, old_fn);
+        let current_id = self.fid;
+        self.functions.insert(current_id, current_fn);
+        self.fid = old_id;
+        current_id
+    }
+
+    pub fn pop_commit(&mut self, old_id: StrId) {
+        let old_fn = self.functions.remove(&old_id).unwrap();
+        self.commit_current(old_id, old_fn);
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
 pub enum ValueInfo {
     ConstBool(bool),
-    ConstFloat(f32),
-    ConstInt(i64),
+    ConstFloat(f64),
+    ConstInt(i32),
     ConstNull,
 
     Type(LolTy),
