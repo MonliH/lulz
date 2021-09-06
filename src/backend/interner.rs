@@ -4,7 +4,14 @@ use std::mem;
 use hashbrown::HashMap;
 
 #[derive(Default, Clone, Debug, Copy, PartialEq, Eq, Hash)]
+#[repr(transparent)]
 pub struct StrId(usize);
+
+impl StrId {
+    pub fn inner(self) -> usize {
+        self.0
+    }
+}
 
 #[derive(Default, Debug)]
 pub struct Interner {

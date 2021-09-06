@@ -109,9 +109,9 @@ impl CompilationCtx {
         current_id
     }
 
-    pub fn pop_commit(&mut self, old_id: StrId) {
+    pub fn pop_commit(&mut self, old_id: StrId) -> StrId {
         let old_fn = self.functions.remove(&old_id).unwrap();
-        self.commit_current(old_id, old_fn);
+        self.commit_current(old_id, old_fn)
     }
 }
 
