@@ -1,10 +1,11 @@
 #![feature(option_result_unwrap_unchecked)]
 #[macro_use]
 extern crate derivative;
-mod backend;
 mod diagnostics;
 mod err;
 mod frontend;
+mod lolbc;
+mod lolvm;
 mod middle;
 
 use clap::Clap;
@@ -25,19 +26,14 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 #[derive(Clap, Debug)]
 #[clap(version = VERSION, author = "Jonathan Li")]
 struct Opts {
-    #[clap(
-        short = 'D',
-        long = "dump-c",
-        about = "Prints the generated C code into stdout"
-    )]
-    dump_c: bool,
+    #[clap(short = 'd', long, about = "Prints disassembled lolvm bytecode")]
+    disasm: bool,
 
     #[clap(
-        short = 'd',
-        long = "emit-debug",
-        about = "Emit some debug info into the generated C code (extra commenents)"
+        long = "debug-vm",
+        about = "Steps through the stack and instructions of the lolvm"
     )]
-    debug_c_gen: bool,
+    debug_vm: bool,
 
     #[clap(about = "Input file to interpret. Use `-` to read from stdin")]
     input: String,
@@ -85,11 +81,14 @@ fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Fai
     let mut parser = parse::Parser::new(lexer);
     let mut ast = parser.parse()?;
     ast.opt();
-    let mut compiler = middle::LowerCompiler::new(opts.debug_c_gen);
-    compiler.compile_start(ast)?;
-    let c_code = compiler.get_str();
-    if opts.dump_c {
-        println!("{}", c_code);
+    let mut bytecode_compiler = middle::BytecodeCompiler::new();
+    bytecode_compiler.compile_start(ast)?;
+    let mut bytecode: lolbc::Chunk = bytecode_compiler.take_chunk();
+    bytecode.opt();
+    if opts.disasm {
+        lolbc::disasm(&bytecode);
     }
+    let mut vm = lolvm::LolVm::new();
+    vm.run(bytecode, opts.debug_vm)?;
     Ok(())
 }

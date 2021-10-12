@@ -5,12 +5,6 @@ use std::mem;
 #[derive(Default, Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub struct StrId(usize);
 
-impl StrId {
-    pub fn get_id(&self) -> usize {
-        self.0
-    }
-}
-
 #[derive(Default, Debug)]
 pub struct Interner {
     map: FxHashMap<&'static str, StrId>,
