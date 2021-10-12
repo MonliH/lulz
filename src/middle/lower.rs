@@ -455,13 +455,7 @@ impl LowerCompiler {
                     let ident = self.intern(id);
                     self.compile_assign(ident, e, span)?;
                 }
-                StatementKind::Input(id) => {
-                    self.c.ws("lol_readline(&");
-                    let ident = self.intern(id);
-                    self.c.name(ident);
-                    self.c.wc(')');
-                    self.c.semi();
-                }
+                StatementKind::Input(id) => {}
                 StatementKind::Print(e, no_newline) => {
                     let fn_name = if no_newline {
                         "lol_print"

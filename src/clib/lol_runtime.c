@@ -180,19 +180,3 @@ StringObj lol_concat_str(size_t length, ...) {
 
   return MAKE_STR_OBJ(final_str, str_lens, false);
 }
-
-void lol_readline(LolValue *val) {
-  size_t n = 0, result;
-  char *buf;
-
-  result = getline(&buf, &n, stdin);
-  if (result < 0)
-    exit(1);
-
-  size_t len = strlen(buf);
-  if (len > 0 && buf[len - 1] == '\n') {
-    buf[--len] = '\0';
-  }
-
-  *val = OBJ_VALUE(lol_alloc_str(buf, len));
-}
