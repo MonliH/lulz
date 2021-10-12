@@ -523,38 +523,6 @@ impl LowerCompiler {
                     match fn_id {
                         Some((fn_name, var_name, pred)) => {
                             // for loop
-                            let inc = self.intern(var_name.clone());
-                            self.insert_local(inc, ValueTy::Value);
-                            self.c.ws("for (");
-                            self.c.lol_value_ty();
-                            self.c.name(inc);
-                            self.c.ws(" = INT_VALUE(0); ");
-                            if let Some((till, e)) = pred {
-                                if till {
-                                    self.c.wc('!');
-                                }
-                                self.c.ws("lol_to_bool(");
-                                self.compile_expr(e)?;
-                                self.c.wc(')');
-                            }
-                            self.c.ws("; ");
-                            self.c.name(inc);
-                            self.c.ws(" = ");
-                            let span = var_name.1;
-                            self.compile_expr(Expr {
-                                span: fn_name.1,
-                                expr_kind: ExprKind::FunctionCall(
-                                    fn_name,
-                                    vec![Expr {
-                                        span: span,
-                                        expr_kind: ExprKind::Variable(var_name.clone()),
-                                    }],
-                                ),
-                            })?;
-                            self.c.wc(')');
-                            self.begin_scope();
-                            self.compile(block)?;
-                            self.end_scope();
                         }
                         None => {
                             // while loop

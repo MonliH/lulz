@@ -1203,7 +1203,7 @@ KTHXBYE"#,
     #[rustfmt::skip]
     assert_ast!(
         r#"HAI 1.4
-IM IN YR block UPPIN YR i TIL WIN
+IM IN YR block UPPIN YR i TILL WIN
 IM OUTTA YR block
 KTHXBYE"#,
         loop_simple_till,
@@ -1213,7 +1213,7 @@ KTHXBYE"#,
     #[rustfmt::skip]
     assert_ast!(
         r#"HAI 1.4
-IM IN YR block UPPIN YR i TIL WIN
+IM IN YR block UPPIN YR i TILL WIN
     GTFO
 IM OUTTA YR block
 KTHXBYE"#,
@@ -1315,7 +1315,7 @@ KTHXBYE"#,
 
     assert_err!(
         r#"HAI 1.4
-IM IN YR bLock UPPIN YR i TIL WIN
+IM IN YR bLock UPPIN YR i TILL WIN
 IM OUTTA YR block
 KTHXBYE"#,
         DiagnosticType::UnmatchedBlockName,

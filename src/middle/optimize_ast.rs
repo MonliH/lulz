@@ -124,8 +124,8 @@ impl ExprRewrite for CmpRewrite {
                         let new_op = match (op1, op2) {
                             (OpTy::Equal, OpTy::Max) => Some(OpTy::GTE),
                             (OpTy::Equal, OpTy::Min) => Some(OpTy::LTE),
-                            (OpTy::NotEq, OpTy::Max) => Some(OpTy::LT),
-                            (OpTy::NotEq, OpTy::Min) => Some(OpTy::GT),
+                            (OpTy::NotEq, OpTy::Max) => Some(OpTy::GT),
+                            (OpTy::NotEq, OpTy::Min) => Some(OpTy::LT),
                             _ => None,
                         };
                         match new_op {
@@ -167,8 +167,8 @@ impl ExprRewrite for CmpRewrite {
                         let new_op = match (op1, op2) {
                             (OpTy::Equal, OpTy::Max) => Some(OpTy::GTE),
                             (OpTy::Equal, OpTy::Min) => Some(OpTy::LTE),
-                            (OpTy::NotEq, OpTy::Max) => Some(OpTy::LT),
-                            (OpTy::NotEq, OpTy::Min) => Some(OpTy::GT),
+                            (OpTy::NotEq, OpTy::Max) => Some(OpTy::GT),
+                            (OpTy::NotEq, OpTy::Min) => Some(OpTy::LT),
                             _ => None,
                         };
                         match new_op {
