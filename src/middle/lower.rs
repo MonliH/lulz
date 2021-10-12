@@ -146,21 +146,6 @@ impl LowerCompiler {
         Ok(())
     }
 
-    fn compile_str_lit(&mut self, s: &str) {
-        self.c.wc('"');
-        self.c.ws(s);
-        self.c.wc('"');
-    }
-
-    fn string_lit(&mut self, s: &str, len: usize) {
-        self.c.ws("OBJ_VALUE(");
-        self.c.ws("lol_alloc_lit_str((char*)");
-        self.compile_str_lit(s);
-        self.c.ws(", ");
-        self.c.ws(&(len + 1).to_string());
-        self.c.ws("))");
-    }
-
     fn compile_expr(&mut self, expr: Expr) -> Failible<()> {
         match expr.expr_kind {
             ExprKind::Cast(e, ty) => {
@@ -169,45 +154,7 @@ impl LowerCompiler {
                 self.compile_expr(*e)?;
                 self.c.wc(')');
             }
-            ExprKind::InterpStr(s, interps) => {
-                self.c.ws("OBJ_VALUE(lol_alloc_stack_str(lol_interp_str(");
-                self.c.ws(&interps.len().to_string());
-                let mut running_str = &s[..];
-                let mut idx = 0;
-                for interp in interps {
-                    println!("{:?}", &interp);
-                    let interned = self.intern(interp.1);
-                    if let None = self.valid_locals.get(&interned) {
-                        return Err(Diagnostic::build(
-                            Level::Error,
-                            DiagnosticType::UnknownSymbol,
-                            interp.2,
-                        )
-                        .annotation(
-                            Cow::Owned(format!(
-                                "unknown symbol `{}`",
-                                self.interner.lookup(interned)
-                            )),
-                            interp.2,
-                        )
-                        .into());
-                    }
-                    let (fragment, new_str) = running_str.split_at(interp.0 - idx);
-                    running_str = new_str;
-                    idx = interp.0;
-                    self.c.ws(", ");
-                    self.c.ws(&fragment.len().to_string());
-                    self.c.ws(", ");
-                    self.compile_str_lit(fragment);
-                    self.c.ws(", ");
-                    self.c.name(interned);
-                }
-                self.c.ws(", ");
-                self.c.ws(&running_str.len().to_string());
-                self.c.ws(", ");
-                self.compile_str_lit(running_str);
-                self.c.ws(")))");
-            }
+            ExprKind::InterpStr(s, interps) => {}
             ExprKind::FunctionCall(id, args) => {
                 let arg_len = args.len();
                 if arg_len > 255 {
@@ -255,7 +202,7 @@ impl LowerCompiler {
             ExprKind::Bool(b) => self.c.bool(b),
             ExprKind::Null => self.c.null(),
 
-            ExprKind::String(s) => self.string_lit(&s, s.len()),
+            ExprKind::String(s) => self.c.string_lit(&s, s.len()),
 
             ExprKind::Not(e) => {
                 self.c.ws("lol_not");

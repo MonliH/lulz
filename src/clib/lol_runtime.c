@@ -57,7 +57,7 @@ StringObj lol_to_str(LolValue value) {
     return MAKE_STR_OBJ("NOOB", 4, true);
   } else if (IS_FUN(value)) {
     char *str = ALLOCATE(char, length + 1);
-    snprintf(str, length + 1, "<FUNKSHON at 0x%08lx>", (uint64_t)AS_FUN(value));
+    snprintf(str, length + 1,  "<FUNKSHON at 0x%08lx>", (uint64_t)AS_FUN(value));
     return MAKE_STR_OBJ(str, length, false);
   } else if (IS_STR(value)) {
     return *AS_STR(value);
@@ -189,38 +189,4 @@ void lol_readline(LolValue *val) {
   }
 
   *val = OBJ_VALUE(lol_alloc_str(buf, len));
-}
-
-StringObj lol_interp_str(size_t length, ...) {
-  size_t str_lens = 1;
-  va_list args;
-  va_start(args, length);
-  for (size_t i = 0; i < length; i++) {
-    str_lens += va_arg(args, size_t);
-    va_arg(args, char *);
-    str_lens += lol_str_len(va_arg(args, LolValue));
-  }
-  // last string (extra at end)
-  str_lens += va_arg(args, size_t);
-  va_end(args);
-
-  char *final_str = lol_realloc(NULL, 0, str_lens + 1);
-  char *end = final_str;
-
-  va_start(args, length);
-  for (size_t i = 0; i < length; i++) {
-    size_t lit_len = va_arg(args, size_t);
-    end = stpncpy(end, va_arg(args, char *), lit_len);
-
-    LolValue v = va_arg(args, LolValue);
-    StringObj s = lol_to_str(v);
-    end = stpncpy(end, s.chars, s.len);
-  }
-  size_t lit_len = va_arg(args, size_t);
-  end = stpncpy(end, va_arg(args, char *), lit_len);
-  va_end(args);
-
-  final_str[str_lens] = '\0';
-
-  return MAKE_STR_OBJ(final_str, str_lens, false);
 }
