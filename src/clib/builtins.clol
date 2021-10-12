@@ -1,7 +1,0 @@
-LolValue lol_{uppin}_fn(LolValue arg) {{
-  return lol_uppin(arg);
-}}
-
-LolValue lol_{nerfin}_fn(LolValue arg) {{
-  return lol_nerfin(arg);
-}}

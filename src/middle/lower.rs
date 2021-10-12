@@ -29,7 +29,6 @@ pub struct LowerCompiler {
     c: CBuilder,
 
     // map from interned string to it's stack position
-    global_builtins: FxHashMap<StrId, ValueTy>,
     valid_locals: FxHashMap<StrId, (ValueTy, usize)>,
     locals: SmallVec<[(StrId, usize); 16]>,
     overwritten: SmallVec<[Vec<(StrId, (ValueTy, usize))>; 8]>,
@@ -47,7 +46,6 @@ impl LowerCompiler {
         let mut new = Self {
             c: CBuilder::new(debug),
 
-            global_builtins: FxHashMap::default(),
             valid_locals: FxHashMap::default(),
             locals: SmallVec::new(),
             overwritten: SmallVec::new(),
@@ -312,9 +310,6 @@ impl LowerCompiler {
     }
 
     fn validate_local(&mut self, id: StrId, span: Span) -> Failible<ValueTy> {
-        if let Some(val) = self.global_builtins.get(&id) {
-            return Ok(*val);
-        }
         if id == self.it {
             return Ok(ValueTy::Value);
         }
@@ -341,7 +336,6 @@ impl LowerCompiler {
             self.c.semi();
         }
 
-        self.c.ws("return ");
         self.c.ws(&format!("lol_{}_fn(", id.get_id()));
         let mut args = (0..arity).into_iter();
         if let Some(n) = args.next() {
@@ -393,31 +387,9 @@ impl LowerCompiler {
         self.interner.intern(id.as_ref())
     }
 
-    fn compile_fn_builtin(&mut self, name: &'static str, arity: u8) -> StrId {
-        let id = self.intern(name);
-        self.global_builtins.insert(id, ValueTy::Function(arity));
-        id
-    }
-
-    fn compile_builtins(&mut self) {
-        let uppin = self.compile_fn_builtin("UPPIN", 1);
-        let nerfin = self.compile_fn_builtin("NERFIN", 1);
-
-        let mut old_len = self.c.fns.len();
-        mem::swap(&mut old_len, &mut self.c.fn_id);
-        self.c.fns.push(String::new());
-        self.c.ws(&format!(
-            include_str!("../clib/builtins.clol"),
-            nerfin = nerfin.get_id(),
-            uppin = uppin.get_id()
-        ));
-        mem::swap(&mut old_len, &mut self.c.fn_id);
-    }
-
     pub fn compile_start(&mut self, ast: Block) -> Failible<()> {
         let interned = self.intern("main_lulz");
         self.c.main_fn = format!("lol_{}_fn", interned.get_id());
-        self.compile_builtins();
         self.compile_func(interned, Vec::new(), ast, false, Span::default())?;
         self.c.stdlib();
         Ok(())

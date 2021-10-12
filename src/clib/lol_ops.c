@@ -151,25 +151,10 @@ LolValue to_lol_yarn(LolValue value) {
 CMP_OP(min, (cl < cr))
 CMP_OP(max, (cl > cr))
 
-LolValue lol_not(LolValue value, LolSpan sp) {
+LolValue lol_not(LolValue value) {
   bool b = lol_to_bool(value);
   return BOOL_VALUE(!b);
 }
-
-#define UNARY_MATH(name, intval, floatval)                                     \
-  LolValue lol_##name(LolValue value, LolSpan sp) {                            \
-    LolValue n = to_numeric(value);                                            \
-    if (IS_INT(n)) {                                                           \
-      int32_t num = AS_INT(n);                                                 \
-      return INT_VALUE(num intval);                                            \
-    } else if (IS_DOUBLE(n)) {                                                 \
-      double num = AS_DOUBLE(n);                                               \
-      return DOUBLE_VALUE(num floatval);                                       \
-    }                                                                          \
-  }
-
-UNARY_MATH(uppin, +1, +1.0)
-UNARY_MATH(nerfin, -1, -1.0)
 
 #define BOOL_OP(name, cmp)                                                     \
   LolValue lol_##name(LolValue left, LolValue right) {                         \
