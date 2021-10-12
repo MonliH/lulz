@@ -1,11 +1,12 @@
+BTW { "trials": 5, "reps": 20 }
 HAI 1.3
-	I HAS A array ITZ A BUKKIT
+	I HAS A buffer ITZ A LIZT
 	I HAS A ptr ITZ 0
 	I HAS A max ITZ 100
 
 	HOW IZ I convert YR char
 		char, WTF?
-			OMG "", FOUND YR 4
+			OMG ":(4)", FOUND YR 4
 			OMG " ", FOUND YR 32
 			OMG "!", FOUND YR 33
 			OMG ":"", FOUND YR 34
@@ -158,7 +159,7 @@ HAI 1.3
 			OMG 80, VISIBLE "P"!, GTFO
 			OMG 81, VISIBLE "Q"!, GTFO
 			OMG 82, VISIBLE "R"!, GTFO
-			OMG 83, VISIBLE "S", GTFO
+			OMG 83, VISIBLE "S"!, GTFO
 			OMG 84, VISIBLE "T"!, GTFO
 			OMG 85, VISIBLE "U"!, GTFO
 			OMG 86, VISIBLE "V"!, GTFO
@@ -205,55 +206,40 @@ HAI 1.3
 		OIC
 	IF U SAY SO
 
-	BTW Build up a slot name
-	HOW IZ I slot YR n
-		I HAS A name ITZ "x"
-		IM IN YR loop UPPIN YR i TIL BOTH SAEM i AN n
-			name R SMOOSH name AN "x" MKAY
-		IM OUTTA YR loop
-		FOUND YR name
-	IF U SAY SO
-
-	BTW Initialize the array
-	IM IN YR init UPPIN YR ctr TIL BOTH SAEM ctr AN 100
-		array HAS A SRS I IZ slot YR ctr MKAY ITZ 0
+	IM IN YR init UPPIN YR ctr TIL BOTH SAEM ctr AN max
+		PUT 0 INTO buffer
 	IM OUTTA YR init
 
 	HOW IZ I executin YR instruction
 		instruction, WTF?
-			OMG ""
+			OMG ":(4)"
 				FOUND YR WIN
 			OMG ">"
-				DIFFRINT ptr AN 100, O RLY?
-					YA RLY, ptr R SUM OF ptr AN 1
-				OIC
+				ptr R SUM OF ptr AN 1
 				FOUND YR FAIL
 			OMG "<"
-				DIFFRINT ptr AN 0, O RLY?
-					YA RLY, ptr R DIFF OF ptr AN 1
-				OIC
+				ptr R DIFF OF ptr AN 1
 				FOUND YR FAIL
 			OMG "+"
-				array'Z SRS I IZ slot YR ptr MKAY R SUM OF...
-					array'Z SRS I IZ slot YR ptr MKAY AN 1
+                I HAS A new_slot ITZ SUM OF 1 AN GRAB ptr FRUM buffer
+                SHUV new_slot INTO ptr OF buffer
 				FOUND YR FAIL
 			OMG "-"
-				array'Z SRS I IZ slot YR ptr MKAY R DIFF OF...
-					array'Z SRS I IZ slot YR ptr MKAY AN 1
+                I HAS A new_slot ITZ DIFF OF 1 AN GRAB ptr FRUM buffer
+                SHUV new_slot INTO ptr OF buffer
 				FOUND YR FAIL
 			OMG ","
 				I HAS A temp ITZ A YARN
 				GIMMEH temp
-				array'Z SRS I IZ slot YR ptr MKAY R...
-					I IZ convert YR temp MKAY
+				SHUV I IZ convert YR temp MKAY INTO ptr OF buffer
 				FOUND YR FAIL
 			OMG "."
-				I IZ print YR array'Z SRS I IZ slot YR ptr MKAY MKAY
+				I IZ print YR GRAB ptr FRUM buffer MKAY
 				FOUND YR FAIL
 			OMG "["
 				BTW Fetch until ``]''
-				I HAS A icache ITZ A BUKKIT
-				I HAS A size ITZ 0
+				I HAS A icache ITZ A LIZT
+                I HAS A size ITZ 0
 				IM IN YR loop1
 					I HAS A temp ITZ A YARN
 					GIMMEH temp
@@ -261,18 +247,18 @@ HAI 1.3
 					O RLY?
 						YA RLY, GTFO
 					OIC
-					icache HAS A SRS I IZ slot YR size MKAY ITZ temp
-					size R SUM OF size AN 1
+                    PUT temp INTO icache
+                    size R SUM OF size AN 1
 				IM OUTTA YR loop1
 				BTW Keep executing until done
 				IM IN YR loop2 UPPIN YR pc
 					pc R MOD OF pc AN size
 					I HAS A cond1 ITZ BOTH SAEM pc AN 0
-					I HAS A cond2 ITZ BOTH SAEM array'Z SRS I IZ slot YR ptr MKAY AN 0
+					I HAS A cond2 ITZ BOTH SAEM GRAB ptr FRUM buffer AN 0
 					BOTH OF cond1 AN cond2
 					O RLY?, YA RLY, GTFO, OIC
-					I HAS A i ITZ icache'Z SRS I IZ slot YR pc MKAY
-					I IZ executin YR i MKAY
+					I HAS A i ITZ GRAB pc FRUM icache
+					ptr R I IZ executin YR i MKAY
 				IM OUTTA YR loop2
 				FOUND YR FAIL
 		OIC

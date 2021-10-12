@@ -1,4 +1,4 @@
-BTW { "output": "\"\n" }
+BTW { "output": "\"" }
 HAI 1.3
 VISIBLE ":""
 KTHXBYE

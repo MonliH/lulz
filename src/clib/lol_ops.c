@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-LolValue to_numeric(LolValue val, LolSpan sp) {
+LolValue to_numeric(LolValue val) {
   if (IS_INT(val) || IS_DOUBLE(val))
     return val;
   else if (IS_BOOL(val))
@@ -19,7 +19,6 @@ LolValue to_numeric(LolValue val, LolSpan sp) {
       errno = 0;
       double value = strtod(str, &e);
       if (*e != '\0' || errno != 0) {
-        printf("invalid number\n");
         exit(1);
       }
       return DOUBLE_VALUE(value);
@@ -28,20 +27,18 @@ LolValue to_numeric(LolValue val, LolSpan sp) {
       errno = 0;
       int32_t value = strtol(str, &e, 10);
       if (*e != '\0' || errno != 0) {
-        printf("invalid number\n");
         exit(1);
       }
       return INT_VALUE(value);
     }
   }
-  printf("invalid number %d:%d\n", sp.s, sp.e);
   exit(1);
 }
 
 #define BINARY_OP(op_name, op)                                                 \
   LolValue lol_##op_name(LolValue left, LolValue right, LolSpan sp) {          \
-    LolValue l = to_numeric(left, sp);                                         \
-    LolValue r = to_numeric(right, sp);                                        \
+    LolValue l = to_numeric(left);                                             \
+    LolValue r = to_numeric(right);                                            \
     if (IS_INT(l) && IS_INT(r)) {                                              \
       return INT_VALUE(AS_INT(l) op AS_INT(r));                                \
     } else if (IS_INT(l) && IS_DOUBLE(r)) {                                    \
@@ -58,8 +55,8 @@ BINARY_OP(mul, *)
 BINARY_OP(div, /)
 
 LolValue lol_mod(LolValue left, LolValue right, LolSpan sp) {
-  LolValue l = to_numeric(left, sp);
-  LolValue r = to_numeric(right, sp);
+  LolValue l = to_numeric(left);
+  LolValue r = to_numeric(right);
   if (IS_INT(l) && IS_INT(r)) {
     return INT_VALUE(AS_INT(l) % AS_INT(r));
   } else {
@@ -69,8 +66,8 @@ LolValue lol_mod(LolValue left, LolValue right, LolSpan sp) {
 
 #define BOOL_NUM_OP(op_name, op)                                               \
   LolValue lol_##op_name(LolValue left, LolValue right, LolSpan sp) {          \
-    LolValue l = to_numeric(left, sp);                                         \
-    LolValue r = to_numeric(right, sp);                                        \
+    LolValue l = to_numeric(left);                                             \
+    LolValue r = to_numeric(right);                                            \
     if (IS_INT(l) && IS_INT(r)) {                                              \
       return BOOL_VALUE(AS_INT(l) op AS_INT(r));                               \
     } else if (IS_INT(l) && IS_DOUBLE(r)) {                                    \
@@ -113,16 +110,16 @@ EQ_OP(neq, !=, false, true)
 
 LolValue to_lol_troof(LolValue value) { return BOOL_VALUE(lol_to_bool(value)); }
 
-LolValue to_lol_numbar(LolValue value, LolSpan sp) {
-  LolValue num = to_numeric(value, sp);
+LolValue to_lol_numbar(LolValue value) {
+  LolValue num = to_numeric(value);
   if (IS_INT(num)) {
     num = DOUBLE_VALUE((double)(AS_INT(num)));
   }
   return num;
 }
 
-LolValue to_lol_numbr(LolValue value, LolSpan sp) {
-  LolValue num = to_numeric(value, sp);
+LolValue to_lol_numbr(LolValue value) {
+  LolValue num = to_numeric(value);
   if (IS_DOUBLE(num)) {
     num = INT_VALUE((int64_t)(AS_DOUBLE(num)));
   }
@@ -135,9 +132,9 @@ LolValue to_lol_yarn(LolValue value) {
 }
 
 #define CMP_OP(name, cmp)                                                      \
-  LolValue lol_##name(LolValue left, LolValue right, LolSpan sp) {             \
-    LolValue l = to_numeric(left, sp);                                         \
-    LolValue r = to_numeric(right, sp);                                        \
+  LolValue lol_##name(LolValue left, LolValue right) {                         \
+    LolValue l = to_numeric(left);                                             \
+    LolValue r = to_numeric(right);                                            \
     if (IS_INT(l) && IS_INT(r)) {                                              \
       int32_t cl = AS_INT(l);                                                  \
       int32_t cr = AS_INT(r);                                                  \
@@ -166,14 +163,13 @@ LolValue lol_length(LolValue value, LolSpan sp) {
   } else if (IS_VEC(value)) {
     return INT_VALUE(AS_VEC(value)->len);
   } else {
-    printf("could not get length: not a string or list\n");
     exit(1);
   }
 }
 
 #define UNARY_MATH(name, intval, floatval)                                     \
   LolValue lol_##name(LolValue value, LolSpan sp) {                            \
-    LolValue n = to_numeric(value, sp);                                            \
+    LolValue n = to_numeric(value);                                            \
     if (IS_INT(n)) {                                                           \
       int32_t num = AS_INT(n);                                                 \
       return INT_VALUE(num intval);                                            \
@@ -228,7 +224,6 @@ void lol_append(LolValue source, LolValue item, LolSpan sp) {
     VectorObj *vec = AS_VEC(source);
     lol_vec_append(vec, item);
   } else {
-    printf("could not append: not a list\n");
     exit(1);
   }
 }
@@ -241,15 +236,12 @@ LolValue lol_vec_index(LolValue source, LolValue idx, LolSpan sp) {
       if (vec->len > i && i >= 0) {
         return vec->items[i];
       } else {
-        printf("get: index out of range\n");
         exit(1);
       }
     } else {
-      printf("get: index not an int %d:%d\n", sp.s, sp.e);
       exit(1);
     }
   } else {
-    printf("get: array not an array %d:%d\n", sp.s, sp.e);
     exit(1);
   }
 }
@@ -260,11 +252,9 @@ LolValue lol_vec_first(LolValue source, LolSpan sp) {
     if (vec->len > 0) {
       return vec->items[0];
     } else {
-      printf("get: index out of range\n");
       exit(1);
     }
   } else {
-    printf("get: array not an array\n");
     exit(1);
   }
 }
@@ -275,11 +265,9 @@ LolValue lol_vec_last(LolValue source, LolSpan sp) {
     if (vec->len > 0) {
       return vec->items[vec->len - 1];
     } else {
-      printf("get: index out of range\n");
       exit(1);
     }
   } else {
-    printf("get: array not an array\n");
     exit(1);
   }
 }
@@ -293,15 +281,12 @@ LolValue lol_vec_set(LolValue source, LolValue idx, LolValue value,
       if (vec->len > i && i >= 0) {
         vec->items[i] = value;
       } else {
-        printf("set: index out of range\n");
         exit(1);
       }
     } else {
-      printf("set: index not an int %d:%d\n", sp.s, sp.e);
       exit(1);
     }
   } else {
-    printf("set: array not an array\n");
     exit(1);
   }
 }
@@ -312,11 +297,9 @@ LolValue lol_vec_set_first(LolValue source, LolValue value, LolSpan sp) {
     if (vec->len > 0) {
       vec->items[0] = value;
     } else {
-      printf("set: index out of range\n");
       exit(1);
     }
   } else {
-    printf("set: array not an array\n");
     exit(1);
   }
 }
@@ -327,11 +310,9 @@ LolValue lol_vec_set_last(LolValue source, LolValue value, LolSpan sp) {
     if (vec->len > 0) {
       vec->items[vec->len - 1] = value;
     } else {
-      printf("set: index out of range\n");
       exit(1);
     }
   } else {
-    printf("set: array not an array\n");
     exit(1);
   }
 }

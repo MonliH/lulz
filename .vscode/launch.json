@@ -35,7 +35,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["tests/closures/recursive_closure.lol"],
+            "args": ["basic.lol"],
             "cwd": "${workspaceFolder}"
         },
         {

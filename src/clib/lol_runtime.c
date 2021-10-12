@@ -88,14 +88,12 @@ StringObj lol_to_str(LolValue value) {
     char *str = ALLOCATE(char, length + 1);
     str[0] = '[';
     char *end = str + sizeof(char);
-    if (vec->len > 0) {
-      StringObj s = lol_to_str(vec->items[0]);
+    StringObj s = lol_to_str(vec->items[0]);
+    end = stpncpy(end, s.chars, s.len);
+    for (size_t i = 1; i < vec->len; i++) {
+      end = stpncpy(end, ", ", 2);
+      StringObj s = lol_to_str(vec->items[i]);
       end = stpncpy(end, s.chars, s.len);
-      for (size_t i = 1; i < vec->len; i++) {
-        end = stpncpy(end, ", ", 2);
-        StringObj s = lol_to_str(vec->items[i]);
-        end = stpncpy(end, s.chars, s.len);
-      }
     }
     end[0] = ']';
     end[1] = '\0';
