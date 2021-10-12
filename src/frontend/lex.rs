@@ -190,7 +190,6 @@ pub struct Lexer<'a> {
     stream: Peekable<Chars<'a>>,
     position: usize,
     pub source_id: usize,
-    had_newline: bool,
 }
 
 impl<'a> Iterator for Lexer<'a> {
@@ -216,17 +215,10 @@ impl<'a> Lexer<'a> {
             stream: chars.peekable(),
             source_id,
             position: 0,
-            had_newline: false,
         }
     }
 
     fn next_token(&mut self) -> Failible<Token> {
-        let tok = self.next_token_inner()?;
-        self.had_newline = tok.token_kind.eq(&TokenKind::Break);
-        Ok(tok)
-    }
-
-    fn next_token_inner(&mut self) -> Failible<Token> {
         let prev_pos = self.position;
         let kind = match self.eat() {
             c if Self::is_id_start(c) => return self.ident(c),
@@ -504,10 +496,6 @@ impl<'a> Lexer<'a> {
             token_kind: match &id[..] {
                 "BTW" => {
                     self.consume_while(first, Self::is_not_newline);
-                    if self.had_newline {
-                        // if there was already a newline before this comment, skip over the next
-                        self.eat();
-                    }
                     return self.next_token();
                 }
                 "OBTW" => {
