@@ -4,7 +4,7 @@ use std::{io::Read, mem, rc::Rc};
 
 use super::lco::{CompilationCtx, LazyCode, ValueInfo::*};
 use crate::{
-    backend::{interner::StrId, lco::Function},
+    backend::lco::Function,
     frontend::ast::{Expr, ExprKind, OpTy, Statement, StatementKind},
 };
 
@@ -38,7 +38,12 @@ pub fn translate_ast<'a>(ast: &'a [Statement], succ: LazyCode<'a>) -> LazyCode<'
             let poped = ctx.commit_current(id.0, Function::new());
             let closure_fat_ref = ctx.bump.alloc(LazyCode(Rc::new(|ctx| {
                 let poped = ctx.commit_current(id.0, Function::new());
-                translate_ast(&block.0, LazyCode(Rc::new(|ctx| {})))(ctx);
+                translate_ast(
+                    &block.0,
+                    LazyCode(Rc::new(|ctx| {
+                        println!("function gen over!");
+                    })),
+                )(ctx);
                 ctx.pop_commit(poped);
             })));
             let closure_ref = ctx.bump.alloc(closure_fat_ref);
@@ -56,6 +61,7 @@ pub fn translate_ast<'a>(ast: &'a [Statement], succ: LazyCode<'a>) -> LazyCode<'
             ; call rax
             // Return 0 as a fallback
             ; xor rax, rax
+            ; ret
             );
             ctx.pop_commit(poped);
             translate_ast(&ast[1..], succ.clone())(ctx);
