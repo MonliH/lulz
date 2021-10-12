@@ -95,7 +95,7 @@ impl LowerCompiler {
         for (name, local) in self.valid_locals.iter() {
             if self.depth == local.depth {
                 if let Some(idx) = self.prev_upvalue.0.get(&name) {
-                    self.c.box_name(self.prev_upvalue.1, *idx);
+                    self.c.box_name(self.prev_upvalue.1, *idx, *name);
                 }
             }
         }
@@ -111,7 +111,7 @@ impl LowerCompiler {
             let (name, local_depth) = self.locals.pop().unwrap();
             if old_depth == local_depth {
                 if let Some(idx) = self.prev_upvalue.0.get(&name) {
-                    self.c.box_name(self.prev_upvalue.1, *idx);
+                    self.c.box_name(self.prev_upvalue.1, *idx, name);
                 }
             }
         }
@@ -253,16 +253,9 @@ impl LowerCompiler {
         Ok(())
     }
 
-    fn escape(&mut self, s: &str) {
-        for c in s.chars() {
-            self.c.ws("\\x");
-            self.c.ws(&format!("{:X}", u32::from(c)));
-        }
-    }
-
     fn compile_str_lit(&mut self, s: &str) {
         self.c.wc('"');
-        self.escape(s);
+        self.c.ws(s);
         self.c.wc('"');
     }
 

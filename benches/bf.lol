@@ -210,36 +210,33 @@ HAI 1.3
 		PUT 0 INTO buffer
 	IM OUTTA YR init
 
-	HOW IZ I executin YR instruction
+	HOW IZ I executin YR instruction AN YR ptr AN YR buffer
 		instruction, WTF?
 			OMG ":(4)"
-				FOUND YR WIN
+				FOUND YR -1
 			OMG ">"
-				ptr R SUM OF ptr AN 1
-				FOUND YR FAIL
+				FOUND YR SUM OF ptr AN 1
 			OMG "<"
-				ptr R DIFF OF ptr AN 1
-				FOUND YR FAIL
+				FOUND YR DIFF OF ptr AN 1
 			OMG "+"
                 I HAS A new_slot ITZ SUM OF 1 AN GRAB ptr FRUM buffer
                 SHUV new_slot INTO ptr OF buffer
-				FOUND YR FAIL
+				FOUND YR ptr
 			OMG "-"
                 I HAS A new_slot ITZ DIFF OF 1 AN GRAB ptr FRUM buffer
                 SHUV new_slot INTO ptr OF buffer
-				FOUND YR FAIL
+				FOUND YR ptr
 			OMG ","
 				I HAS A temp ITZ A YARN
 				GIMMEH temp
 				SHUV I IZ convert YR temp MKAY INTO ptr OF buffer
-				FOUND YR FAIL
+				FOUND YR ptr
 			OMG "."
 				I IZ print YR GRAB ptr FRUM buffer MKAY
-				FOUND YR FAIL
+				FOUND YR ptr
 			OMG "["
 				BTW Fetch until ``]''
 				I HAS A icache ITZ A LIZT
-                I HAS A size ITZ 0
 				IM IN YR loop1
 					I HAS A temp ITZ A YARN
 					GIMMEH temp
@@ -248,26 +245,25 @@ HAI 1.3
 						YA RLY, GTFO
 					OIC
                     PUT temp INTO icache
-                    size R SUM OF size AN 1
 				IM OUTTA YR loop1
 				BTW Keep executing until done
 				IM IN YR loop2 UPPIN YR pc
 					pc R MOD OF pc AN size
 					I HAS A cond1 ITZ BOTH SAEM pc AN 0
-					I HAS A cond2 ITZ BOTH SAEM GRAB ptr FRUM buffer AN 0
+					I HAS A cond2 ITZ BOTH SAEM GRAB ptr FRUM array AN 0
 					BOTH OF cond1 AN cond2
 					O RLY?, YA RLY, GTFO, OIC
 					I HAS A i ITZ GRAB pc FRUM icache
-					ptr R I IZ executin YR i MKAY
+					ptr R I IZ executin YR i AN YR ptr AN YR buffer MKAY
 				IM OUTTA YR loop2
-				FOUND YR FAIL
+				FOUND YR ptr
 		OIC
 	IF U SAY SO
 
 	IM IN YR main
 		I HAS A instruction ITZ A YARN
 		GIMMEH instruction
-		I IZ executin YR instruction MKAY
+		ptr R I IZ executin YR instruction AN YR ptr AN YR buffer MKAY
 		O RLY?
 			YA RLY, GTFO
 		OIC
