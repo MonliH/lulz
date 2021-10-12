@@ -22,19 +22,20 @@ impl Backend {
     }
 
     fn command(&self, opt: &str, output: &str, args: Option<&str>) -> io::Result<Child> {
-        let mut proc = Command::new(self.compiler_cmd());
-        proc.arg(&format!("-O{}", opt)).args(&[
-            "-xc",
-            "-o",
-            output,
-            "-",
-            "src/clib/lol_runtime.c",
-            "src/clib/lol_opts.c",
-        ]);
-        if let Some(arg) = args {
-            proc.arg(arg);
-        }
-        proc.stdin(Stdio::piped()).stdout(Stdio::inherit()).spawn()
+        Command::new(self.compiler_cmd())
+            .arg(&format!("-O{}", opt))
+            .args(&[
+                "-xc",
+                "-o",
+                output,
+                "-",
+                "src/clib/lol_runtime.c",
+                "src/clib/lol_opts.c",
+                args.unwrap_or(""),
+            ])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::inherit())
+            .spawn()
     }
 }
 

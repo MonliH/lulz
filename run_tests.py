@@ -1,5 +1,4 @@
 import os
-import sys
 import textwrap
 import json
 import subprocess
@@ -7,12 +6,6 @@ import difflib
 from subprocess import Popen, PIPE, STDOUT
 from glob import iglob
 import build_api
-
-if len(sys.argv) == 2:
-    compiler = sys.argv[1]
-else:
-    compiler = "tcc"
-
 
 GREEN = "\033[32m"
 RED = "\033[91m"
@@ -28,7 +21,7 @@ def colored(s: str, c: str) -> str:
 
 def run_file(filename, stdin) -> (str, int):
     p = Popen(
-        ["./target/release/lulz", filename, "-b", compiler],
+        ["./target/release/lulz", filename],
         stdout=PIPE,
         stdin=PIPE,
         stderr=PIPE,
