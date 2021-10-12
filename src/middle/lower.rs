@@ -96,25 +96,13 @@ impl LowerCompiler {
         self.valid_locals.extend(additionals);
     }
 
-    fn insert_local(&mut self, name: StrId, value: ValueTy, span: Span) -> Failible<()> {
-        if let Some(&(pre, depth)) = self.valid_locals.get(&name) {
-            if depth == self.depth {
-                return Err(Diagnostic::build(DiagnosticType::Scope, span)
-                    .annotation(
-                        Cow::Owned(format!(
-                            "symbol `{}` already declared in this scope",
-                            self.interner.lookup(name)
-                        )),
-                        span,
-                    )
-                    .into());
-            }
+    fn insert_local(&mut self, name: StrId, value: ValueTy) {
+        if let Some(val) = self.valid_locals.get(&name) {
             let len = self.overwritten.len() - 1;
-            self.overwritten[len].push((name, (pre, depth)));
+            self.overwritten[len].push((name, *val));
         }
         self.valid_locals.insert(name, (value, self.depth));
         self.locals.push((name, self.depth));
-        Ok(())
     }
 
     fn compile_func(
@@ -146,11 +134,12 @@ impl LowerCompiler {
         self.begin_scope();
         let function_val = ValueTy::Function(args_len as u8);
         if rec {
-            self.insert_local(name, function_val, span)?;
+            self.insert_local(name, function_val)
         }
         for argument in args.iter() {
-            self.insert_local(*argument, ValueTy::Value, span)?;
+            self.insert_local(*argument, ValueTy::Value);
         }
+        println!("=== {} ===", self.interner.lookup(name));
         self.compile(block)?;
 
         self.c.ret();
@@ -174,7 +163,7 @@ impl LowerCompiler {
             self.c.fn_dec(name, &args);
             self.c.ws(&old);
             if rec {
-                self.insert_local(name, function_val, span)?;
+                self.insert_local(name, function_val)
             }
             mem::swap(&mut old_len, &mut self.c.fn_id);
         } else {
@@ -199,7 +188,7 @@ impl LowerCompiler {
                 self.c.semi();
             }
             self.c.ws(&old[1..]);
-            self.insert_local(name, ValueTy::Value, span)?;
+            self.insert_local(name, ValueTy::Value);
             mem::swap(&mut old_len, &mut self.c.fn_id);
             self.c.lol_value_ty();
             self.c.name(name);
@@ -211,9 +200,8 @@ impl LowerCompiler {
             self.c.ws(&upvalues.0.len().to_string());
             for absorbed in upvalues.0 {
                 self.c.comma();
-                self.c.ws("lol_alloc_stack_dyn_ptr(lol_init_dyn_ptr(&");
+                self.c.ws("(LolValue*)&");
                 self.resolve_local(absorbed.0, Span::default())?;
-                self.c.ws("))");
             }
             self.c.ws(")))");
             self.c.semi();
@@ -584,12 +572,12 @@ impl LowerCompiler {
         Ok(())
     }
 
-    fn compile_dec(&mut self, id: StrId, expr: Expr, span: Span) -> Failible<()> {
+    fn compile_dec(&mut self, id: StrId, expr: Expr) -> Failible<()> {
         self.c.name(id);
         self.c.ws(" = ");
         self.compile_expr(expr)?;
         self.c.semi();
-        self.insert_local(id, ValueTy::Value, span)?;
+        self.insert_local(id, ValueTy::Value);
         Ok(())
     }
 
@@ -656,7 +644,7 @@ impl LowerCompiler {
                         Some((fn_name, var_name, pred)) => {
                             // for loop
                             let inc = self.intern(var_name.clone());
-                            self.insert_local(inc, ValueTy::Value, stmt.span)?;
+                            self.insert_local(inc, ValueTy::Value);
                             self.c.ws("for (");
                             self.c.lol_value_ty();
                             self.c.name(inc);
@@ -755,6 +743,19 @@ impl LowerCompiler {
                     self.c.debug_symbol("declare", id.0.as_str(), stmt.span);
                     self.c.lol_value_ty();
                     let ident = self.intern(id);
+                    if let Some((_, depth)) = self.valid_locals.get(&ident) {
+                        if *depth == self.depth {
+                            return Err(Diagnostic::build(DiagnosticType::Scope, stmt.span)
+                                .annotation(
+                                    Cow::Owned(format!(
+                                        "variable `{}` already declared in this scope",
+                                        self.interner.lookup(ident)
+                                    )),
+                                    stmt.span,
+                                )
+                                .into());
+                        }
+                    }
                     let span = stmt.span;
                     let expr_value = e
                         .unwrap_or(Ok(Expr {
@@ -762,7 +763,7 @@ impl LowerCompiler {
                             expr_kind: ExprKind::Null,
                         }))
                         .unwrap_or_else(|ty| self.default_expr(ty, span));
-                    self.compile_dec(ident, expr_value, span)?;
+                    self.compile_dec(ident, expr_value)?;
                 }
                 StatementKind::Assignment(id, e) => {
                     self.c.debug_symbol("assign", id.0.as_str(), stmt.span);
@@ -842,7 +843,7 @@ impl LowerCompiler {
                         self.case_branch(block)?;
                     }
                     self.c.lol_case_jmp(self.case_id);
-                    self.c.ws(":;\n");
+                    self.c.ws(":\n");
                     self.recent_block = prev_block;
                 }
                 StatementKind::Append(source, expr) => {
@@ -906,7 +907,7 @@ impl LowerCompiler {
     fn case_branch(&mut self, block: Block) -> Failible<()> {
         self.begin_scope();
         self.c.lol_case_jmp(self.case_id);
-        self.c.ws(":;\n");
+        self.c.ws(":\n");
         self.compile(block)?;
         self.c.ws("goto ");
         self.case_id += 1;

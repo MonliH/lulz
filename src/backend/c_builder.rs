@@ -160,9 +160,9 @@ impl CBuilder {
     }
 
     pub fn upvalue(&mut self, id: usize) {
-        self.ws("*(env[");
+        self.ws("*env[");
         self.ws(&id.to_string());
-        self.ws("]->ptr)");
+        self.wc(']');
     }
 
     pub fn closure_name(&mut self, fn_names: impl Iterator<Item = StrId>) -> String {
