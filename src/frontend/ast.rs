@@ -7,9 +7,13 @@ use std::{
 
 use crate::diagnostics::Span;
 
-#[derive(Derivative, Debug, Clone)]
-#[derivative(PartialEq)]
-pub struct Ident(pub SmolStr, #[derivative(PartialEq = "ignore")] pub Span);
+#[derive(Debug, Clone)]
+pub struct Ident(pub SmolStr, pub Span);
+impl PartialEq for Ident {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
 
 impl Hash for Ident {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -66,24 +70,27 @@ pub enum StatementKind {
     Input(Ident),
 }
 
-#[derive(Derivative, Debug, Clone)]
-#[derivative(PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Expr {
     pub expr_kind: ExprKind,
-    #[derivative(PartialEq = "ignore")]
     pub span: Span,
 }
 
-#[derive(Derivative, Debug, Clone, Eq)]
-#[derivative(PartialEq)]
-pub struct InterpEntry(
-    pub usize,
-    pub String,
-    #[derivative(PartialEq = "ignore")] pub Span,
-);
+impl PartialEq for Expr {
+    fn eq(&self, other: &Self) -> bool {
+        self.expr_kind == other.expr_kind
+    }
+}
 
-#[derive(Derivative, Debug, Clone)]
-#[derivative(PartialEq)]
+#[derive(Debug, Clone, Eq)]
+pub struct InterpEntry(pub usize, pub String, pub Span);
+impl PartialEq for InterpEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0 && self.1 == other.1
+    }
+}
+
+#[derive(PartialEq, Debug, Clone)]
 pub enum ExprKind {
     Float(f64),
     Int(i64),
@@ -103,29 +110,6 @@ pub enum ExprKind {
     All(Vec<Expr>),
     Any(Vec<Expr>),
     Not(Box<Expr>),
-}
-
-impl ExprKind {
-    /// Check if an expression has side effects, currently very conservative
-    pub fn side_effects(&self) -> bool {
-        match self {
-            Self::Float(..)
-            | Self::Int(..)
-            | Self::String(..)
-            | Self::InterpStr(..)
-            | Self::Bool(..)
-            | Self::Null
-            | Self::Variable(..) => false,
-            Self::FunctionCall(..) => true,
-            Self::Concat(es) | Self::All(es) | Self::Any(es) => {
-                es.iter().any(|e| e.expr_kind.side_effects())
-            }
-            Self::Cast(e, _) | Self::Not(e) => e.expr_kind.side_effects(),
-            Self::Operator(_, e1, e2) => {
-                e1.expr_kind.side_effects() || e2.expr_kind.side_effects()
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

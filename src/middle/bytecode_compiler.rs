@@ -5,8 +5,8 @@ use std::mem;
 use crate::{
     diagnostics::prelude::*,
     frontend::ast::{Block, Expr, ExprKind, Ident, OpTy, StatementKind},
+    interner::StrId,
     lolbc::{bits::Bits, Chunk, OpCode, Value},
-    lolvm::StrId,
 };
 
 #[allow(dead_code)]

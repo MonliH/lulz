@@ -1,10 +1,8 @@
-#[macro_use]
-extern crate derivative;
 mod diagnostics;
 mod err;
 mod frontend;
+mod interner;
 mod lolbc;
-mod lolvm;
 mod middle;
 
 use clap::Clap;
@@ -78,16 +76,12 @@ fn main() {
 fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Failible<()> {
     let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
     let mut parser = parse::Parser::new(lexer);
-    let mut ast = parser.parse()?;
-    ast.opt();
+    let ast = parser.parse()?;
     let mut bytecode_compiler = middle::BytecodeCompiler::new();
     bytecode_compiler.compile_start(ast)?;
-    let mut bytecode: lolbc::Chunk = bytecode_compiler.take_chunk();
-    bytecode.opt();
+    let bytecode: lolbc::Chunk = bytecode_compiler.take_chunk();
     if opts.disasm {
         lolbc::disasm(&bytecode);
     }
-    let mut vm = lolvm::LolVm::new();
-    vm.run(bytecode, opts.debug_vm)?;
     Ok(())
 }

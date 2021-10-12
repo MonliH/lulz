@@ -1,7 +1,7 @@
 use super::{bits::Bits, OpCode, Value, ValueArray};
 use crate::{
     diagnostics::Span,
-    lolvm::{Interner, StrId},
+    interner::{Interner, StrId},
 };
 
 pub type ByteC = Vec<u8>;
