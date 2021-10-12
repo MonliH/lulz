@@ -1,3 +1,4 @@
+mod backend;
 mod color;
 mod diagnostics;
 mod err;
@@ -14,6 +15,7 @@ use std::{
     borrow::Cow,
     fs::{read_to_string, write},
     io::{self, Read},
+    mem,
     process::exit,
 };
 
@@ -72,5 +74,19 @@ fn pipeline(
     let mut parser = parse::Parser::new(lexer);
     let mut ast = parser.parse()?;
     ast.opt();
+    let mut compiler = middle::LowerCompiler::new(opts.debug_c_gen);
+    compiler.compile_start(ast)?;
+    let c_code = compiler.get_str();
+    if opts.dump_c {
+        println!("{}", c_code);
+    }
+    if let Some(path) = opts.write_c {
+        err::report(
+            write(path, &c_code),
+            Cow::Borrowed("Failed to write c file"),
+        );
+    }
+    let compiler = backend::Compile::new(mem::take(&mut opts.backend));
+    compiler.compile(c_code, opts.output, opts.opt, opts.backend_args);
     Ok(())
 }

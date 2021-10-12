@@ -1,0 +1,4 @@
+LolValue lol_{}_fn_dyn(uint8_t args, LolValue *values) {{
+    if (args != {}) {{
+        exit(1);
+    }}
