@@ -1,5 +1,4 @@
 #include "lol_runtime.h"
-#include "lol_gc.h"
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -170,27 +169,16 @@ StringObj *lol_alloc_str(char *chars, int length) {
   return string;
 }
 
-void *lol_realloc(void *pointer, size_t old_size, size_t new_size) {
-  if (new_size > old_size) {
-#ifdef DEBUG_STRESS_GC
-    collect_garbage();
-#endif
-  }
-  if (new_size == 0) {
+void *lol_realloc(void *pointer, size_t oldSize, size_t newSize) {
+  if (newSize == 0) {
     free(pointer);
     return NULL;
   }
 
-  void *result = realloc(pointer, new_size);
+  void *result = realloc(pointer, newSize);
   if (result == NULL) {
-    printf("failed to allocate new memory, out of memory\n");
     exit(1);
   }
-
-#ifdef LOL_DEBUG_CHECK
-  printf("%p resize from %zu to %zu\n", (void *)result, old_size, new_size);
-#endif
-
   return result;
 }
 
@@ -283,7 +271,9 @@ VectorObj *lol_alloc_stack_vec(VectorObj obj) {
   return o;
 }
 
-VectorObj lol_init_vec() { return (VectorObj){(Obj){OBJ_VECTOR}, 0, 0, NULL}; }
+VectorObj lol_init_vec() {
+  return (VectorObj){(Obj){OBJ_VECTOR}, 0, 0, NULL};
+}
 
 size_t grow_cap(size_t cap) { return (cap < 8) ? 8 : (cap * 2); }
 
@@ -360,9 +350,6 @@ void lol_box_dyn_ptr(DynPtrObj *ptr) {
 }
 
 void lol_free(Obj *obj) {
-#ifdef LOL_DEBUG_CHECK
-  printf("%p free type %d\n", (void *)obj, obj->ty);
-#endif
   switch (obj->ty) {
   case OBJ_STRING: {
     StringObj *str = (StringObj *)obj;
@@ -374,16 +361,12 @@ void lol_free(Obj *obj) {
   }
   case OBJ_VECTOR: {
     VectorObj *vec = (VectorObj *)obj;
-
-    // free the array, but not the array's items
     FREE_ARRAY(LolValue, vec->items, vec->cap);
     FREE(VectorObj, obj);
     break;
   }
   case OBJ_CLOSURE: {
     ClosureObj *closure = (ClosureObj *)obj;
-
-    // free the closure, but not the closure's absorbed variables
     FREE_ARRAY(DynPtrObj *, closure->upvalues, closure->upvalue_count);
     FREE(ClosureObj, obj);
     break;

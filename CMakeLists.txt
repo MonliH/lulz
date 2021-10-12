@@ -7,7 +7,7 @@ set(CMAKE_BUILD_TYPE Release)
 set(CARGO_BUILD_DIR "build")
 set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY TRUE)
 project(lulz LANGUAGES C)
-add_library(lulzrt src/clib/lol_ops.c src/clib/lol_runtime.c src/clib/lol_gc.c)
+add_library(lulzrt src/clib/lol_ops.c src/clib/lol_runtime.c)
 set_property(TARGET lulzrt PROPERTY C_STANDARD 99)
 set_target_properties(lulzrt PROPERTIES PUBLIC_HEADER "src/clib/lol_ops.h;src/clib/lol_runtime.h")
 

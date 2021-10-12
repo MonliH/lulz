@@ -1,5 +1,4 @@
 int main() {{
-    lol_init_stack();
     {}();
     return 0;
 }}
