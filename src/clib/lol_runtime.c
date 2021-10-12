@@ -19,7 +19,7 @@ LolValue lol_call(uint8_t args, LolValue fn, LolValue *values, LolSpan sp) {
 
 StringObj lol_to_str(LolValue value) {
   if (IS_INT(value)) {
-    int32_t i = AS_INT(value);
+    int i = AS_INT(value);
     size_t length = snprintf(NULL, 0, "%" PRId32 "", i);
     char *str = ALLOCATE(char, length + 1);
     snprintf(str, length + 1, "%" PRId32 "", i);
@@ -49,7 +49,7 @@ StringObj lol_to_str(LolValue value) {
 
 size_t lol_str_len(LolValue value) {
   if (IS_INT(value)) {
-    int32_t i = AS_INT(value);
+    int i = AS_INT(value);
     size_t length = snprintf(NULL, 0, "%" PRId32 "", i);
     return length;
   } else if (IS_DOUBLE(value)) {

@@ -1,4 +1,0 @@
-BTW { "output": "3\n" }
-HAI 1.3
-VISIBLE QUOSHUNT OF 10 AN 3
-KTHXBYE
