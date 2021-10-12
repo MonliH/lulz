@@ -1,4 +1,0 @@
-BTW { "output": "1234\n" }
-HAI 1.3
-VISIBLE 151000.0
-KTHXBYE

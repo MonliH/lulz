@@ -1,0 +1,14 @@
+BTW { "output": "HELLO\n" }
+HAI 1.3
+I HAS A VAR ITZ WIN
+VAR, O RLY?
+    YA RLY
+        VISIBLE "HELLO"
+OIC
+
+I HAS A VAR ITZ 0
+VAR, O RLY?
+    YA RLY
+        VISIBLE "HELLO2"
+OIC
+KTHXBYE

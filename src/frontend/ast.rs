@@ -1,11 +1,15 @@
-use std::hash::{Hash, Hasher};
+use smol_str::SmolStr;
+use std::{
+    hash::{Hash, Hasher},
+    intrinsics::transmute,
+    ops::{Deref, DerefMut},
+};
 
-use crate::{backend::interner::StrId, diagnostics::Span};
+use crate::diagnostics::Span;
 
 #[derive(Debug, Clone)]
-pub struct Ident(pub StrId, pub Span);
-
-impl std::cmp::PartialEq for Ident {
+pub struct Ident(pub SmolStr, pub Span);
+impl PartialEq for Ident {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
@@ -14,6 +18,20 @@ impl std::cmp::PartialEq for Ident {
 impl Hash for Ident {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state);
+    }
+}
+
+impl Deref for Ident {
+    type Target = SmolStr;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Ident {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -27,46 +45,29 @@ pub struct Statement {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum LoopCond {
-    Forever,
-    Till(Expr),
-    While(Expr),
-}
-
-#[derive(Debug, PartialEq, Clone)]
 pub enum StatementKind {
     Assignment(Ident, Expr),
-    DecAssign(Ident, Option<Result<Expr, LolTy>>),
+    DecAssign(Ident, Option<Expr>),
     Import(Ident),
     FunctionDef(Ident, Vec<Ident>, Block),
     Expr(Expr),
     Case(Vec<(Expr, Block)>, Option<Block>),
     If(Option<Block>, Vec<(Expr, Block)>, Option<Block>),
-    MutCast(Ident, LolTy),
+    MutCast(Ident, Type),
     Break,
     Loop {
         block_name: Ident,
-        fn_id: Option<(
-            // Function name
-            Ident,
-            // Variable name
-            Ident,
-            LoopCond,
-        )>,
+        func: Option<Ident>,
+        index: Option<Ident>,
+        /// Bool represents `till` or `wile`
+        /// true = `till`
+        /// false = `wile`
+        pred: Option<(bool, Expr)>,
         block: Block,
     },
     Return(Expr),
-    Print(Vec<Expr>, bool),
+    Print(Expr, bool),
     Input(Ident),
-
-    /// e1.append(e2)
-    /// Append(source collection, item)
-    Append(Expr, Expr),
-    // index item:
-    // bool:  true = FRONT, false = BACK
-    // Ident: index is the ident
-    /// SetItem(source, item, index)
-    SetItem(Expr, Expr, Result<Expr, bool>),
 }
 
 #[derive(Debug, Clone)]
@@ -75,7 +76,7 @@ pub struct Expr {
     pub span: Span,
 }
 
-impl std::cmp::PartialEq for Expr {
+impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         self.expr_kind == other.expr_kind
     }
@@ -83,8 +84,7 @@ impl std::cmp::PartialEq for Expr {
 
 #[derive(Debug, Clone, Eq)]
 pub struct InterpEntry(pub usize, pub String, pub Span);
-
-impl std::cmp::PartialEq for InterpEntry {
+impl PartialEq for InterpEntry {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0 && self.1 == other.1
     }
@@ -93,33 +93,23 @@ impl std::cmp::PartialEq for InterpEntry {
 #[derive(PartialEq, Debug, Clone)]
 pub enum ExprKind {
     Float(f64),
-    Int(i32),
+    Int(i64),
     String(String),
     InterpStr(String, Vec<InterpEntry>),
     Bool(bool),
-    List(Vec<Expr>),
 
     Null,
 
     Variable(Ident),
     FunctionCall(Ident, Vec<Expr>),
     Concat(Vec<Expr>),
-    Cast(Box<Expr>, LolTy),
+    Cast(Box<Expr>, Type),
 
     Operator(OpTy, Box<Expr>, Box<Expr>),
 
     All(Vec<Expr>),
     Any(Vec<Expr>),
-    UnaryOp(UnOpTy, Box<Expr>),
-
-    /// GetItem(source, index)
-    GetItem(Box<Expr>, Result<Box<Expr>, bool>),
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub enum UnOpTy {
-    Not,
-    Length,
+    Not(Box<Expr>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -145,38 +135,22 @@ pub enum OpTy {
     LTE,
 }
 
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LolTy {
-    Troof,
-    Noob,
-    Yarn,
-    Numbar,
-    Numbr,
-    Funkshun,
-    Lizt,
+pub enum Type {
+    Null = 0,
+    Bool = 1,
+    Int = 2,
+    Float = 3,
+    Str = 4,
 }
 
-impl LolTy {
-    pub fn as_cast(&self) -> &'static str {
-        match self {
-            LolTy::Noob => "noob",
-            LolTy::Yarn => "yarn",
-            LolTy::Troof => "troof",
-            LolTy::Numbar => "numbar",
-            LolTy::Numbr => "numbr",
-            LolTy::Funkshun => "funkshun",
-            LolTy::Lizt => "lizt",
-        }
-    }
-
-    pub fn default_expr_kind(&self) -> ExprKind {
-        match self {
-            LolTy::Troof => ExprKind::Bool(false),
-            LolTy::Numbar => ExprKind::Float(0.0),
-            LolTy::Numbr => ExprKind::Int(0),
-            LolTy::Yarn => ExprKind::String("".to_string()),
-            LolTy::Lizt => ExprKind::List(Vec::new()),
-            LolTy::Funkshun | LolTy::Noob => ExprKind::Null,
+impl Type {
+    pub fn from_num(id: u8) -> Option<Self> {
+        if id <= 4 {
+            Some(unsafe { transmute(id) })
+        } else {
+            None
         }
     }
 }

@@ -1,9 +1,0 @@
-BTW { "output": "WAS FOO\nFALLTHROUGH\n" }
-HAI 1.3
-"FOO", WTF?
-    OMG "FOO"
-        VISIBLE "WAS FOO"
-    OMGWTF
-        VISIBLE "FALLTHROUGH"
-OIC
-KTHXBYE
