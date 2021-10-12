@@ -86,16 +86,11 @@ typedef LolValue (*LolFn)(uint8_t args, LolValue *values);
 
 #define ALLOCATE(ty, count) (ty *)(lol_realloc(NULL, 0, sizeof(ty) * (count)))
 
-#define ALLOCATE_OBJ(ty, object_type)                                          \
-  (ty *)(lol_alloc_obj(sizeof(ty), object_type))
-
-#define FREE(type, pointer) lol_realloc((pointer), sizeof(type), 0)
+#define ALLOCATE_OBJ(ty, object_type, constant)                                \
+  (ty *)(lol_alloc_obj(sizeof(ty), object_type, constant))
 
 #define MAKE_STR_OBJ(str, len, constant)                                       \
-  (StringObj) { (Obj){OBJ_STRING}, (len), (str), (constant) }
-
-#define FREE_ARRAY(type, pointer, oldCount)                                    \
-  lol_realloc((pointer), sizeof(type) * (oldCount), 0)
+  (StringObj) { OBJ_STRING, constant, (len), (str) }
 
 #define GROW_VEC(ty, ptr, old_len, new_len)                                    \
   (ty *)lol_realloc(ptr, sizeof(ty) * (old_len), sizeof(ty) * (new_len))
@@ -104,11 +99,13 @@ typedef enum {
   OBJ_STRING,
   OBJ_VECTOR,
   OBJ_CLOSURE,
+  OBJ_UPVALUE,
   OBJ_PTR,
 } ObjType;
 
 typedef struct {
   ObjType ty;
+  bool constant;
 } Obj;
 
 typedef struct {
@@ -127,7 +124,6 @@ typedef struct {
   Obj obj;
   size_t len;
   char *chars;
-  bool constant;
 } StringObj;
 
 struct ClosureObj;
@@ -160,7 +156,7 @@ void *lol_realloc(void *pointer, size_t oldSize, size_t newSize);
 
 StringObj lol_to_str(LolValue value);
 StringObj *lol_alloc_lit_str(char *chars, int length);
-Obj *lol_alloc_obj(size_t size, ObjType type);
+Obj *lol_alloc_obj(size_t size, ObjType type, bool constant);
 StringObj *lol_alloc_str(char *chars, int length);
 StringObj lol_concat_str(size_t len, ...);
 StringObj lol_interp_str(size_t fragments, ...);
@@ -180,6 +176,4 @@ ClosureObj *lol_alloc_stack_closure(ClosureObj obj);
 DynPtrObj lol_init_dyn_ptr(LolValue *obj);
 DynPtrObj *lol_alloc_stack_dyn_ptr(DynPtrObj obj);
 void lol_box_dyn_ptr(DynPtrObj *ptr);
-
-void lol_free(Obj *obj);
 #endif

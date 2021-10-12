@@ -147,14 +147,15 @@ void lol_println(LolValue value) {
   printf("\n");
 }
 
-Obj *lol_alloc_obj(size_t size, ObjType type) {
+Obj *lol_alloc_obj(size_t size, ObjType type, bool constant) {
   Obj *object = (Obj *)lol_realloc(NULL, 0, size);
   object->ty = type;
+  object->constant = constant;
   return object;
 }
 
 StringObj *lol_alloc_lit_str(char *chars, int length) {
-  StringObj *string = ALLOCATE_OBJ(StringObj, OBJ_STRING);
+  StringObj *string = ALLOCATE_OBJ(StringObj, OBJ_STRING, true);
   string->len = length;
   char *mchars = ALLOCATE(char, length + 1);
   strncpy(mchars, chars, length + 1);
@@ -163,7 +164,7 @@ StringObj *lol_alloc_lit_str(char *chars, int length) {
 }
 
 StringObj *lol_alloc_str(char *chars, int length) {
-  StringObj *string = ALLOCATE_OBJ(StringObj, OBJ_STRING);
+  StringObj *string = ALLOCATE_OBJ(StringObj, OBJ_STRING, false);
   string->len = length;
   string->chars = chars;
   return string;
@@ -183,7 +184,8 @@ void *lol_realloc(void *pointer, size_t oldSize, size_t newSize) {
 }
 
 StringObj *lol_alloc_stack_str(StringObj obj) {
-  StringObj *o = (StringObj *)lol_alloc_obj(sizeof(StringObj), obj.obj.ty);
+  StringObj *o = (StringObj *)lol_alloc_obj(sizeof(StringObj), obj.obj.ty,
+                                            obj.obj.constant);
   *o = obj;
   return o;
 }
@@ -266,13 +268,14 @@ StringObj lol_interp_str(size_t length, ...) {
 }
 
 VectorObj *lol_alloc_stack_vec(VectorObj obj) {
-  VectorObj *o = (VectorObj *)lol_alloc_obj(sizeof(VectorObj), obj.obj.ty);
+  VectorObj *o = (VectorObj *)lol_alloc_obj(sizeof(VectorObj), obj.obj.ty,
+                                            obj.obj.constant);
   *o = obj;
   return o;
 }
 
 VectorObj lol_init_vec() {
-  return (VectorObj){(Obj){OBJ_VECTOR}, 0, 0, NULL};
+  return (VectorObj){(Obj){OBJ_VECTOR, false}, 0, 0, NULL};
 }
 
 size_t grow_cap(size_t cap) { return (cap < 8) ? 8 : (cap * 2); }
@@ -319,61 +322,34 @@ ClosureObj lol_init_closure(LolClosureFn fn, size_t upvalue_count, ...) {
   va_start(args, upvalue_count);
 
   for (size_t i = 0; i < upvalue_count; i++) {
-    upvalues[i] = va_arg(args, DynPtrObj *);
+    upvalues[i] = va_arg(args, DynPtrObj*);
   }
   va_end(args);
 
-  return (ClosureObj){(Obj){OBJ_CLOSURE}, fn, upvalues, upvalue_count};
+  return (ClosureObj){(Obj){OBJ_CLOSURE, false}, fn, upvalues, upvalue_count};
 }
 
 ClosureObj *lol_alloc_stack_closure(ClosureObj obj) {
-  ClosureObj *o = (ClosureObj *)lol_alloc_obj(sizeof(ClosureObj), obj.obj.ty);
+  ClosureObj *o = (ClosureObj *)lol_alloc_obj(sizeof(ClosureObj), obj.obj.ty,
+                                              obj.obj.constant);
   *o = obj;
   return o;
 }
 
-DynPtrObj lol_init_dyn_ptr(LolValue *ptr) {
-  return (DynPtrObj){(Obj){OBJ_PTR}, ptr};
+DynPtrObj lol_init_dyn_ptr(LolValue* ptr) {
+  return (DynPtrObj){(Obj){OBJ_PTR, false}, ptr};
 }
 
 DynPtrObj *lol_alloc_stack_dyn_ptr(DynPtrObj obj) {
-  DynPtrObj *o = (DynPtrObj *)lol_alloc_obj(sizeof(DynPtrObj), obj.obj.ty);
+  DynPtrObj *o = (DynPtrObj *)lol_alloc_obj(sizeof(DynPtrObj), obj.obj.ty,
+                                              obj.obj.constant);
   *o = obj;
   return o;
 }
 
 void lol_box_dyn_ptr(DynPtrObj *ptr) {
   LolValue cpy = *ptr->ptr;
-  LolValue *new_loc = lol_realloc(NULL, 0, sizeof(LolValue));
+  LolValue* new_loc = lol_realloc(NULL, 0, sizeof(LolValue));
   *new_loc = cpy;
   ptr->ptr = new_loc;
-}
-
-void lol_free(Obj *obj) {
-  switch (obj->ty) {
-  case OBJ_STRING: {
-    StringObj *str = (StringObj *)obj;
-    if (!str->constant) {
-      FREE_ARRAY(char, str->chars, str->len);
-      FREE(StringObj, obj);
-    }
-    break;
-  }
-  case OBJ_VECTOR: {
-    VectorObj *vec = (VectorObj *)obj;
-    FREE_ARRAY(LolValue, vec->items, vec->cap);
-    FREE(VectorObj, obj);
-    break;
-  }
-  case OBJ_CLOSURE: {
-    ClosureObj *closure = (ClosureObj *)obj;
-    FREE_ARRAY(DynPtrObj *, closure->upvalues, closure->upvalue_count);
-    FREE(ClosureObj, obj);
-    break;
-  }
-  case OBJ_PTR: {
-    FREE(DynPtrObj, obj);
-    break;
-  }
-  }
 }
