@@ -155,14 +155,3 @@ LolValue lol_not(LolValue value) {
   bool b = lol_to_bool(value);
   return BOOL_VALUE(!b);
 }
-
-#define BOOL_OP(name, cmp)                                                     \
-  LolValue lol_##name(LolValue left, LolValue right) {                         \
-    bool l = lol_to_bool(left);                                                \
-    bool r = lol_to_bool(right);                                               \
-    return BOOL_VALUE((l cmp r));                                              \
-  }
-
-BOOL_OP(and, &&)
-BOOL_OP(or, ||)
-BOOL_OP(xor, !=)

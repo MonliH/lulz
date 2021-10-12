@@ -16,7 +16,6 @@ OP_FN(max)
 OP_FN(and)
 OP_FN(or)
 OP_FN(and)
-OP_FN(xor)
 
 OP_FN(eq)
 OP_FN(neq)
