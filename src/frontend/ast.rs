@@ -11,7 +11,11 @@ pub struct Ident(pub SmolStr, pub Span);
 
 impl std::cmp::PartialEq for Ident {
     fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+        true && match *self {
+            Ident(ref __self_0, _) => match *other {
+                Ident(ref __other_0, _) => true && &(*__self_0) == &(*__other_0),
+            },
+        }
     }
 }
 
@@ -51,13 +55,6 @@ pub struct Statement {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum LoopCond {
-    Forever,
-    Till(Expr),
-    While(Expr),
-}
-
-#[derive(Debug, PartialEq, Clone)]
 pub enum StatementKind {
     Assignment(Ident, Expr),
     DecAssign(Ident, Option<Result<Expr, LolTy>>),
@@ -75,7 +72,13 @@ pub enum StatementKind {
             Ident,
             // Variable name
             Ident,
-            LoopCond,
+            Option<(
+                // Bool represents `till` or `wile`
+                // true = `till`
+                // false = `wile`
+                bool,
+                Expr,
+            )>,
         )>,
         block: Block,
     },
@@ -101,7 +104,17 @@ pub struct Expr {
 
 impl std::cmp::PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
-        self.expr_kind == other.expr_kind
+        true && match *self {
+            Expr {
+                expr_kind: ref __self_0,
+                span: _,
+            } => match *other {
+                Expr {
+                    expr_kind: ref __other_0,
+                    span: _,
+                } => true && &(*__self_0) == &(*__other_0),
+            },
+        }
     }
 }
 
@@ -110,7 +123,13 @@ pub struct InterpEntry(pub usize, pub String, pub Span);
 
 impl std::cmp::PartialEq for InterpEntry {
     fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0 && self.1 == other.1
+        true && match *self {
+            InterpEntry(ref __self_0, ref __self_1, _) => match *other {
+                InterpEntry(ref __other_0, ref __other_1, _) => {
+                    true && &(*__self_0) == &(*__other_0) && &(*__self_1) == &(*__other_1)
+                }
+            },
+        }
     }
 }
 
@@ -146,6 +165,30 @@ pub enum UnOpTy {
     Length,
 }
 
+impl ExprKind {
+    /// Check if an expression has side effects, currently very conservative
+    pub fn side_effects(&self) -> bool {
+        match self {
+            Self::Float(..)
+            | Self::Int(..)
+            | Self::String(..)
+            | Self::InterpStr(..)
+            | Self::Bool(..)
+            | Self::Null
+            | Self::Variable(..) => false,
+            Self::FunctionCall(..) => true,
+            Self::Concat(es) | Self::All(es) | Self::Any(es) | Self::List(es) => {
+                es.iter().any(|e| e.expr_kind.side_effects())
+            }
+            Self::Cast(e, _) | Self::UnaryOp(_, e) => e.expr_kind.side_effects(),
+            Self::Operator(_, e1, e2) | Self::GetItem(e1, Ok(e2)) => {
+                e1.expr_kind.side_effects() || e2.expr_kind.side_effects()
+            }
+            Self::GetItem(e, _) => e.expr_kind.side_effects(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpTy {
     Add,
@@ -176,7 +219,7 @@ pub enum LolTy {
     Yarn,
     Numbar,
     Numbr,
-    Funkshun,
+    Func,
     Lizt,
 }
 
@@ -188,8 +231,19 @@ impl LolTy {
             LolTy::Troof => "troof",
             LolTy::Numbar => "numbar",
             LolTy::Numbr => "numbr",
-            LolTy::Funkshun => "funkshun",
+            LolTy::Func => "fn",
             LolTy::Lizt => "lizt",
+        }
+    }
+    pub fn as_macro(&self) -> &'static str {
+        match self {
+            LolTy::Noob => "NULL",
+            LolTy::Troof => "BOOL",
+            LolTy::Numbar => "DOUBLE",
+            LolTy::Yarn => "STR",
+            LolTy::Numbr => "INT",
+            LolTy::Func => "FUN",
+            LolTy::Lizt => "VEC",
         }
     }
 
@@ -200,7 +254,7 @@ impl LolTy {
             LolTy::Numbr => ExprKind::Int(0),
             LolTy::Yarn => ExprKind::String("".to_string()),
             LolTy::Lizt => ExprKind::List(Vec::new()),
-            LolTy::Funkshun | LolTy::Noob => ExprKind::Null,
+            LolTy::Func | LolTy::Noob => ExprKind::Null,
         }
     }
 }

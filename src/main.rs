@@ -12,7 +12,7 @@ use codespan_reporting::{
 };
 use std::{
     borrow::Cow,
-    fs::read_to_string,
+    fs::{read_to_string, write},
     io::{self, Read},
     process::exit,
 };
@@ -71,6 +71,6 @@ fn pipeline(
     let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
     let mut parser = parse::Parser::new(lexer);
     let mut ast = parser.parse()?;
-
+    ast.opt();
     Ok(())
 }

@@ -208,13 +208,13 @@ impl<'a> Parser<'a> {
             let pred = match self.peek_token()?.token_kind {
                 TokenKind::Till => {
                     self.next_token()?;
-                    LoopCond::Till(self.expr()?)
+                    Some((true, self.expr()?))
                 }
                 TokenKind::Wile => {
                     self.next_token()?;
-                    LoopCond::While(self.expr()?)
+                    Some((false, self.expr()?))
                 }
-                _ => LoopCond::Forever,
+                _ => None,
             };
             fn_id = Some((func, index, pred));
         }
@@ -367,7 +367,8 @@ impl<'a> Parser<'a> {
             if self.check(&TokenKind::Mebbe)? {
                 let expr = self.expr()?;
                 self.expect(TokenKind::Break)?;
-                let block = self.block(Some(&[TokenKind::Mebbe, TokenKind::No, TokenKind::Oic]))?;
+                let block =
+                    self.block(Some(&[TokenKind::Mebbe, TokenKind::No, TokenKind::Oic]))?;
                 mebee.push((expr, block));
             } else {
                 break;
@@ -544,40 +545,6 @@ impl<'a> Parser<'a> {
         Ok(args)
     }
 
-    fn cmp_ops(&mut self) -> Failible<OpTy> {
-        if self.check(&TokenKind::Greter)? {
-            let op = if self.check(&TokenKind::Eq)? {
-                Ok(OpTy::GTE)
-            } else {
-                Ok(OpTy::GT)
-            };
-            self.expect(TokenKind::Then)?;
-            return op;
-        }
-
-        if self.check(&TokenKind::Les)? {
-            let op = if self.check(&TokenKind::Eq)? {
-                Ok(OpTy::LTE)
-            } else {
-                Ok(OpTy::LT)
-            };
-            self.expect(TokenKind::Then)?;
-            return op;
-        }
-
-        let next = self.next_token()?;
-
-        Err(Diagnostic::build(DiagnosticType::Syntax, next.span)
-            .annotation(
-                Cow::Owned(format!(
-                    "expected a comparison expression, found {}",
-                    next.token_kind
-                )),
-                next.span,
-            )
-            .into())
-    }
-
     fn expr_inner(&mut self, prev: Option<Token>) -> Failible<Expr> {
         let to_match = match prev {
             Some(val) => val,
@@ -585,14 +552,6 @@ impl<'a> Parser<'a> {
         };
 
         let kind = match to_match.token_kind {
-            TokenKind::Iz => {
-                // Comparison
-                let left = self.expr()?;
-                let op = self.cmp_ops()?;
-                let right = self.expr()?;
-                ExprKind::Operator(op, Box::new(left), Box::new(right))
-            }
-
             TokenKind::Maek => {
                 let expr = self.expr()?;
                 self.expect(TokenKind::A)?;
@@ -1122,42 +1081,6 @@ KTHXBYE"#,
         expr_min,
         [StatementKind::Expr(Expr {
             expr_kind: ExprKind::Operator(OpTy::Min, ..),
-            ..
-        }),]
-    );
-
-    assert_ast!(
-        "HAI 1.4, IZ 1 LES EQ THEN 2, KTHXBYE",
-        lte_expr,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::LTE, ..),
-            ..
-        }),]
-    );
-
-    assert_ast!(
-        "HAI 1.4, IZ 1 GRETER EQ THEN 2, KTHXBYE",
-        gte_expr,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::GTE, ..),
-            ..
-        }),]
-    );
-
-    assert_ast!(
-        "HAI 1.4, IZ 1 LES THEN 2, KTHXBYE",
-        lt_expr,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::LT, ..),
-            ..
-        }),]
-    );
-
-    assert_ast!(
-        "HAI 1.4, IZ 1 GRETER THEN 2, KTHXBYE",
-        gt_expr,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::GT, ..),
             ..
         }),]
     );

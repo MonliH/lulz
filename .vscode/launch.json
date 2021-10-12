@@ -35,11 +35,7 @@
                     "kind": "bin"
                 }
             },
-<<<<<<< HEAD
             "args": ["tests/closures/recursive_closure.lol"],
-=======
-            "args": ["perfs/fib.lol"],
->>>>>>> 8f3b689... Add optimizations
             "cwd": "${workspaceFolder}"
         },
         {
