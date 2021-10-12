@@ -183,7 +183,7 @@ impl LolTy {
             LolTy::Noob => "NULL",
             LolTy::Troof => "BOOL",
             LolTy::Numbar => "DOUBLE",
-            LolTy::Yarn => "STR",
+            LolTy::Yarn => "STRING",
             LolTy::Numbr => "INT",
             LolTy::Func => "FUN",
         }

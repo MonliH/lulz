@@ -1,11 +1,12 @@
 #include "lol_runtime.h"
-#include <inttypes.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 
 LolValue lol_it = NULL_VALUE;
 
-LolValue lol_call(uint8_t args, LolValue fn, LolValue *values, LolSpan sp) {
+LolValue lol_call(uint8_t args, LolValue fn, LolValue *values,
+                  LolSpan sp) {
   if (!IS_FUN(fn)) {
     exit(1);
   }
@@ -26,8 +27,6 @@ void lol_print(LolValue value) {
     printf("NOOB");
   } else if (IS_FUN(value)) {
     printf("<FUNKSHON at 0x%08lx>", (uint64_t)AS_FUN(value));
-  } else if (IS_STR(value)) {
-    printf("%s", AS_STR(value));
   }
 }
 
@@ -40,8 +39,6 @@ bool lol_to_bool(LolValue value) {
     return (AS_DOUBLE(value)) != 0.0;
   } else if (IS_NULL(value)) {
     return false;
-  } else if (IS_STR(value)) {
-    return AS_STR(value)[0] != '\0';
   } else if (IS_FUN(value)) {
     return true;
   } else {
