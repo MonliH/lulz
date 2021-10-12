@@ -56,11 +56,15 @@ where
             ),
             Loop {
                 block_name,
-                fn_id,
+                func,
+                index,
+                pred,
                 block,
             } => Loop {
                 block_name,
-                fn_id: fn_id.map(|(a, b, c)| (a, b, c.map(|(d, e)| (d, self.rew(e))))),
+                func,
+                index,
+                pred: pred.map(|(b, e)| (b, self.rew(e))),
                 block: self.apply(block),
             },
             Return(e) => Return(self.rew(e)),

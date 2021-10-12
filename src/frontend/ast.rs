@@ -67,19 +67,12 @@ pub enum StatementKind {
     Break,
     Loop {
         block_name: Ident,
-        fn_id: Option<(
-            // Function name
-            Ident,
-            // Variable name
-            Ident,
-            Option<(
-                // Bool represents `till` or `wile`
-                // true = `till`
-                // false = `wile`
-                bool,
-                Expr,
-            )>,
-        )>,
+        func: Option<Ident>,
+        index: Option<Ident>,
+        /// Bool represents `till` or `wile`
+        /// true = `till`
+        /// false = `wile`
+        pred: Option<(bool, Expr)>,
         block: Block,
     },
     Return(Expr),
