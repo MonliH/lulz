@@ -1,3 +1,4 @@
+#![feature(option_result_unwrap_unchecked)]
 #[macro_use]
 extern crate derivative;
 mod backend;
