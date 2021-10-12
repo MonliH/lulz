@@ -78,9 +78,6 @@ typedef LolValue (*LolFn)(uint8_t args, LolValue *values);
 #define IS_VEC(value) lol_is_obj_ty(value, OBJ_VECTOR)
 #define AS_VEC(value) ((VectorObj *)AS_OBJ(value))
 
-#define IS_CLOSURE(value) lol_is_obj_ty(value, OBJ_CLOSURE)
-#define AS_CLOSURE(value) ((ClosureObj *)AS_OBJ(value))
-
 #define ALLOCATE(ty, count) (ty *)(lol_realloc(NULL, 0, sizeof(ty) * (count)))
 
 #define ALLOCATE_OBJ(ty, object_type, constant)                                \
@@ -95,8 +92,6 @@ typedef LolValue (*LolFn)(uint8_t args, LolValue *values);
 typedef enum {
   OBJ_STRING,
   OBJ_VECTOR,
-  OBJ_CLOSURE,
-  OBJ_UPVALUE,
 } ObjType;
 
 typedef struct {
@@ -116,18 +111,6 @@ typedef struct {
   size_t len;
   char *chars;
 } StringObj;
-
-struct ClosureObj;
-
-typedef LolValue (*LolClosureFn)(uint8_t args, LolValue *values,
-                                 LolValue **env);
-
-typedef struct ClosureObj {
-  Obj obj;
-  LolClosureFn fn;
-  LolValue **upvalues;
-  size_t upvalue_count;
-} ClosureObj;
 
 typedef struct {
   uint32_t s;
@@ -160,7 +143,4 @@ VectorObj *lol_alloc_stack_vec(VectorObj obj);
 void lol_vec_append(VectorObj *vec, LolValue val);
 
 LolValue lol_vec_lit(size_t cap, size_t len, ...);
-
-ClosureObj lol_init_closure(LolClosureFn fn, size_t upvalue_size, ...);
-ClosureObj *lol_alloc_stack_closure(ClosureObj obj);
 #endif

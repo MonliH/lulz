@@ -1,1 +1,0 @@
-LolValue {}(uint8_t args, LolValue *values, LolValue **env);
