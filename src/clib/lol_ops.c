@@ -157,16 +157,6 @@ LolValue lol_not(LolValue value, LolSpan sp) {
   return BOOL_VALUE(!b);
 }
 
-LolValue lol_length(LolValue value, LolSpan sp) {
-  if (IS_STR(value)) {
-    return INT_VALUE(AS_STR(value)->len);
-  } else if (IS_VEC(value)) {
-    return INT_VALUE(AS_VEC(value)->len);
-  } else {
-    exit(1);
-  }
-}
-
 #define UNARY_MATH(name, intval, floatval)                                     \
   LolValue lol_##name(LolValue value, LolSpan sp) {                            \
     LolValue n = to_numeric(value);                                            \

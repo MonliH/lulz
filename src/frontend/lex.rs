@@ -78,7 +78,6 @@ pub enum TokenKind {
     Either,
     Won,
     Not,
-    Langth,
     All,
     Any,
 
@@ -177,7 +176,6 @@ impl Display for TokenKind {
                 TokenKind::Either => "token `EITHER`",
                 TokenKind::Won => "token `WON`",
                 TokenKind::Not => "token `NOT`",
-                TokenKind::Langth => "token `LANGTH`",
                 TokenKind::All => "token `ALL`",
                 TokenKind::Any => "token `ANY`",
 
@@ -601,7 +599,6 @@ impl<'a> Lexer<'a> {
                 "EITHER" => TokenKind::Either,
                 "WON" => TokenKind::Won,
                 "NOT" => TokenKind::Not,
-                "LANGTH" => TokenKind::Langth,
                 "ALL" => TokenKind::All,
                 "ANY" => TokenKind::Any,
 
@@ -710,7 +707,6 @@ mod lexer_test {
             ("EITHER", TokenKind::Either),
             ("WON", TokenKind::Won),
             ("NOT", TokenKind::Not),
-            ("LANGTH", TokenKind::Langth),
             ("ALL", TokenKind::All),
             ("ANY", TokenKind::Any),
             ("SAEM", TokenKind::Saem),

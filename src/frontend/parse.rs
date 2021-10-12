@@ -599,11 +599,7 @@ impl<'a> Parser<'a> {
 
             TokenKind::Diffrint => self.expr_binop(OpTy::NotEq, true)?,
 
-            TokenKind::Not => ExprKind::UnaryOp(UnOpTy::Not, Box::new(self.expr()?)),
-            TokenKind::Langth => {
-                self.expect(TokenKind::Of)?;
-                ExprKind::UnaryOp(UnOpTy::Length, Box::new(self.expr()?))
-            }
+            TokenKind::Not => ExprKind::Not(Box::new(self.expr()?)),
 
             TokenKind::Smoosh => {
                 let mut args = vec![self.expr()?];
@@ -1122,19 +1118,10 @@ KTHXBYE"#,
     );
 
     assert_ast!(
-        "HAI 1.4, LANGTH OF \"hai\", KTHXBYE",
-        expr_len,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::UnaryOp(UnOpTy::Length, ..),
-            ..
-        }),]
-    );
-
-    assert_ast!(
         "HAI 1.4, NOT WIN, KTHXBYE",
         expr_not,
         [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::UnaryOp(UnOpTy::Not, ..),
+            expr_kind: ExprKind::Not(..),
             ..
         }),]
     );
