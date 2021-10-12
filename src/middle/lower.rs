@@ -174,14 +174,6 @@ impl LowerCompiler {
             self.c.dec_closure(&fn_name);
             self.c.fn_id = before_dec;
             self.c.def_closure(args.len(), &fn_name);
-            for (i, arg) in args.iter().enumerate() {
-                self.c.lol_value_ty();
-                self.c.name(*arg);
-                self.c.ws(" = args[");
-                self.c.ws(&i.to_string());
-                self.c.wc(']');
-                self.c.semi();
-            }
             self.c.ws(&old[1..]);
             self.insert_local(name, ValueTy::Value);
             mem::swap(&mut old_len, &mut self.c.fn_id);
@@ -226,6 +218,17 @@ impl LowerCompiler {
                 let mut idx = 0;
                 for interp in interps {
                     let interned = self.intern(interp.1);
+                    if let None = self.valid_locals.get(&interned) {
+                        return Err(Diagnostic::build(DiagnosticType::UnknownSymbol, interp.2)
+                            .annotation(
+                                Cow::Owned(format!(
+                                    "unknown symbol `{}`",
+                                    self.interner.lookup(interned)
+                                )),
+                                interp.2,
+                            )
+                            .into());
+                    }
                     let (fragment, new_str) = running_str.split_at(interp.0 - idx);
                     running_str = new_str;
                     idx = interp.0;
@@ -234,7 +237,7 @@ impl LowerCompiler {
                     self.c.comma();
                     self.compile_str_lit(fragment);
                     self.c.comma();
-                    self.resolve_local(interned, interp.2)?;
+                    self.c.name(interned);
                 }
                 self.c.ws(", (size_t)");
                 self.c.ws(&running_str.len().to_string());

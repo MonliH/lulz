@@ -1,4 +1,4 @@
-LolValue {}(uint8_t args_count, LolValue *args, LolValue** env) {{
-    if (args_count != {}) {{
+LolValue {}(uint8_t args, LolValue *values, LolValue** env) {{
+    if (args != {}) {{
         exit(1);
     }}
