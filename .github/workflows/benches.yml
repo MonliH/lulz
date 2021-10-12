@@ -19,7 +19,7 @@ jobs:
     - name: Install compilers
       run: sudo apt-get install tcc gcc clang cmake
     - name: Build
-      run: cmake . && make && sudo make install
+      run: cmake . && make && make install
     - name: Run benchmarks (gcc)
       run: python3 benches/run_benches.py all gcc
     - name: Run benchmarks (clang)
