@@ -328,7 +328,6 @@ impl LowerCompiler {
                 self.c.span(expr.span);
                 self.c.wc(')');
             }
-            _ => {}
         }
         Ok(())
     }

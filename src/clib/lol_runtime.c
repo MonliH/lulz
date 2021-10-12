@@ -234,27 +234,3 @@ StringObj lol_interp_str(size_t length, ...) {
 
   return MAKE_STR_OBJ(final_str, str_lens, false);
 }
-
-VectorObj *lol_alloc_stack_vec(VectorObj obj) {
-  VectorObj *o = (VectorObj *)lol_alloc_obj(sizeof(VectorObj), obj.obj.ty,
-                                            obj.obj.constant);
-  *o = obj;
-  return o;
-}
-
-VectorObj lol_init_vec() {
-  return (VectorObj){(Obj){OBJ_VECTOR, false}, 0, 0, NULL};
-}
-
-size_t grow_cap(size_t cap) { return (cap < 8) ? 8 : (cap * 2); }
-
-void lol_append_vec(VectorObj *vec, LolValue val) {
-  if (vec->cap < (vec->len + 1)) {
-    size_t old_cap = vec->cap;
-    vec->cap = grow_cap(old_cap);
-    vec->items = GROW_VEC(LolValue, vec->items, old_cap, vec->cap);
-  }
-
-  vec->items[vec->len] = val;
-  vec->len++;
-}

@@ -135,8 +135,6 @@ impl<'a> Parser<'a> {
     fn statement(&mut self) -> Failible<Statement> {
         let next_token = self.next_token()?;
         match next_token.token_kind {
-            TokenKind::Put => self.append(next_token.span),
-            TokenKind::Shuv => self.assign_array(next_token.span),
             TokenKind::Im => self.loop_statement(next_token.span),
             TokenKind::How => self.function(next_token.span),
             TokenKind::Found => self.return_statement(next_token.span),
@@ -166,34 +164,6 @@ impl<'a> Parser<'a> {
             TokenKind::Ident(s) => Ok(Ident(s, id.span)),
             _ => unreachable!(),
         }
-    }
-
-    fn append(&mut self, prev_span: Span) -> Failible<Statement> {
-        let item = self.expr()?;
-        self.expect(TokenKind::Into)?;
-        let source = self.expr()?;
-        Ok(Statement {
-            statement_kind: StatementKind::Append(source, item),
-            span: prev_span.combine(&self.current_span),
-        })
-    }
-
-    fn assign_array(&mut self, prev_span: Span) -> Failible<Statement> {
-        let item = self.expr()?;
-        self.expect(TokenKind::Into)?;
-        let index = if self.check(&TokenKind::Bak)? {
-            Err(false)
-        } else if self.check(&TokenKind::Frunt)? {
-            Err(true)
-        } else {
-            Ok(self.expr()?)
-        };
-        self.expect(TokenKind::Of)?;
-        let source = self.expr()?;
-        Ok(Statement {
-            statement_kind: StatementKind::SetItem(source, item, index),
-            span: prev_span.combine(&self.current_span),
-        })
     }
 
     fn loop_statement(&mut self, span: Span) -> Failible<Statement> {
@@ -489,7 +459,6 @@ impl<'a> Parser<'a> {
             "YARN" => LolTy::Yarn,
             "NUMBR" => LolTy::Numbr,
             "NUMBAR" => LolTy::Numbar,
-            "LIZT" => LolTy::Lizt,
             s => {
                 return Err(Diagnostic::build(DiagnosticType::UnknownSymbol, id.1)
                     .annotation(Cow::Owned(format!("`{}` is not a TYPE", s)), id.1)
@@ -563,18 +532,6 @@ impl<'a> Parser<'a> {
             TokenKind::InterpStr(s, interps) => ExprKind::InterpStr(s, interps),
             TokenKind::Win => ExprKind::Bool(true),
             TokenKind::Fail => ExprKind::Bool(false),
-            TokenKind::Grab => {
-                let index = if self.check(&TokenKind::Bak)? {
-                    Err(false)
-                } else if self.check(&TokenKind::Frunt)? {
-                    Err(true)
-                } else {
-                    Ok(Box::new(self.expr()?))
-                };
-                self.expect(TokenKind::Frum)?;
-                let source = self.expr()?;
-                ExprKind::GetItem(Box::new(source), index)
-            }
 
             TokenKind::Noob => ExprKind::Null,
 
@@ -634,12 +591,6 @@ impl<'a> Parser<'a> {
                 self.expect(TokenKind::Of)?;
                 let args = self.repeated()?;
                 ExprKind::All(args)
-            }
-
-            TokenKind::Chain => {
-                self.expect(TokenKind::Of)?;
-                let args = self.repeated()?;
-                ExprKind::List(args)
             }
 
             TokenKind::Any => {
@@ -745,62 +696,6 @@ mod parse_test {
         "HAI 1.4, ident IS NOW A TROOF, KTHXBYE",
         ident_cast_mut,
         [StatementKind::MutCast(..),]
-    );
-
-    #[rustfmt::skip]
-    assert_ast!(
-        "HAI 1.4\n\nI HAS A ident ITZ A LIZT\nKTHXBYE",
-        lizt_dec,
-        [StatementKind::DecAssign(_, Some(Err(LolTy::Lizt))),]
-    );
-
-    #[rustfmt::skip]
-    assert_ast!(
-        "HAI 1.4\nPUT x INTO ARRAY\nKTHXBYE",
-        lizt_append,
-        [StatementKind::Append(..),]
-    );
-
-    #[rustfmt::skip]
-    assert_ast!(
-        "HAI 1.4\nGRAB FRUNT FRUM ARRAY\nKTHXBYE",
-        lizt_grab_frunt,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::GetItem(_, Err(true)), ..}),]
-    );
-
-    #[rustfmt::skip]
-    assert_ast!(
-        "HAI 1.4\nGRAB BAK FRUM ARRAY\nKTHXBYE",
-        lizt_grab_bak,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::GetItem(_, Err(false)), ..}),]
-    );
-
-    #[rustfmt::skip]
-    assert_ast!(
-        "HAI 1.4\nGRAB expr FRUM ARRAY\nKTHXBYE",
-        lizt_grab_idx,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::GetItem(_, Ok(_)), ..}),]
-    );
-
-    #[rustfmt::skip]
-    assert_ast!(
-        "HAI 1.4\nSHUV X INTO expr OF ARRAY\nKTHXBYE",
-        lizt_shuv_idx,
-        [StatementKind::SetItem(_, _, Ok(_)),]
-    );
-
-    #[rustfmt::skip]
-    assert_ast!(
-        "HAI 1.4\nSHUV X INTO FRUNT OF ARRAY\nKTHXBYE",
-        lizt_shuv_frunt,
-        [StatementKind::SetItem(_, _, Err(true)),]
-    );
-
-    #[rustfmt::skip]
-    assert_ast!(
-        "HAI 1.4\nSHUV X INTO BAK OF ARRAY\nKTHXBYE",
-        lizt_shuv_bak,
-        [StatementKind::SetItem(_, _, Err(false)),]
     );
 
     assert_ast!(
@@ -933,33 +828,6 @@ KTHXBYE"#,
         expr_int,
         [StatementKind::Expr(Expr {
             expr_kind: ExprKind::Int(..),
-            ..
-        }),]
-    );
-
-    assert_ast!(
-        "HAI 1.4, CHAIN OF 123 AN 123 AN WIN MKAY, KTHXBYE",
-        expr_chain3,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::List(..),
-            ..
-        }),]
-    );
-
-    assert_ast!(
-        "HAI 1.4, CHAIN OF 123 AN 123 MKAY, KTHXBYE",
-        expr_chain_2,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::List(..),
-            ..
-        }),]
-    );
-
-    assert_ast!(
-        "HAI 1.4, CHAIN OF 123 MKAY, KTHXBYE",
-        expr_chain1,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::List(..),
             ..
         }),]
     );

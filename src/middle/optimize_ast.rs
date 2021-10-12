@@ -35,9 +35,6 @@ where
     fn opt(&mut self, stmt: Statement) -> Statement {
         let kind = stmt.statement_kind;
         let statement_kind = match kind {
-            Append(e1, e2) => Append(self.rew(e1), self.rew(e2)),
-            SetItem(e1, e2, Ok(e3)) => SetItem(self.rew(e1), self.rew(e2), Ok(self.rew(e3))),
-            SetItem(e1, e2, Err(v)) => SetItem(self.rew(e1), self.rew(e2), Err(v)),
             Assignment(id, e) => Assignment(id, self.rew(e)),
             DecAssign(id, e) => DecAssign(id, e.map(|ex| ex.map(|expr| self.rew(expr)))),
             FunctionDef(id, args, bl) => FunctionDef(id, args, self.apply(bl)),
@@ -207,10 +204,6 @@ impl ExprRewrite for CmpRewrite {
             Not(e) => Not(Box::new(self.rewrite(*e))),
             All(es) => All(es.into_iter().map(|e| self.rewrite(e)).collect()),
             Any(es) => Any(es.into_iter().map(|e| self.rewrite(e)).collect()),
-            GetItem(e1, Ok(e2)) => {
-                GetItem(Box::new(self.rewrite(*e1)), Ok(Box::new(self.rewrite(*e2))))
-            }
-            GetItem(e, Err(v)) => GetItem(Box::new(self.rewrite(*e)), Err(v)),
             _ => kind,
         };
         Expr {

@@ -85,15 +85,6 @@ pub enum StatementKind {
     Return(Expr),
     Print(Vec<Expr>, bool),
     Input(Ident),
-
-    /// e1.append(e2)
-    /// Append(source collection, item)
-    Append(Expr, Expr),
-    // index item:
-    // bool:  true = FRONT, false = BACK
-    // Ident: index is the ident
-    /// SetItem(source, item, index)
-    SetItem(Expr, Expr, Result<Expr, bool>),
 }
 
 #[derive(Debug, Clone)]
@@ -140,7 +131,6 @@ pub enum ExprKind {
     String(String),
     InterpStr(String, Vec<InterpEntry>),
     Bool(bool),
-    List(Vec<Expr>),
 
     Null,
 
@@ -154,9 +144,6 @@ pub enum ExprKind {
     All(Vec<Expr>),
     Any(Vec<Expr>),
     Not(Box<Expr>),
-
-    /// GetItem(source, index)
-    GetItem(Box<Expr>, Result<Box<Expr>, bool>),
 }
 
 impl ExprKind {
@@ -171,17 +158,13 @@ impl ExprKind {
             | Self::Null
             | Self::Variable(..) => false,
             Self::FunctionCall(..) => true,
-            Self::Concat(es) | Self::All(es) | Self::Any(es) | Self::List(es) => {
+            Self::Concat(es) | Self::All(es) | Self::Any(es) => {
                 es.iter().any(|e| e.expr_kind.side_effects())
             }
             Self::Cast(e, _) | Self::Not(e) => e.expr_kind.side_effects(),
             Self::Operator(_, e1, e2) => {
                 e1.expr_kind.side_effects() || e2.expr_kind.side_effects()
             }
-            Self::GetItem(e1, Ok(e2)) => {
-                e1.expr_kind.side_effects() || e2.expr_kind.side_effects()
-            }
-            Self::GetItem(e, _) => e.expr_kind.side_effects(),
         }
     }
 }
@@ -217,7 +200,6 @@ pub enum LolTy {
     Numbar,
     Numbr,
     Func,
-    Lizt,
 }
 
 impl LolTy {
@@ -229,7 +211,6 @@ impl LolTy {
             LolTy::Numbar => "numbar",
             LolTy::Numbr => "numbr",
             LolTy::Func => "fn",
-            LolTy::Lizt => "lizt",
         }
     }
     pub fn as_macro(&self) -> &'static str {
@@ -240,7 +221,6 @@ impl LolTy {
             LolTy::Yarn => "STR",
             LolTy::Numbr => "INT",
             LolTy::Func => "FUN",
-            LolTy::Lizt => "VEC",
         }
     }
 
@@ -250,7 +230,6 @@ impl LolTy {
             LolTy::Numbar => ExprKind::Float(0.0),
             LolTy::Numbr => ExprKind::Int(0),
             LolTy::Yarn => ExprKind::String("".to_string()),
-            LolTy::Lizt => ExprKind::List(Vec::new()),
             LolTy::Func | LolTy::Noob => ExprKind::Null,
         }
     }
