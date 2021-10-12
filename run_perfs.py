@@ -1,22 +1,17 @@
 import sys
 import os
-from os import path
 from glob import iglob
 import subprocess
+import build_api
 import timeit
 import json
 
-if len(sys.argv) >= 2:
-    filename = path.join(path.dirname(__file__), f"./{sys.argv[1]}.lol")
+if len(sys.argv) == 2:
+    filename = f"./perfs/{sys.argv[1]}.lol"
     if sys.argv[1] == "all":
-        filename = path.join(path.dirname(__file__), f"*.lol")
-
-backend = "gcc"
-if len(sys.argv) == 3:
-    backend = sys.argv[2]
-
-if len(sys.argv) not in [2, 3]:
-    print("usage: python run_perfs <file> [backend]")
+        filename = f"./perfs/*.lol"
+else:
+    print("usage: python run_perfs <file> [repetitions]")
     print("       file to benchmark, accessed like `./perfs/<file>.lol`.")
     print("       using `all` as the filename selects all")
     exit(1)
@@ -31,12 +26,7 @@ for file in file_list:
         header = "{" + f.readline().split("{")[1]
     header = json.loads(header)
     sys.stdout.flush()
-    subprocess.call(
-        ["lulz", file, "-b", backend, "-O3"],
-        stdout=subprocess.DEVNULL,
-    )
-
-    t = timeit.Timer(lambda: subprocess.call(["./lol.out"], stdout=subprocess.DEVNULL))
+    t = timeit.Timer(lambda: subprocess.call(['./target/release/lulz', file], stdout=subprocess.DEVNULL))
     trials = int(header["trials"])
     reps = int(header["reps"])
     r = t.repeat(trials, reps)

@@ -17,12 +17,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install compilers
-      run: sudo apt-get install tcc gcc clang cmake
+      run: sudo apt-get install tcc gcc clang
     - name: Build
-      run: cmake . && make && sudo make install
+      run: cargo build --release
     - name: Run tests
       run: cargo test
     - name: Run test suite (gcc)
-      run: python3 tests/run_tests.py gcc
+      run: python3 run_tests.py gcc
     - name: Run test suite (clang)
-      run: python3 tests/run_tests.py clang
+      run: python3 run_tests.py clang

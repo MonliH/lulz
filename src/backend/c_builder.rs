@@ -163,7 +163,10 @@ impl CBuilder {
     }
 
     pub fn stdlib(&mut self) {
-        self.fns[0].push_str("#include <lol_runtime.h>\n#include <lol_ops.h>");
+        self.fns[0].push_str(
+            r#"#include "src/clib/lol_runtime.h"
+#include "src/clib/lol_ops.h""#,
+        );
         self.fn_id += 1;
         self.fns
             .push(format!(include_str!("../clib/main.clol"), self.main_fn));
