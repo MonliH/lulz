@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.12)
 
 find_program(RUSTC rustc)
 find_program(CARGO cargo REQUIRED)
@@ -30,10 +30,4 @@ install(TARGETS lulzrt ARCHIVE PUBLIC_HEADER)
 install(
     PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/${CARGO_BUILD_DIR}/${BUILD_SUBDIR}/lulz
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-)
-
-set_property(
-  TARGET lulz-bin
-  APPEND
-  PROPERTY ADDITIONAL_CLEAN_FILES ${CMAKE_CURRENT_SOURCE_DIR}/${CARGO_BUILD_DIR}
 )
