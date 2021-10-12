@@ -1,7 +1,8 @@
 use colored::*;
-use std::{borrow::Cow, fmt::Display};
+use std::borrow::Cow;
+use std::error::Error;
 
-pub fn report<T>(val: Result<T, impl Display>, msg: Cow<'static, str>) -> T {
+pub fn report<T>(val: Result<T, impl Error>, msg: Cow<'static, str>) -> T {
     match val {
         Ok(v) => v,
         Err(e) => {

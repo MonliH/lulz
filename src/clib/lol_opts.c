@@ -8,7 +8,8 @@ LolValue to_numeric(LolValue val) {
     return INT_VALUE(val.as_u64);
   else if (IS_NULL(val))
     return INT_VALUE(0);
-  exit(0);
+  else if (IS_FUN(val))
+    exit(0);
 }
 
 #define BINARY_OP(op_name, op)                                                 \
@@ -58,22 +59,3 @@ BOOL_NUM_OP(gt, >)
 BOOL_NUM_OP(lt, <)
 BOOL_NUM_OP(gte, >=)
 BOOL_NUM_OP(lte, <=)
-
-#define EQ_OP(op_name, op, t, f)                                               \
-  LolValue lol_##op_name(LolValue l, LolValue r, LolSpan sp) {                 \
-    if (IS_INT(l) && IS_INT(r))                                                \
-      return BOOL_VALUE(AS_INT(l) op AS_INT(r));                               \
-    else if (IS_DOUBLE(l) && IS_DOUBLE(r))                                     \
-      return BOOL_VALUE(AS_DOUBLE(l) op AS_DOUBLE(r));                         \
-    else if (IS_BOOL(l) && IS_BOOL(r))                                         \
-      return BOOL_VALUE(AS_BOOL(l) op AS_BOOL(r));                             \
-    else if (IS_FUN(l) && IS_FUN(r))                                           \
-      return BOOL_VALUE(AS_FUN(l) op AS_FUN(r));                               \
-    else if (IS_NULL(l) && IS_NULL(r)) {                                       \
-      return BOOL_VALUE(t);                                                    \
-    }                                                                          \
-    return BOOL_VALUE(f);                                                      \
-  }
-
-EQ_OP(eq, ==, true, false)
-EQ_OP(neq, !=, false, true)
