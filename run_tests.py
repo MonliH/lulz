@@ -11,7 +11,7 @@ import build_api
 if len(sys.argv) == 2:
     compiler = sys.argv[1]
 else:
-    compiler = "gcc"
+    compiler = "tcc"
 
 
 GREEN = "\033[32m"

@@ -208,15 +208,7 @@ impl LowerCompiler {
 
             ExprKind::All(es) => {}
             ExprKind::Any(es) => {}
-            ExprKind::Concat(es) => {
-                self.c.ws("OBJ_VALUE(lol_alloc_stack_str(lol_concat_str(");
-                self.c.ws(&es.len().to_string());
-                for e in es {
-                    self.c.ws(", ");
-                    self.compile_expr(e)?;
-                }
-                self.c.ws(")))");
-            }
+            ExprKind::Concat(es) => {}
 
             ExprKind::Operator(op, e1, e2) => {
                 let fn_name = match op {

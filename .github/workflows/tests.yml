@@ -26,3 +26,5 @@ jobs:
       run: python3 run_tests.py gcc
     - name: Run test suite (clang)
       run: python3 run_tests.py clang
+    - name: Run test suite (tcc)
+      run: python3 run_tests.py tcc

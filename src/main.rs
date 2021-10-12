@@ -15,7 +15,7 @@ use codespan_reporting::{
 };
 use std::fs::{read_to_string, write};
 use std::io::{self, Read};
-use std::{borrow::Cow, mem, process::exit};
+use std::{borrow::Cow, process::exit};
 
 use crate::diagnostics::Failible;
 use frontend::*;
@@ -57,11 +57,7 @@ fn main() {
     };
 }
 
-fn pipeline(
-    sources: &SimpleFiles<String, String>,
-    id: usize,
-    mut opts: opts::Opts,
-) -> Failible<()> {
+fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: opts::Opts) -> Failible<()> {
     let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
     let mut parser = parse::Parser::new(lexer);
     let mut ast = parser.parse()?;
@@ -78,7 +74,7 @@ fn pipeline(
             Cow::Borrowed("Failed to write c file"),
         );
     }
-    let compiler = backend::Compile::new(mem::take(&mut opts.backend));
+    let compiler = backend::Compile::new(&opts.backend);
     compiler.compile(c_code, opts.output, opts.opt, opts.backend_args);
     Ok(())
 }

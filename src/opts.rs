@@ -22,8 +22,9 @@ pub struct Opts {
     #[clap(
         short = 'b',
         long = "backend",
-        about = "Set the C compiler backend to use. Examples: gcc, clang, or tcc",
-        default_value = "gcc"
+        about = "Set the comipler backend to use",
+        default_value = "gcc",
+        possible_values = &["gcc", "clang", "tcc"]
     )]
     pub backend: String,
 
