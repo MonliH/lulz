@@ -1,0 +1,6 @@
+BTW { "output": "0\n1\n2\n3\n4\n" }
+HAI 1.2
+IM IN YR LOOP UPPIN YR i TIL BOTH SAEM i AN 5
+    VISIBLE i
+IM OUTTA YR LOOP
+KTHXBYE

@@ -1,46 +1,36 @@
-#![feature(option_result_unwrap_unchecked)]
-#[macro_use]
-extern crate derivative;
+mod backend;
+mod color;
 mod diagnostics;
 mod err;
 mod frontend;
-mod lolbc;
-mod lolvm;
-mod middle;
+mod opts;
 
-use clap::Clap;
+use crate::backend::interner::Interner;
+use crate::diagnostics::Failible;
 use codespan_reporting::files::SimpleFiles;
 use codespan_reporting::{
     term,
     term::termcolor::{ColorChoice, StandardStream},
 };
-use std::fs::read_to_string;
-use std::io::{self, Read};
-use std::{borrow::Cow, process::exit};
-
-use crate::diagnostics::Failible;
 use frontend::*;
-
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-
-#[derive(Clap, Debug)]
-#[clap(version = VERSION, author = "Jonathan Li")]
-struct Opts {
-    #[clap(short = 'd', long, about = "Prints disassembled lolvm bytecode")]
-    disasm: bool,
-
-    #[clap(
-        long = "debug-vm",
-        about = "Steps through the stack and instructions of the lolvm"
-    )]
-    debug_vm: bool,
-
-    #[clap(about = "Input file to interpret. Use `-` to read from stdin")]
-    input: String,
-}
+use libc::c_void;
+use std::rc::Rc;
+use std::{
+    borrow::Cow,
+    fs::read_to_string,
+    io::{self, Read},
+    mem,
+    process::exit,
+};
 
 fn main() {
-    let mut opts: Opts = Opts::parse();
+    let mut opts = err::report(
+        opts::parse().map_err(|e| {
+            eprint!("{}", opts::HELP);
+            e
+        }),
+        Cow::Borrowed("Failed to parse arguments"),
+    );
     let source: String = if &opts.input == "-" {
         let mut buffer = String::new();
         let stdin = io::stdin();
@@ -76,19 +66,12 @@ fn main() {
     };
 }
 
-fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: Opts) -> Failible<()> {
-    let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id);
+fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: opts::Opts) -> Failible<()> {
+    let mut interner = Interner::default();
+    let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id, &mut interner);
     let mut parser = parse::Parser::new(lexer);
-    let mut ast = parser.parse()?;
-    ast.opt();
-    let mut bytecode_compiler = middle::BytecodeCompiler::new();
-    bytecode_compiler.compile_start(ast)?;
-    let mut bytecode: lolbc::Chunk = bytecode_compiler.take_chunk();
-    bytecode.opt();
-    if opts.disasm {
-        lolbc::disasm(&bytecode);
-    }
-    let mut vm = lolvm::LolVm::new();
-    vm.run(bytecode, opts.debug_vm)?;
+    let ast = parser.parse()?;
+    let main_strid = interner.intern("");
+
     Ok(())
 }

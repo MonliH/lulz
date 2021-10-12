@@ -1,12 +1,10 @@
-use smol_str::SmolStr;
-use std::iter::Peekable;
-
 use crate::ast::*;
+use crate::backend::interner::{Interner, StrId};
 use crate::diagnostics::prelude::*;
 use crate::lex::{Lexer, Token, TokenKind};
 
 pub struct Parser<'a> {
-    lexer: Peekable<Lexer<'a>>,
+    lexer: Lexer<'a>,
     current_span: Span,
     source_id: usize,
 }
@@ -16,12 +14,12 @@ impl<'a> Parser<'a> {
         Self {
             current_span: Span::new(0, 0, lexer.source_id),
             source_id: lexer.source_id,
-            lexer: lexer.peekable(),
+            lexer,
         }
     }
 
     fn next_token(&mut self) -> Failible<Token> {
-        let tok = self.lexer.next().unwrap()?;
+        let tok = self.lexer.next()?;
         self.current_span = tok.span;
         Ok(tok)
     }
@@ -39,7 +37,7 @@ impl<'a> Parser<'a> {
         // https://rust-lang.github.io/rfcs/2094-nll.html#problem-case-3-conditional-control-flow-across-functions
         //
         // NOTE: This code actually does compile with the nightly -Zpolonius flag.
-        match unsafe { raw_self.as_mut() }.unwrap().lexer.peek().unwrap() {
+        match unsafe { raw_self.as_mut() }.unwrap().lexer.peek() {
             Ok(t) => Ok(t),
             // The original err value **is DROPPED**
             Err(_) => Err(unsafe { raw_self.as_mut() }
@@ -54,14 +52,12 @@ impl<'a> Parser<'a> {
         if std::mem::discriminant(&token) == std::mem::discriminant(&next.token_kind) {
             Ok(next)
         } else {
-            Err(
-                Diagnostic::build(Level::Error, DiagnosticType::Syntax, next.span)
-                    .annotation(
-                        Cow::Owned(format!("expected {}, but found {}", token, next.token_kind)),
-                        next.span,
-                    )
-                    .into(),
-            )
+            Err(Diagnostic::build(DiagnosticType::Syntax, next.span)
+                .annotation(
+                    Cow::Owned(format!("expected {}, but found {}", token, next.token_kind)),
+                    next.span,
+                )
+                .into())
         }
     }
 
@@ -89,9 +85,9 @@ impl<'a> Parser<'a> {
     }
 
     fn version(&mut self) -> Failible<()> {
-        self.expect(TokenKind::Number(SmolStr::default()))?;
+        self.expect(TokenKind::Number(String::new()))?;
         self.expect(TokenKind::Dot)?;
-        self.expect(TokenKind::Number(SmolStr::default()))?;
+        self.expect(TokenKind::Number(String::new()))?;
         Ok(())
     }
 
@@ -137,6 +133,8 @@ impl<'a> Parser<'a> {
     fn statement(&mut self) -> Failible<Statement> {
         let next_token = self.next_token()?;
         match next_token.token_kind {
+            TokenKind::Put => self.append(next_token.span),
+            TokenKind::Shuv => self.assign_array(next_token.span),
             TokenKind::Im => self.loop_statement(next_token.span),
             TokenKind::How => self.function(next_token.span),
             TokenKind::Found => self.return_statement(next_token.span),
@@ -161,35 +159,62 @@ impl<'a> Parser<'a> {
     }
 
     fn ident(&mut self) -> Failible<Ident> {
-        let id = self.expect(TokenKind::Ident(SmolStr::default()))?;
+        let id = self.expect(TokenKind::Ident(StrId::default()))?;
         match id.token_kind {
             TokenKind::Ident(s) => Ok(Ident(s, id.span)),
             _ => unreachable!(),
         }
     }
 
+    fn append(&mut self, prev_span: Span) -> Failible<Statement> {
+        let item = self.expr()?;
+        self.expect(TokenKind::Into)?;
+        let source = self.expr()?;
+        Ok(Statement {
+            statement_kind: StatementKind::Append(source, item),
+            span: prev_span.combine(&self.current_span),
+        })
+    }
+
+    fn assign_array(&mut self, prev_span: Span) -> Failible<Statement> {
+        let item = self.expr()?;
+        self.expect(TokenKind::Into)?;
+        let index = if self.check(&TokenKind::Bak)? {
+            Err(false)
+        } else if self.check(&TokenKind::Frunt)? {
+            Err(true)
+        } else {
+            Ok(self.expr()?)
+        };
+        self.expect(TokenKind::Of)?;
+        let source = self.expr()?;
+        Ok(Statement {
+            statement_kind: StatementKind::SetItem(source, item, index),
+            span: prev_span.combine(&self.current_span),
+        })
+    }
+
     fn loop_statement(&mut self, span: Span) -> Failible<Statement> {
         self.expect(TokenKind::In)?;
         self.expect(TokenKind::Yr)?;
         let block_name = self.ident()?;
-        let mut func = None;
-        let mut index = None;
-        let mut pred = None;
-        if TokenKind::Ident(SmolStr::default()).eq(&self.peek_token()?.token_kind) {
-            func = Some(self.ident()?);
+        let mut fn_id = None;
+        if TokenKind::Ident(StrId::default()).eq(&self.peek_token()?.token_kind) {
+            let func = self.ident()?;
             self.expect(TokenKind::Yr)?;
-            index = Some(self.ident()?);
-            pred = match self.peek_token()?.token_kind {
+            let index = self.ident()?;
+            let pred = match self.peek_token()?.token_kind {
                 TokenKind::Till => {
                     self.next_token()?;
-                    Some((true, self.expr()?))
+                    LoopCond::Till(self.expr()?)
                 }
                 TokenKind::Wile => {
                     self.next_token()?;
-                    Some((false, self.expr()?))
+                    LoopCond::While(self.expr()?)
                 }
-                _ => None,
+                _ => LoopCond::Forever,
             };
+            fn_id = Some((func, index, pred));
         }
         self.expect_lines()?;
         let block = self.block(Some(&[TokenKind::Im]))?;
@@ -199,31 +224,30 @@ impl<'a> Parser<'a> {
         let block_name2 = self.ident()?;
 
         if block_name2.0 != block_name.0 {
-            return Err(Diagnostic::build(
-                Level::Error,
-                DiagnosticType::UnmatchedBlockName,
-                block_name2.1,
-            )
-            .annotation(
-                Cow::Owned(format!("the block is called `{}` here", &block_name.0)),
-                block_name.1,
-            )
-            .annotation(
-                Cow::Owned(format!(
-                    "but the block is closed with `{}` here",
-                    &block_name2.0
-                )),
-                block_name2.1,
-            )
-            .into());
+            return Err(
+                Diagnostic::build(DiagnosticType::UnmatchedBlockName, block_name2.1)
+                    .annotation(
+                        Cow::Owned(format!(
+                            "the block is called `{}` here",
+                            self.lexer.interner.lookup(block_name.0)
+                        )),
+                        block_name.1,
+                    )
+                    .annotation(
+                        Cow::Owned(format!(
+                            "but the block is closed with `{}` here",
+                            self.lexer.interner.lookup(block_name2.0)
+                        )),
+                        block_name2.1,
+                    )
+                    .into(),
+            );
         }
 
         Ok(Statement {
             statement_kind: StatementKind::Loop {
                 block_name,
-                func,
-                index,
-                pred,
+                fn_id,
                 block,
             },
             span: Span::new(span.s, self.current_span.e, self.source_id),
@@ -344,8 +368,7 @@ impl<'a> Parser<'a> {
             if self.check(&TokenKind::Mebbe)? {
                 let expr = self.expr()?;
                 self.expect(TokenKind::Break)?;
-                let block =
-                    self.block(Some(&[TokenKind::Mebbe, TokenKind::No, TokenKind::Oic]))?;
+                let block = self.block(Some(&[TokenKind::Mebbe, TokenKind::No, TokenKind::Oic]))?;
                 mebee.push((expr, block));
             } else {
                 break;
@@ -385,7 +408,11 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::A)?;
         let ident = self.ident()?;
         let expr = if self.check(&TokenKind::Itz)? {
-            Some(self.expr()?)
+            if self.check(&TokenKind::A)? {
+                Some(Err(self.ty()?))
+            } else {
+                Some(Ok(self.expr()?))
+            }
         } else {
             None
         };
@@ -396,11 +423,14 @@ impl<'a> Parser<'a> {
     }
 
     fn print(&mut self, span: Span) -> Failible<Statement> {
-        let expr = self.expr()?;
+        let mut args = vec![self.expr()?];
+        while !(self.peek_eq(&TokenKind::Break)? || self.peek_eq(&TokenKind::Bang)?) {
+            args.push(self.expr()?);
+        }
         let no_newline = self.check(&TokenKind::Bang)?;
         Ok(Statement {
             span: Span::new(span.s, self.current_span.e, self.source_id),
-            statement_kind: StatementKind::Print(expr, no_newline),
+            statement_kind: StatementKind::Print(args, no_newline),
         })
     }
 
@@ -449,20 +479,21 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn ty(&mut self) -> Failible<Type> {
+    fn ty(&mut self) -> Failible<LolTy> {
+        if self.check(&TokenKind::Noob)? {
+            return Ok(LolTy::Noob);
+        }
         let id = self.ident()?;
-        Ok(match id.0.as_str() {
-            "TROOF" => Type::Bool,
-            "YARN" => Type::Str,
-            "NUMBR" => Type::Int,
-            "NUMBAR" => Type::Float,
-            "NOOB" => Type::Null,
+        Ok(match self.lexer.interner.lookup(id.0) {
+            "TROOF" => LolTy::Troof,
+            "YARN" => LolTy::Yarn,
+            "NUMBR" => LolTy::Numbr,
+            "NUMBAR" => LolTy::Numbar,
+            "LIZT" => LolTy::Lizt,
             s => {
-                return Err(
-                    Diagnostic::build(Level::Error, DiagnosticType::UnknownSymbol, id.1)
-                        .annotation(Cow::Owned(format!("`{}` is not a TYPE", s)), id.1)
-                        .into(),
-                )
+                return Err(Diagnostic::build(DiagnosticType::UnknownSymbol, id.1)
+                    .annotation(Cow::Owned(format!("`{}` is not a TYPE", s)), id.1)
+                    .into())
             }
         })
     }
@@ -470,6 +501,14 @@ impl<'a> Parser<'a> {
     fn check(&mut self, token: &TokenKind) -> Failible<bool> {
         if self.peek_token()?.token_kind.eq(token) {
             self.next_token()?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn peek_eq(&mut self, token: &TokenKind) -> Failible<bool> {
+        if self.peek_token()?.token_kind.eq(token) {
             Ok(true)
         } else {
             Ok(false)
@@ -506,6 +545,40 @@ impl<'a> Parser<'a> {
         Ok(args)
     }
 
+    fn cmp_ops(&mut self) -> Failible<OpTy> {
+        if self.check(&TokenKind::Greter)? {
+            let op = if self.check(&TokenKind::Eq)? {
+                Ok(OpTy::GTE)
+            } else {
+                Ok(OpTy::GT)
+            };
+            self.expect(TokenKind::Then)?;
+            return op;
+        }
+
+        if self.check(&TokenKind::Les)? {
+            let op = if self.check(&TokenKind::Eq)? {
+                Ok(OpTy::LTE)
+            } else {
+                Ok(OpTy::LT)
+            };
+            self.expect(TokenKind::Then)?;
+            return op;
+        }
+
+        let next = self.next_token()?;
+
+        Err(Diagnostic::build(DiagnosticType::Syntax, next.span)
+            .annotation(
+                Cow::Owned(format!(
+                    "expected a comparison expression, found {}",
+                    next.token_kind
+                )),
+                next.span,
+            )
+            .into())
+    }
+
     fn expr_inner(&mut self, prev: Option<Token>) -> Failible<Expr> {
         let to_match = match prev {
             Some(val) => val,
@@ -513,6 +586,14 @@ impl<'a> Parser<'a> {
         };
 
         let kind = match to_match.token_kind {
+            TokenKind::Iz => {
+                // Comparison
+                let left = self.expr()?;
+                let op = self.cmp_ops()?;
+                let right = self.expr()?;
+                ExprKind::Operator(op, Box::new(left), Box::new(right))
+            }
+
             TokenKind::Maek => {
                 let expr = self.expr()?;
                 self.expect(TokenKind::A)?;
@@ -524,6 +605,20 @@ impl<'a> Parser<'a> {
             TokenKind::InterpStr(s, interps) => ExprKind::InterpStr(s, interps),
             TokenKind::Win => ExprKind::Bool(true),
             TokenKind::Fail => ExprKind::Bool(false),
+            TokenKind::Grab => {
+                let index = if self.check(&TokenKind::Bak)? {
+                    Err(false)
+                } else if self.check(&TokenKind::Frunt)? {
+                    Err(true)
+                } else {
+                    Ok(Box::new(self.expr()?))
+                };
+                self.expect(TokenKind::Frum)?;
+                let source = self.expr()?;
+                ExprKind::GetItem(Box::new(source), index)
+            }
+
+            TokenKind::Noob => ExprKind::Null,
 
             TokenKind::Sum => self.expr_binop_of(OpTy::Add, false)?,
             TokenKind::Diff => self.expr_binop_of(OpTy::Sub, false)?,
@@ -546,7 +641,11 @@ impl<'a> Parser<'a> {
 
             TokenKind::Diffrint => self.expr_binop(OpTy::NotEq, true)?,
 
-            TokenKind::Not => ExprKind::Not(Box::new(self.expr()?)),
+            TokenKind::Not => ExprKind::UnaryOp(UnOpTy::Not, Box::new(self.expr()?)),
+            TokenKind::Langth => {
+                self.expect(TokenKind::Of)?;
+                ExprKind::UnaryOp(UnOpTy::Length, Box::new(self.expr()?))
+            }
 
             TokenKind::Smoosh => {
                 let mut args = vec![self.expr()?];
@@ -583,6 +682,12 @@ impl<'a> Parser<'a> {
                 ExprKind::All(args)
             }
 
+            TokenKind::Chain => {
+                self.expect(TokenKind::Of)?;
+                let args = self.repeated()?;
+                ExprKind::List(args)
+            }
+
             TokenKind::Any => {
                 self.expect(TokenKind::Of)?;
                 let args = self.repeated()?;
@@ -603,7 +708,6 @@ impl<'a> Parser<'a> {
                             ),
                             _ => {
                                 return Err(Diagnostic::build(
-                                    Level::Error,
                                     DiagnosticType::Syntax,
                                     to_match.span,
                                 )
@@ -615,21 +719,19 @@ impl<'a> Parser<'a> {
                             }
                         }
                     }
-                    _ => ExprKind::Int(n1.parse::<i64>().expect("Invalid integer")),
+                    _ => ExprKind::Int(n1.parse::<i32>().expect("Invalid integer")),
                 }
             }
             _ => {
-                return Err(
-                    Diagnostic::build(Level::Error, DiagnosticType::Syntax, to_match.span)
-                        .annotation(
-                            Cow::Owned(format!(
-                                "expected an expression, found {}",
-                                to_match.token_kind
-                            )),
-                            to_match.span,
-                        )
-                        .into(),
-                )
+                return Err(Diagnostic::build(DiagnosticType::Syntax, to_match.span)
+                    .annotation(
+                        Cow::Owned(format!(
+                            "expected an expression, found {}",
+                            to_match.token_kind
+                        )),
+                        to_match.span,
+                    )
+                    .into())
             }
         };
 
@@ -648,14 +750,18 @@ mod parse_test {
         ($stream: expr, $err_ty: expr, $no_of_annotations: expr, $name: ident) => {
             #[test]
             fn $name() {
-                let lexer = Lexer::new($stream.chars(), 0);
+                let mut interner = Interner::default();
+                let lexer = Lexer::new($stream.chars(), 0, &mut interner);
                 let mut parser = Parser::new(lexer);
                 let ast = parser.parse();
                 match ast {
                     Ok(val) => panic!("Expected Err value, found {:?}", val),
                     Err(e) => {
-                        assert_eq!(e.inner()[0].annotations.len(), $no_of_annotations);
-                        assert_eq!(e.inner()[0].ty, $err_ty);
+                        assert_eq!(
+                            e.clone().into_inner()[0].annotations.len(),
+                            $no_of_annotations
+                        );
+                        assert_eq!(e.into_inner()[0].ty, $err_ty);
                     }
                 }
             }
@@ -667,7 +773,8 @@ mod parse_test {
             #[test]
             #[allow(unused_mut, unused_variables)]
             fn $name() {
-                let lexer = Lexer::new($stream.chars(), 0);
+                let mut interner = Interner::default();
+                let lexer = Lexer::new($stream.chars(), 0, &mut interner);
                 let mut parser = Parser::new(lexer);
                 let ast = parser.parse();
                 let mut ast_iter = ast.expect("Failed to parse").0.into_iter();
@@ -686,6 +793,62 @@ mod parse_test {
         "HAI 1.4, ident IS NOW A TROOF, KTHXBYE",
         ident_cast_mut,
         [StatementKind::MutCast(..),]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        "HAI 1.4\n\nI HAS A ident ITZ A LIZT\nKTHXBYE",
+        lizt_dec,
+        [StatementKind::DecAssign(_, Some(Err(LolTy::Lizt))),]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        "HAI 1.4\nPUT x INTO ARRAY\nKTHXBYE",
+        lizt_append,
+        [StatementKind::Append(..),]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        "HAI 1.4\nGRAB FRUNT FRUM ARRAY\nKTHXBYE",
+        lizt_grab_frunt,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::GetItem(_, Err(true)), ..}),]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        "HAI 1.4\nGRAB BAK FRUM ARRAY\nKTHXBYE",
+        lizt_grab_bak,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::GetItem(_, Err(false)), ..}),]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        "HAI 1.4\nGRAB expr FRUM ARRAY\nKTHXBYE",
+        lizt_grab_idx,
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::GetItem(_, Ok(_)), ..}),]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        "HAI 1.4\nSHUV X INTO expr OF ARRAY\nKTHXBYE",
+        lizt_shuv_idx,
+        [StatementKind::SetItem(_, _, Ok(_)),]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        "HAI 1.4\nSHUV X INTO FRUNT OF ARRAY\nKTHXBYE",
+        lizt_shuv_frunt,
+        [StatementKind::SetItem(_, _, Err(true)),]
+    );
+
+    #[rustfmt::skip]
+    assert_ast!(
+        "HAI 1.4\nSHUV X INTO BAK OF ARRAY\nKTHXBYE",
+        lizt_shuv_bak,
+        [StatementKind::SetItem(_, _, Err(false)),]
     );
 
     assert_ast!(
@@ -729,7 +892,10 @@ mod parse_test {
 I IZ UPPIN YR 10 AN YR 10 AN YR 123 MKAY
 KTHXBYE"#,
         function_call_3_args,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::FunctionCall(..),
+            ..
+        }),]
     );
 
     assert_ast!(
@@ -737,7 +903,10 @@ KTHXBYE"#,
 I IZ UPPIN YR 10 AN YR 10 MKAY
 KTHXBYE"#,
         function_call_2_args,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::FunctionCall(..),
+            ..
+        }),]
     );
 
     assert_ast!(
@@ -745,7 +914,10 @@ KTHXBYE"#,
 I IZ UPPIN MKAY
 KTHXBYE"#,
         function_call_no_args,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::FunctionCall(..),
+            ..
+        }),]
     );
 
     assert_ast!(
@@ -753,163 +925,316 @@ KTHXBYE"#,
 I IZ UPPIN YR 10 MKAY
 KTHXBYE"#,
         function_call_1_arg,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::FunctionCall(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, \"hello\", KTHXBYE",
         expr_string,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::String(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::String(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" " world" MKAY, KTHXBYE"#,
         concat_string_no_an_mkay,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Concat(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" AN " world" MKAY, KTHXBYE"#,
         concat_string_mkay,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Concat(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" " world", KTHXBYE"#,
         concat_string_no_an,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Concat(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" AN " world", KTHXBYE"#,
         concat_string,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Concat(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, 123, KTHXBYE",
         expr_int,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Int(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Int(..),
+            ..
+        }),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, CHAIN OF 123 AN 123 AN WIN MKAY, KTHXBYE",
+        expr_chain3,
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::List(..),
+            ..
+        }),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, CHAIN OF 123 AN 123 MKAY, KTHXBYE",
+        expr_chain_2,
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::List(..),
+            ..
+        }),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, CHAIN OF 123 MKAY, KTHXBYE",
+        expr_chain1,
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::List(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, ALL OF 123 AN 123 AN WIN MKAY, KTHXBYE",
         expr_all3,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::All(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::All(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, ALL OF 123 AN 123 MKAY, KTHXBYE",
         expr_all2,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::All(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::All(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, ALL OF 123 MKAY, KTHXBYE",
         expr_all1,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::All(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::All(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, ANY OF 123 AN 123 AN WIN MKAY, KTHXBYE",
         expr_any3,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Any(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Any(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, ANY OF 123 AN 123 MKAY, KTHXBYE",
         expr_any2,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Any(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Any(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, ANY OF 123 MKAY, KTHXBYE",
         expr_any1,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Any(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Any(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, SUM OF 1 AN 2, KTHXBYE",
         expr_add,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Add, ..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::Add, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, DIFF OF 1 AN 2, KTHXBYE",
         expr_sub,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Sub, ..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::Sub, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, PRODUKT OF 1 AN 2, KTHXBYE",
         expr_mul,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Mul, ..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::Mul, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, QUOSHUNT OF 1 AN 2, KTHXBYE",
         expr_div,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Div, ..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::Div, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, MOD OF 1 AN 2, KTHXBYE",
         expr_mod,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Mod, ..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::Mod, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, BIGGR OF 1 AN 2, KTHXBYE",
         expr_max,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Max, ..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::Max, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, SMALLR OF 1 AN 2, KTHXBYE",
         expr_min,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Min, ..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::Min, ..),
+            ..
+        }),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, IZ 1 LES EQ THEN 2, KTHXBYE",
+        lte_expr,
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::LTE, ..),
+            ..
+        }),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, IZ 1 GRETER EQ THEN 2, KTHXBYE",
+        gte_expr,
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::GTE, ..),
+            ..
+        }),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, IZ 1 LES THEN 2, KTHXBYE",
+        lt_expr,
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::LT, ..),
+            ..
+        }),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, IZ 1 GRETER THEN 2, KTHXBYE",
+        gt_expr,
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::GT, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, BOTH SAEM 1 2, KTHXBYE",
         expr_same_no_an,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Equal, ..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::Equal, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, DIFFRINT 1 2, KTHXBYE",
         expr_diff_no_an,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::NotEq, ..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::NotEq, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, BOTH SAEM 1 AN 2, KTHXBYE",
         expr_same,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Equal, ..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::Equal, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, DIFFRINT 1 AN 2, KTHXBYE",
         expr_diff,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::NotEq, ..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Operator(OpTy::NotEq, ..),
+            ..
+        }),]
+    );
+
+    assert_ast!(
+        "HAI 1.4, LANGTH OF \"hai\", KTHXBYE",
+        expr_len,
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::UnaryOp(UnOpTy::Length, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, NOT WIN, KTHXBYE",
         expr_not,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Not(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::UnaryOp(UnOpTy::Not, ..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, 123.123, KTHXBYE",
         expr_float,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Float(..), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Float(..),
+            ..
+        }),]
     );
 
     assert_ast!(
         "HAI 1.4, MAEK 10 A NUMBAR, KTHXBYE",
         float_cast,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::Cast(_, Type::Float), ..}),]
+        [StatementKind::Expr(Expr {
+            expr_kind: ExprKind::Cast(_, LolTy::Numbar),
+            ..
+        }),]
     );
 
     assert_ast!(
@@ -1103,7 +1428,7 @@ KTHXBYE"#,
     #[rustfmt::skip]
     assert_ast!(
         r#"HAI 1.4
-IM IN YR block UPPIN YR i TILL WIN
+IM IN YR block UPPIN YR i TIL WIN
 IM OUTTA YR block
 KTHXBYE"#,
         loop_simple_till,
@@ -1113,7 +1438,7 @@ KTHXBYE"#,
     #[rustfmt::skip]
     assert_ast!(
         r#"HAI 1.4
-IM IN YR block UPPIN YR i TILL WIN
+IM IN YR block UPPIN YR i TIL WIN
     GTFO
 IM OUTTA YR block
 KTHXBYE"#,
@@ -1215,7 +1540,7 @@ KTHXBYE"#,
 
     assert_err!(
         r#"HAI 1.4
-IM IN YR bLock UPPIN YR i TILL WIN
+IM IN YR bLock UPPIN YR i TIL WIN
 IM OUTTA YR block
 KTHXBYE"#,
         DiagnosticType::UnmatchedBlockName,

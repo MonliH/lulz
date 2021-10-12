@@ -1,10 +1,10 @@
-use smol_str::SmolStr;
 use unicode_names2::character;
 
 use std::fmt::{self, Display, Formatter};
 use std::iter::Peekable;
 use std::str::Chars;
 
+use crate::backend::interner::{Interner, StrId};
 use crate::diagnostics::prelude::*;
 
 use super::ast::InterpEntry;
@@ -44,6 +44,7 @@ pub enum TokenKind {
     If,
     U,
     Say,
+    Noob,
     So,
     Found,
     Ya,
@@ -55,6 +56,15 @@ pub enum TokenKind {
     Smoosh,
     Maek,
 
+    Put,
+    Into,
+    Frum,
+    Grab,
+    Shuv,
+    Frunt,
+    Bak,
+    Chain,
+
     Sum,
     Diff,
     Produkt,
@@ -64,10 +74,16 @@ pub enum TokenKind {
     Smallr,
     Of,
 
+    Les,
+    Greter,
+    Eq,
+    Then,
+
     Both,
     Either,
     Won,
     Not,
+    Langth,
     All,
     Any,
 
@@ -79,11 +95,11 @@ pub enum TokenKind {
     Question,
     Bang,
 
-    Number(SmolStr),
+    Number(String),
     String(String),
     /// An interpolated string
     InterpStr(String, Vec<InterpEntry>),
-    Ident(SmolStr),
+    Ident(StrId),
 
     Eof,
 }
@@ -105,7 +121,7 @@ impl Display for TokenKind {
                 TokenKind::Im => "token `IM`",
                 TokenKind::In => "token `IN`",
                 TokenKind::Yr => "token `YR`",
-                TokenKind::Till => "token `TILL`",
+                TokenKind::Till => "token `TIL`",
                 TokenKind::Wile => "token `WILE`",
                 TokenKind::Outta => "token `OUTTA`",
                 TokenKind::Wtf => "token `WTF`",
@@ -123,6 +139,7 @@ impl Display for TokenKind {
                 TokenKind::Has => "token `HAS`",
                 TokenKind::Itz => "token `ITZ`",
                 TokenKind::Win => "token `WIN`",
+                TokenKind::Noob => "token `NOOB`",
                 TokenKind::Fail => "token `FAIL`",
                 TokenKind::Iz => "token `IZ`",
                 TokenKind::Is => "token `IS`",
@@ -143,6 +160,20 @@ impl Display for TokenKind {
                 TokenKind::Smoosh => "token `SMOOSH`",
                 TokenKind::Maek => "token `MAEK`",
 
+                TokenKind::Les => "token `LES`",
+                TokenKind::Greter => "token `GRETER`",
+                TokenKind::Eq => "token `EQ`",
+                TokenKind::Then => "token `THEN`",
+
+                TokenKind::Put => "token `PUT`",
+                TokenKind::Chain => "token `CHAIN`",
+                TokenKind::Into => "token `INTO`",
+                TokenKind::Shuv => "token `SHUV`",
+                TokenKind::Frunt => "token `FRUNT`",
+                TokenKind::Bak => "token `BAK`",
+                TokenKind::Grab => "token `GRAB`",
+                TokenKind::Frum => "token `FRUM`",
+
                 TokenKind::Sum => "token `SUM`",
                 TokenKind::Diff => "token `DIFF`",
                 TokenKind::Produkt => "token `PRODUKT`",
@@ -156,6 +187,7 @@ impl Display for TokenKind {
                 TokenKind::Either => "token `EITHER`",
                 TokenKind::Won => "token `WON`",
                 TokenKind::Not => "token `NOT`",
+                TokenKind::Langth => "token `LANGTH`",
                 TokenKind::All => "token `ALL`",
                 TokenKind::Any => "token `ANY`",
 
@@ -188,14 +220,9 @@ pub struct Lexer<'a> {
     stream: Peekable<Chars<'a>>,
     position: usize,
     pub source_id: usize,
-}
-
-impl<'a> Iterator for Lexer<'a> {
-    type Item = Failible<Token>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        Some(self.next_token())
-    }
+    had_newline: bool,
+    pub interner: &'a mut Interner,
+    peeked: Option<Failible<Token>>,
 }
 
 const EOF: char = '\0';
@@ -208,35 +235,77 @@ const ESCAPES: &[(char, char)] = &[
 ];
 
 impl<'a> Lexer<'a> {
-    pub fn new(chars: Chars<'a>, source_id: usize) -> Self {
+    pub fn new(chars: Chars<'a>, source_id: usize, interner: &'a mut Interner) -> Self {
         Self {
             stream: chars.peekable(),
             source_id,
             position: 0,
+            had_newline: false,
+            peeked: None,
+            interner,
         }
     }
 
-    fn next_token(&mut self) -> Failible<Token> {
+    pub fn peek(&mut self) -> &Failible<Token> {
+        match self.peeked {
+            Some(ref peeked) => peeked,
+            None => {
+                self.peeked = Some(self.next());
+                self.peeked.as_ref().unwrap()
+            }
+        }
+    }
+
+    pub fn next(&mut self) -> Failible<Token> {
+        match self.peeked.take() {
+            Some(v) => v,
+            None => {
+                let tok = self.next_token_inner()?;
+                self.had_newline = tok.token_kind.eq(&TokenKind::Break);
+                Ok(tok)
+            }
+        }
+    }
+
+    fn next_token_inner(&mut self) -> Failible<Token> {
         let prev_pos = self.position;
         let kind = match self.eat() {
             c if Self::is_id_start(c) => return self.ident(c),
-            '.' => TokenKind::Dot,
+            '…' => return self.elipsis(),
+            '.' => match self.peek_char() {
+                '.' => {
+                    self.eat();
+                    match self.peek_char() {
+                        '.' => {
+                            self.eat();
+                            return self.elipsis();
+                        }
+                        c => {
+                            return Err(Self::lexer_err(
+                                c,
+                                Span::new(self.position - 1, self.position, self.source_id),
+                            ))
+                        }
+                    }
+                }
+                _ => TokenKind::Dot,
+            },
             '?' => TokenKind::Question,
             '!' => TokenKind::Bang,
             '"' => self.eat_string()?,
             ',' => TokenKind::Break,
             '\n' => {
-                while self.peek() == '\n' {
+                while self.peek_char() == '\n' {
                     self.eat();
                 }
                 TokenKind::Break
             }
-            '\t' | ' ' => return self.next_token(),
+            c if Self::is_whitespace(c) => return self.next(),
             '\0' => TokenKind::Eof,
             '-' => {
-                let c = self.peek();
-                match self.next_token()?.token_kind {
-                    TokenKind::Number(s) => TokenKind::Number(SmolStr::new(format!("-{}", s))),
+                let c = self.peek_char();
+                match self.next()?.token_kind {
+                    TokenKind::Number(s) => TokenKind::Number(format!("-{}", s)),
                     _ => {
                         return Err(Self::lexer_err(
                             c,
@@ -246,7 +315,7 @@ impl<'a> Lexer<'a> {
                 }
             }
             c if c.is_ascii_digit() => {
-                TokenKind::Number(SmolStr::new(self.consume_while(c, |c| c.is_ascii_digit())))
+                TokenKind::Number(self.consume_while(c, |c| c.is_ascii_digit()))
             }
             c => {
                 let span = Span::new(prev_pos, self.position, self.source_id);
@@ -261,7 +330,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lexer_err(c: char, span: Span) -> Diagnostics {
-        Diagnostic::build(Level::Error, DiagnosticType::UnexpectedCharacter, span)
+        Diagnostic::build(DiagnosticType::UnexpectedCharacter, span)
             .annotation(Cow::Owned(format!("unexpected character `{}`", c)), span)
             .into()
     }
@@ -275,7 +344,7 @@ impl<'a> Lexer<'a> {
 
     #[inline]
     /// Go forward one character without peeking
-    fn peek(&mut self) -> char {
+    fn peek_char(&mut self) -> char {
         *self.stream.peek().unwrap_or(&EOF)
     }
 
@@ -289,10 +358,11 @@ impl<'a> Lexer<'a> {
         c.is_ascii_alphanumeric() || c == '_'
     }
 
+    #[inline]
     fn consume_while(&mut self, first: char, predicate: impl Fn(char) -> bool) -> String {
         let mut acc = String::with_capacity(1);
         acc.push(first);
-        while predicate(self.peek()) && !self.is_eof() {
+        while predicate(self.peek_char()) && !self.is_eof() {
             acc.push(self.eat());
         }
         acc
@@ -300,7 +370,7 @@ impl<'a> Lexer<'a> {
 
     fn consume_until(&mut self, predicate: impl Fn(char) -> bool) -> String {
         let mut acc = String::with_capacity(1);
-        while predicate(self.peek()) && !self.is_eof() {
+        while predicate(self.peek_char()) && !self.is_eof() {
             acc.push(self.eat());
         }
         acc
@@ -309,15 +379,13 @@ impl<'a> Lexer<'a> {
     fn get_str_esc(&mut self, ch: char) -> Failible<(String, Span)> {
         self.eat();
         let esc = self.consume_until(|c| c != ch && c != '"');
-        if self.peek() == '"' {
+        if self.peek_char() == '"' {
             let span = Span::new(self.position, self.position + 1, self.source_id);
-            return Err(Diagnostic::build(
-                Level::Error,
-                DiagnosticType::InvalidEscapeSequence,
-                span,
-            )
-            .annotation(Cow::Borrowed("unclosed escape"), span)
-            .into());
+            return Err(
+                Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span)
+                    .annotation(Cow::Borrowed("unclosed escape"), span)
+                    .into(),
+            );
         } else {
             self.eat();
         }
@@ -338,13 +406,33 @@ impl<'a> Lexer<'a> {
         Self::is_id_start(chars.next().unwrap()) && chars.all(|c| Self::is_id_continue(c))
     }
 
+    fn is_whitespace(c: char) -> bool {
+        c == ' ' || c == '\t'
+    }
+
+    fn elipsis(&mut self) -> Failible<Token> {
+        self.consume_while(' ', Self::is_whitespace);
+        let next = self.eat();
+        if next != '\n' {
+            let span = Span::new(self.position - 1, self.position, self.source_id);
+            return Err(Diagnostic::build(DiagnosticType::UnexpectedCharacter, span)
+                .annotation(
+                    Cow::Owned(format!("expected newline character, found `{}`", next)),
+                    span,
+                )
+                .into());
+        }
+
+        self.next()
+    }
+
     fn eat_string(&mut self) -> Failible<TokenKind> {
         let mut acc = String::new();
         let mut interps = Vec::new();
         'main: loop {
             let next = self.eat();
             if next == ':' {
-                let peeked = self.peek();
+                let peeked = self.peek_char();
                 for (k, v) in ESCAPES {
                     if peeked == *k {
                         self.eat();
@@ -357,12 +445,7 @@ impl<'a> Lexer<'a> {
                 if peeked == '<' {
                     let (esc, span) = self.get_str_esc('>')?;
                     let val = character(&esc).ok_or_else(|| {
-                        Diagnostic::build(
-                            Level::Error,
-                            DiagnosticType::InvalidEscapeSequence,
-                            span,
-                        )
-                        .annotation(
+                        Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span).annotation(
                             Cow::Owned(format!("invalid unicode normative name `{}`", esc)),
                             span,
                         )
@@ -377,60 +460,44 @@ impl<'a> Lexer<'a> {
                         interps.push(InterpEntry(acc.len(), esc, span));
                         continue;
                     } else {
-                        return Err(Diagnostic::build(
-                            Level::Error,
-                            DiagnosticType::InvalidEscapeSequence,
-                            span,
-                        )
-                        .annotation(
-                            Cow::Owned(format!("`{}` is not a valid identifier", esc)),
-                            span,
-                        )
-                        .into());
+                        return Err(
+                            Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span)
+                                .annotation(
+                                    Cow::Owned(format!("`{}` is not a valid identifier", esc)),
+                                    span,
+                                )
+                                .into(),
+                        );
                     }
                 }
 
                 if peeked == '(' {
                     let (esc, span) = self.get_str_esc(')')?;
                     let esc_num: u32 = u32::from_str_radix(&esc, 16).map_err(|_| {
-                        Diagnostic::build(
-                            Level::Error,
-                            DiagnosticType::InvalidEscapeSequence,
-                            span,
-                        )
-                        .annotation(Cow::Owned(format!("invalid hex string `{}`", esc)), span)
+                        Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span)
+                            .annotation(Cow::Owned(format!("invalid hex string `{}`", esc)), span)
                     })?;
                     let val = std::char::from_u32(esc_num).ok_or_else(|| {
-                        Diagnostic::build(
-                            Level::Error,
-                            DiagnosticType::InvalidEscapeSequence,
-                            span,
-                        )
-                        .annotation(Cow::Owned(format!("invalid escape hex `{}`", esc)), span)
+                        Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span)
+                            .annotation(Cow::Owned(format!("invalid escape hex `{}`", esc)), span)
                     })?;
                     acc.push(val);
                     continue;
                 }
 
                 let span = Span::new(self.position, self.position + 1, self.source_id);
-                return Err(Diagnostic::build(
-                    Level::Error,
-                    DiagnosticType::InvalidEscapeSequence,
-                    span,
-                )
-                .annotation(Cow::Owned(format!("invalid escape `:{}`", peeked)), span)
-                .into());
+                return Err(
+                    Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span)
+                        .annotation(Cow::Owned(format!("invalid escape `:{}`", peeked)), span)
+                        .into(),
+                );
             } else if next == '"' {
                 break;
             } else if next == EOF {
                 let span = Span::new(self.position, self.position + 1, self.source_id);
-                return Err(Diagnostic::build(
-                    Level::Error,
-                    DiagnosticType::UnexpectedCharacter,
-                    span,
-                )
-                .annotation(Cow::Borrowed("expected `\"`, found end of file"), span)
-                .into());
+                return Err(Diagnostic::build(DiagnosticType::UnexpectedCharacter, span)
+                    .annotation(Cow::Borrowed("expected `\"`, found end of file"), span)
+                    .into());
             } else {
                 acc.push(next);
             }
@@ -447,20 +514,20 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_eof(&mut self) -> bool {
-        self.peek() == EOF
+        self.peek_char() == EOF
     }
 
     fn consume_multiline(&mut self) -> Failible<()> {
-        while self.peek() != 'T' && !self.is_eof() {
+        while self.peek_char() != 'T' && !self.is_eof() {
             self.eat();
         }
 
         self.eat();
-        if self.peek() == 'L' {
+        if self.peek_char() == 'L' {
             self.eat();
-            if self.peek() == 'D' {
+            if self.peek_char() == 'D' {
                 self.eat();
-                if self.peek() == 'R' {
+                if self.peek_char() == 'R' {
                     self.eat();
                     return Ok(());
                 }
@@ -477,18 +544,22 @@ impl<'a> Lexer<'a> {
             token_kind: match &id[..] {
                 "BTW" => {
                     self.consume_while(first, Self::is_not_newline);
-                    return self.next_token();
+                    if self.had_newline {
+                        // if there was already a newline before this comment, skip over the next
+                        self.eat();
+                    }
+                    return self.next();
                 }
                 "OBTW" => {
                     self.consume_multiline()?;
-                    return self.next_token();
+                    return self.next();
                 }
                 "HAI" => TokenKind::Hai,
                 "KTHXBYE" => TokenKind::Kthxbye,
                 "IM" => TokenKind::Im,
                 "IN" => TokenKind::In,
                 "YR" => TokenKind::Yr,
-                "TILL" => TokenKind::Till,
+                "TIL" => TokenKind::Till,
                 "WILE" => TokenKind::Wile,
                 "OUTTA" => TokenKind::Outta,
                 "WTF" => TokenKind::Wtf,
@@ -497,6 +568,7 @@ impl<'a> Lexer<'a> {
                 "OMGWTF" => TokenKind::Omgwtf,
                 "RLY" => TokenKind::Rly,
                 "MAEK" => TokenKind::Maek,
+                "NOOB" => TokenKind::Noob,
                 "O" => TokenKind::O,
                 "MEBBE" => TokenKind::Mebbe,
                 "WAI" => TokenKind::Wai,
@@ -526,6 +598,21 @@ impl<'a> Lexer<'a> {
                 "MKAY" => TokenKind::Mkay,
                 "SMOOSH" => TokenKind::Smoosh,
 
+                "GRETER" => TokenKind::Greter,
+                "LES" => TokenKind::Les,
+                "EQ" => TokenKind::Eq,
+                "THEN" => TokenKind::Then,
+
+                "PUT" => TokenKind::Put,
+                "INTO" => TokenKind::Into,
+                "CHAIN" => TokenKind::Chain,
+
+                "GRAB" => TokenKind::Grab,
+                "SHUV" => TokenKind::Shuv,
+                "FRUNT" => TokenKind::Frunt,
+                "BAK" => TokenKind::Bak,
+                "FRUM" => TokenKind::Frum,
+
                 "SUM" => TokenKind::Sum,
                 "DIFF" => TokenKind::Diff,
                 "PRODUKT" => TokenKind::Produkt,
@@ -539,13 +626,14 @@ impl<'a> Lexer<'a> {
                 "EITHER" => TokenKind::Either,
                 "WON" => TokenKind::Won,
                 "NOT" => TokenKind::Not,
+                "LANGTH" => TokenKind::Langth,
                 "ALL" => TokenKind::All,
                 "ANY" => TokenKind::Any,
 
                 "SAEM" => TokenKind::Saem,
                 "DIFFRINT" => TokenKind::Diffrint,
 
-                _ => TokenKind::Ident(SmolStr::new(id)),
+                _ => TokenKind::Ident(self.interner.intern(&id)),
             },
         })
     }
@@ -557,9 +645,10 @@ mod lexer_test {
 
     fn assert_err(map: &[(&'static str, DiagnosticType)]) {
         for (source, err) in map.iter() {
-            let mut lexer = Lexer::new(source.chars(), 0);
+            let mut interner = Interner::default();
+            let mut lexer = Lexer::new(source.chars(), 0, &mut interner);
             assert_eq!(
-                lexer.next().unwrap().map_err(|e| e.inner()[0].ty),
+                lexer.next().map_err(|e| e.into_inner()[0].ty),
                 Err(err.clone())
             );
         }
@@ -567,11 +656,9 @@ mod lexer_test {
 
     fn assert_map(map: &[(&'static str, TokenKind)]) {
         for (source, token) in map.iter() {
-            let mut lexer = Lexer::new(source.chars(), 0);
-            assert_eq!(
-                lexer.next().unwrap().map(|t| t.token_kind),
-                Ok(token.clone())
-            );
+            let mut interner = Interner::default();
+            let mut lexer = Lexer::new(source.chars(), 0, &mut interner);
+            assert_eq!(lexer.next().map(|t| t.token_kind), Ok(token.clone()));
         }
     }
 
@@ -599,7 +686,7 @@ mod lexer_test {
             ("IM", TokenKind::Im),
             ("IN", TokenKind::In),
             ("YR", TokenKind::Yr),
-            ("TILL", TokenKind::Till),
+            ("TIL", TokenKind::Till),
             ("WILE", TokenKind::Wile),
             ("OUTTA", TokenKind::Outta),
             ("WTF", TokenKind::Wtf),
@@ -629,6 +716,10 @@ mod lexer_test {
             ("NO", TokenKind::No),
             ("A", TokenKind::A),
             ("R", TokenKind::R),
+            ("YA", TokenKind::Ya),
+            ("NO", TokenKind::No),
+            ("A", TokenKind::A),
+            ("R", TokenKind::R),
             ("MAEK", TokenKind::Maek),
             ("GIMMEH", TokenKind::Gimmeh),
             ("MKAY", TokenKind::Mkay),
@@ -647,10 +738,24 @@ mod lexer_test {
             ("EITHER", TokenKind::Either),
             ("WON", TokenKind::Won),
             ("NOT", TokenKind::Not),
+            ("LANGTH", TokenKind::Langth),
             ("ALL", TokenKind::All),
             ("ANY", TokenKind::Any),
             ("SAEM", TokenKind::Saem),
+            ("NOOB", TokenKind::Noob),
             ("DIFFRINT", TokenKind::Diffrint),
+            ("INTO", TokenKind::Into),
+            ("PUT", TokenKind::Put),
+            ("GRAB", TokenKind::Grab),
+            ("FRUNT", TokenKind::Frunt),
+            ("BAK", TokenKind::Bak),
+            ("SHUV", TokenKind::Shuv),
+            ("FRUM", TokenKind::Frum),
+            ("CHAIN", TokenKind::Chain),
+            ("THEN", TokenKind::Then),
+            ("EQ", TokenKind::Eq),
+            ("GRETER", TokenKind::Greter),
+            ("LES", TokenKind::Les),
         ]);
     }
 
@@ -679,10 +784,12 @@ mod lexer_test {
 
     #[test]
     fn ident() {
-        assert_map(&[(
-            "helloWorldIdent",
-            TokenKind::Ident(SmolStr::new("helloWorldIdent")),
-        )]);
+        let mut interner = Interner::default();
+        let mut lexer = Lexer::new("helloWorldIdent".chars(), 0, &mut interner);
+        assert_eq!(
+            lexer.next().map(|t| t.token_kind),
+            Ok(TokenKind::Ident(interner.intern("helloWorldIdent")))
+        );
     }
 
     #[test]
@@ -702,11 +809,8 @@ mod lexer_test {
     #[test]
     fn numbers() {
         assert_map(&[
-            ("1234567809", TokenKind::Number(SmolStr::new("1234567809"))),
-            (
-                "-1234567809",
-                TokenKind::Number(SmolStr::new("-1234567809")),
-            ),
+            ("1234567809", TokenKind::Number("1234567809".to_string())),
+            ("-1234567809", TokenKind::Number("-1234567809".to_string())),
         ]);
     }
 

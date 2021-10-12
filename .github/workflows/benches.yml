@@ -1,0 +1,26 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install compilers
+      run: sudo apt-get install tcc gcc clang cmake
+    - name: Build
+      run: cmake . && make && sudo make install
+    - name: Run benchmarks (gcc)
+      run: python3 benches/run_benches.py all gcc
+    - name: Run benchmarks (clang)
+      run: python3 benches/run_benches.py all clang
