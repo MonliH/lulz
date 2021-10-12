@@ -5,13 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-char *stpncpy(char *dst, const char *src, size_t len) {
-  size_t n = strlen(src);
-  if (n > len)
-    n = len;
-  return strncpy(dst, src, len) + n;
-}
-
 LolValue lol_it = NULL_VALUE;
 
 LolValue lol_call(uint8_t args, LolValue fn, LolValue *values, LolSpan sp) {
@@ -145,9 +138,8 @@ void *lol_realloc(void *pointer, size_t oldSize, size_t newSize) {
   }
 
   void *result = realloc(pointer, newSize);
-  if (result == NULL) {
+  if (result == NULL)
     exit(1);
-  }
   return result;
 }
 
@@ -204,14 +196,12 @@ StringObj lol_interp_str(size_t length, ...) {
   va_list args;
   va_start(args, length);
   for (size_t i = 0; i < length; i++) {
-    size_t v = va_arg(args, size_t);
-    str_lens += v;
+    str_lens += va_arg(args, size_t);
     va_arg(args, char *);
     str_lens += lol_str_len(va_arg(args, LolValue));
   }
   // last string (extra at end)
   str_lens += va_arg(args, size_t);
-  va_arg(args, char *);
   va_end(args);
 
   char *final_str = lol_realloc(NULL, 0, str_lens + 1);
