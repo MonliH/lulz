@@ -36,7 +36,4 @@ LolValue to_lol_numbr(LolValue value);
 LolValue to_lol_numbar(LolValue value);
 LolValue to_lol_yarn(LolValue value);
 
-LolValue lol_any(size_t number, ...);
-LolValue lol_all(size_t number, ...);
-
 #endif

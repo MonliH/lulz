@@ -266,24 +266,8 @@ impl LowerCompiler {
                 self.resolve_local(interned, id.1)?;
             }
 
-            ExprKind::All(es) => {
-                self.c.ws("lol_all(");
-                self.c.ws(&es.len().to_string());
-                for e in es {
-                    self.c.ws(", ");
-                    self.compile_expr(e)?;
-                }
-                self.c.wc(')');
-            }
-            ExprKind::Any(es) => {
-                self.c.ws("lol_any(");
-                self.c.ws(&es.len().to_string());
-                for e in es {
-                    self.c.ws(", ");
-                    self.compile_expr(e)?;
-                }
-                self.c.wc(')');
-            }
+            ExprKind::All(es) => {}
+            ExprKind::Any(es) => {}
             ExprKind::Concat(es) => {
                 self.c.ws("OBJ_VALUE(lol_alloc_stack_str(lol_concat_str(");
                 self.c.ws(&es.len().to_string());
