@@ -8,7 +8,7 @@ LolValue to_numeric(LolValue val) {
     return INT_VALUE(val.as_u64);
   else if (IS_NULL(val))
     return INT_VALUE(0);
-  exit(1);
+  exit(0);
 }
 
 #define BINARY_OP(op_name, op)                                                 \

@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use crate::{
     backend::CBuilder,
     diagnostics::prelude::*,
-    frontend::ast::{Block, Expr, ExprKind, OpTy, StatementKind},
+    frontend::ast::{Block, Expr, ExprKind, Ident, OpTy, StatementKind},
 };
 
 use super::{Interner, StrId};
@@ -193,13 +193,9 @@ impl LowerCompiler {
             ExprKind::Bool(b) => self.c.bool(b),
             ExprKind::Null => self.c.null(),
 
-            ExprKind::String(s) => self.c.string_lit(&s, s.len()),
+            ExprKind::String(s) => self.c.string_lit(&s),
 
-            ExprKind::Not(e) => {
-                self.c.ws("lol_not");
-                self.c.wc('(');
-                self.c.wc(')');
-            }
+            ExprKind::Not(e) => {}
 
             ExprKind::Variable(id) => {
                 let interned = self.intern(id.0.as_str());
