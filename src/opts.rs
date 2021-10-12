@@ -1,11 +1,9 @@
-use std::ffi::OsString;
-
 pub const HELP: &str = "\
 lulz 0.1.0
 Jonathan Li
 
 USAGE:
-    lulz [FLAGS] [OPTIONS] <input> [-- COMPILER_OPTIONS]
+    lulz [FLAGS] [OPTIONS] <input>
 
 ARGS:
     <input>    Input file to compile. Use `-` to read from stdin
@@ -20,32 +18,19 @@ OPTIONS:
     -b, --backend <backend>
             Set the C compiler backend to use. Examples: gcc, clang, or tcc [default: gcc]
 
+    -A, --backend-args <arguments>
+            Foward these arguments to the backend
+
     -O, --opt <level>
             Set the optimization level [default: 0]
             [possible values: 0, 1, 2, 3, z]
 
     -o, --output <file>                Output file [default: lol.out]
     -W, --write-c <file>               Writes the generated C code to a file
-
-COMPILER_OPTIONS:
-    Options to foward to the backend compiler.
 ";
 
 pub fn parse() -> Result<Opts, pico_args::Error> {
-    let mut args: Vec<_> = std::env::args_os().collect();
-    args.remove(0);
-
-    let forwarded_args = if let Some(dash_dash) = args.iter().position(|arg| arg == "--") {
-        // Store all arguments following ...
-        let later_args = args.drain(dash_dash + 1..).collect();
-        // .. then remove the `--`
-        args.pop();
-        later_args
-    } else {
-        Vec::new()
-    };
-
-    let mut pargs = pico_args::Arguments::from_vec(args);
+    let mut pargs = pico_args::Arguments::from_env();
 
     if pargs.contains(["-h", "--help"]) {
         print!("{}", HELP);
@@ -66,7 +51,7 @@ pub fn parse() -> Result<Opts, pico_args::Error> {
             .opt_value_from_str(["-o", "--output"])?
             .unwrap_or_else(|| "lol.out".to_string()),
         input: pargs.free_from_str()?,
-        backend_args: forwarded_args,
+        backend_args: pargs.opt_value_from_str(["-A", "--backend-args"])?,
     };
 
     let remaining = pargs.finish();
@@ -86,5 +71,5 @@ pub struct Opts {
     pub debug_c_gen: bool,
     pub output: String,
     pub input: String,
-    pub backend_args: Vec<OsString>,
+    pub backend_args: Option<String>,
 }
