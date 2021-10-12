@@ -23,27 +23,20 @@ enum ValueTy {
     Value,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-struct Local {
-    ty: ValueTy,
-    depth: usize,
-}
-
 #[derive(Debug)]
 pub struct LowerCompiler {
     c: CBuilder,
 
     // map from interned string to it's stack position
     global_builtins: FxHashMap<StrId, ValueTy>,
-    valid_locals: FxHashMap<StrId, Local>,
+    valid_locals: FxHashMap<StrId, (ValueTy, usize)>,
     locals: Vec<(StrId, usize)>,
-    overwritten: Vec<Vec<(StrId, Local)>>,
+    overwritten: Vec<Vec<(StrId, (ValueTy, usize))>>,
 
     depth: usize,
     // map depth to fn_depth
     fn_depth_map: FxHashMap<usize, usize>,
     upvalues: Vec<(FxHashMap<StrId, usize>, StrId)>,
-    prev_upvalue: (FxHashMap<StrId, usize>, StrId),
     fn_depth: usize,
 
     interner: Interner,
@@ -69,7 +62,6 @@ impl LowerCompiler {
             fn_depth: 0,
             fn_depth_map: FxHashMap::default(),
             upvalues: vec![(FxHashMap::default(), StrId::default())],
-            prev_upvalue: (FxHashMap::default(), StrId::default()),
 
             interner: Interner::default(),
             it: StrId::default(),
@@ -91,29 +83,13 @@ impl LowerCompiler {
         self.overwritten.push(Vec::new());
     }
 
-    fn box_all_upvalues(&mut self) {
-        for (name, local) in self.valid_locals.iter() {
-            if self.depth == local.depth {
-                if let Some(idx) = self.prev_upvalue.0.get(&name) {
-                    self.c.box_name(self.prev_upvalue.1, *idx, *name);
-                }
-            }
-        }
-    }
-
     fn end_scope(&mut self) {
         self.fn_depth_map.remove(&self.depth);
-        let old_depth = self.depth;
         self.depth -= 1;
         while self.locals.len() > 0 && self.locals[self.locals.len() - 1].1 > self.depth {
             let str_id = self.locals[self.locals.len() - 1].0;
             self.valid_locals.remove(&str_id);
-            let (name, local_depth) = self.locals.pop().unwrap();
-            if old_depth == local_depth {
-                if let Some(idx) = self.prev_upvalue.0.get(&name) {
-                    self.c.box_name(self.prev_upvalue.1, *idx, name);
-                }
-            }
+            self.locals.pop();
         }
         self.c.end_scope();
         let additionals = self.overwritten.pop().unwrap();
@@ -121,8 +97,8 @@ impl LowerCompiler {
     }
 
     fn insert_local(&mut self, name: StrId, value: ValueTy, span: Span) -> Failible<()> {
-        if let Some(local) = self.valid_locals.get(&name) {
-            if local.depth == self.depth {
+        if let Some(&(pre, depth)) = self.valid_locals.get(&name) {
+            if depth == self.depth {
                 return Err(Diagnostic::build(DiagnosticType::Scope, span)
                     .annotation(
                         Cow::Owned(format!(
@@ -134,15 +110,9 @@ impl LowerCompiler {
                     .into());
             }
             let len = self.overwritten.len() - 1;
-            self.overwritten[len].push((name, *local));
+            self.overwritten[len].push((name, (pre, depth)));
         }
-        self.valid_locals.insert(
-            name,
-            Local {
-                ty: value,
-                depth: self.depth,
-            },
-        );
+        self.valid_locals.insert(name, (value, self.depth));
         self.locals.push((name, self.depth));
         Ok(())
     }
@@ -239,16 +209,15 @@ impl LowerCompiler {
             self.c.ws(&fn_name);
             self.c.comma();
             self.c.ws(&upvalues.0.len().to_string());
-            for (&name, _) in upvalues.0.iter() {
+            for absorbed in upvalues.0 {
                 self.c.comma();
                 self.c.ws("lol_alloc_stack_dyn_ptr(lol_init_dyn_ptr(&");
-                self.resolve_local(name, Span::default())?;
+                self.resolve_local(absorbed.0, Span::default())?;
                 self.c.ws("))");
             }
             self.c.ws(")))");
             self.c.semi();
         }
-        self.prev_upvalue = upvalues;
 
         Ok(())
     }
@@ -476,13 +445,13 @@ impl LowerCompiler {
         }
         let res = self.valid_locals.get(&id);
         match res {
-            Some(local) => {
-                let ty_depth = self.fn_depth_map.get(&local.depth).unwrap();
+            Some((ty, depth)) => {
+                let ty_depth = self.fn_depth_map.get(&depth).unwrap();
                 if *ty_depth == self.fn_depth {
-                    return Ok(Ok(local.ty));
+                    return Ok(Ok(*ty));
                 }
-                match local.ty {
-                    ValueTy::Function(..) => Ok(Ok(local.ty)),
+                match ty {
+                    ValueTy::Function(..) => Ok(Ok(*ty)),
                     ValueTy::Value => {
                         if !self.upvalues[self.fn_depth].0.contains_key(&id) {
                             for d in (*ty_depth + 1)..=self.fn_depth {
@@ -746,7 +715,6 @@ impl LowerCompiler {
                     }
                 },
                 StatementKind::Return(e) => {
-                    self.box_all_upvalues();
                     self.c.ret();
                     self.compile_expr(e)?;
                     self.c.semi();

@@ -175,5 +175,4 @@ ClosureObj *lol_alloc_stack_closure(ClosureObj obj);
 
 DynPtrObj lol_init_dyn_ptr(LolValue *obj);
 DynPtrObj *lol_alloc_stack_dyn_ptr(DynPtrObj obj);
-void lol_box_dyn_ptr(DynPtrObj *ptr);
 #endif

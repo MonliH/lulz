@@ -13,7 +13,7 @@ impl StrId {
 
 #[derive(Default, Debug)]
 pub struct Interner {
-    pub map: FxHashMap<&'static str, StrId>,
+    map: FxHashMap<&'static str, StrId>,
     vec: Vec<&'static str>,
     buf: String,
     full: Vec<String>,
