@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use crate::{
     backend::CBuilder,
     diagnostics::prelude::*,
-    frontend::ast::{Block, Expr, ExprKind, LolTy, OpTy, StatementKind},
+    frontend::ast::{Block, Expr, ExprKind, OpTy, StatementKind},
 };
 
 use super::{Interner, StrId};
@@ -466,13 +466,6 @@ impl LowerCompiler {
         Ok(())
     }
 
-    fn default_expr(&mut self, ty: LolTy, span: Span) -> Expr {
-        Expr {
-            span,
-            expr_kind: ty.default_expr_kind(),
-        }
-    }
-
     fn compile(&mut self, ast: Block) -> Failible<()> {
         for stmt in ast.0.into_iter() {
             match stmt.statement_kind {
@@ -542,14 +535,13 @@ impl LowerCompiler {
                             .into());
                         }
                     }
-                    let span = stmt.span;
-                    let expr_value = e
-                        .unwrap_or(Ok(Expr {
-                            span,
+                    self.compile_dec(
+                        ident,
+                        e.unwrap_or(Expr {
+                            span: stmt.span,
                             expr_kind: ExprKind::Null,
-                        }))
-                        .unwrap_or_else(|ty| self.default_expr(ty, span));
-                    self.compile_dec(ident, expr_value)?;
+                        }),
+                    )?;
                 }
                 StatementKind::Assignment(id, e) => {
                     self.c.debug_symbol("assign", id.0.as_str(), stmt.span);
