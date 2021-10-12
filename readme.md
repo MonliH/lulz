@@ -6,10 +6,9 @@
 <br>
 <br>
 
-## features
+## design
 
 * Compiles to assembly, using C as a compiler backend
-* [An extensive test suite](./tests/)
 
 <br>
 

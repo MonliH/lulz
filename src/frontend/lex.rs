@@ -222,25 +222,7 @@ impl<'a> Lexer<'a> {
         let prev_pos = self.position;
         let kind = match self.eat() {
             c if Self::is_id_start(c) => return self.ident(c),
-            '…' => return self.elipsis(),
-            '.' => match self.peek() {
-                '.' => {
-                    self.eat();
-                    match self.peek() {
-                        '.' => {
-                            self.eat();
-                            return self.elipsis();
-                        }
-                        c => {
-                            return Err(Self::lexer_err(
-                                c,
-                                Span::new(self.position - 1, self.position, self.source_id),
-                            ))
-                        }
-                    }
-                }
-                _ => TokenKind::Dot,
-            },
+            '.' => TokenKind::Dot,
             '?' => TokenKind::Question,
             '!' => TokenKind::Bang,
             '"' => self.eat_string()?,
@@ -251,7 +233,7 @@ impl<'a> Lexer<'a> {
                 }
                 TokenKind::Break
             }
-            c if Self::is_whitespace(c) => return self.next_token(),
+            '\t' | ' ' => return self.next_token(),
             '\0' => TokenKind::Eof,
             '-' => {
                 let c = self.peek();
@@ -309,7 +291,6 @@ impl<'a> Lexer<'a> {
         c.is_ascii_alphanumeric() || c == '_'
     }
 
-    #[inline]
     fn consume_while(&mut self, first: char, predicate: impl Fn(char) -> bool) -> String {
         let mut acc = String::with_capacity(1);
         acc.push(first);
@@ -355,26 +336,6 @@ impl<'a> Lexer<'a> {
         }
         let mut chars = s.chars();
         Self::is_id_start(chars.next().unwrap()) && chars.all(|c| Self::is_id_continue(c))
-    }
-
-    fn is_whitespace(c: char) -> bool {
-        c == ' ' || c == '\t'
-    }
-
-    fn elipsis(&mut self) -> Failible<Token> {
-        self.consume_while(' ', Self::is_whitespace);
-        let next = self.eat();
-        if next != '\n' {
-            let span = Span::new(self.position - 1, self.position, self.source_id);
-            return Err(Diagnostic::build(DiagnosticType::UnexpectedCharacter, span)
-                .annotation(
-                    Cow::Owned(format!("expected newline character, found `{}`", next)),
-                    span,
-                )
-                .into());
-        }
-
-        self.next_token()
     }
 
     fn eat_string(&mut self) -> Failible<TokenKind> {
