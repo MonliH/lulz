@@ -1,4 +1,4 @@
-BTW { "output": "\n0\n0\nFAIL\nNOOB\n" }
+BTW {"output": "\n0\n0\nFAIL\nNOOB"}
 HAI 1.2
 I HAS A TEST ITZ A YARN
 VISIBLE TEST

@@ -258,8 +258,8 @@ impl LowerCompiler {
             ExprKind::String(s) => self.string_lit(&s, s.len()),
 
             ExprKind::Not(e) => {
-                self.c.ws("lol_not(");
-                self.compile_expr(*e)?;
+                self.c.ws("lol_not");
+                self.c.wc('(');
                 self.c.wc(')');
             }
 

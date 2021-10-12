@@ -150,8 +150,3 @@ LolValue to_lol_yarn(LolValue value) {
 
 CMP_OP(min, (cl < cr))
 CMP_OP(max, (cl > cr))
-
-LolValue lol_not(LolValue value) {
-  bool b = lol_to_bool(value);
-  return BOOL_VALUE(!b);
-}
