@@ -5,23 +5,41 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
-            "type": "cppdbg",
+            "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/a.out",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
+            "name": "Debug executable 'lulz'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=lulz",
+                    "--package=lulz"
+                ],
+                "filter": {
+                    "name": "lulz",
+                    "kind": "bin"
                 }
-            ]
+            },
+            "args": ["tests/control/if_scoping.lol"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'lulz'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=lulz",
+                    "--package=lulz"
+                ],
+                "filter": {
+                    "name": "lulz",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

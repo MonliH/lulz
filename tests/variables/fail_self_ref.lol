@@ -1,4 +1,3 @@
-BTW { "status": "error" }
 HAI 1.2
 I HAS A TEST ITZ SUM OF TEST AN 1
 KTHXBYE

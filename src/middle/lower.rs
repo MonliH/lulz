@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 
 use crate::{
@@ -40,8 +40,6 @@ pub struct LowerCompiler {
     interner: Interner,
     it: StrId,
     recent_block: RecentBlock,
-
-    deced_dyns: FxHashSet<StrId>,
 }
 
 impl LowerCompiler {
@@ -54,7 +52,6 @@ impl LowerCompiler {
             interner: Interner::default(),
             it: StrId::default(),
             recent_block: RecentBlock::Function,
-            deced_dyns: FxHashSet::default(),
         };
 
         new.it = new.interner.intern("IT");
@@ -163,30 +160,28 @@ impl LowerCompiler {
                 }
                 let span = id.1;
                 let interned = self.intern(id);
+                let arity = self.validate_fn(interned, span)?;
+                if (arg_len as u8) != arity {
+                    let span = expr.span;
+                    return Err(Diagnostic::build(
+                        Level::Error,
+                        DiagnosticType::FunctionArgumentMany,
+                        span,
+                    )
+                    .annotation(
+                        Cow::Owned(format!(
+                            "this FUNKSHON should take {} arugument(s), but it recived {}",
+                            arity, arg_len,
+                        )),
+                        span,
+                    )
+                    .into());
+                }
                 self.c
                     .debug_symbol("funkshon call", self.interner.lookup(interned), span);
-                if let ValueTy::Function(arity) = self.validate_local(interned, span)? {
-                    if (arg_len as u8) != arity {
-                        let span = expr.span;
-                        return Err(Diagnostic::build(
-                            Level::Error,
-                            DiagnosticType::FunctionArgumentMany,
-                            span,
-                        )
-                        .annotation(
-                            Cow::Owned(format!(
-                                "this FUNKSHON should take {} arugument(s), but it recived {}",
-                                arity, arg_len,
-                            )),
-                            span,
-                        )
-                        .into());
-                    }
-                    self.build_call(interned, args)?;
-                } else {
-                    self.build_dynamic_call(interned, args, expr.span)?;
-                }
+                self.build_call(interned, args)?;
             }
+            ExprKind::Function(fid, args) => self.c.function_ptr(fid),
 
             ExprKind::Float(f) => self.c.float(f),
             ExprKind::Int(i) => self.c.int(i),
@@ -244,6 +239,31 @@ impl LowerCompiler {
         Ok(())
     }
 
+    fn validate_fn(&mut self, id: StrId, span: Span) -> Failible<u8> {
+        if let ValueTy::Function(arity) =
+            self.valid_locals.get(&id).map(|i| *i).ok_or_else(|| {
+                Diagnostics::from(
+                    Diagnostic::build(Level::Error, DiagnosticType::Scope, span).annotation(
+                        Cow::Owned(format!(
+                            "cannot resolve the FUNKSHON `{}`",
+                            self.interner.lookup(id)
+                        )),
+                        span,
+                    ),
+                )
+            })?
+        {
+            Ok(arity)
+        } else {
+            Err(Diagnostics::from(
+                Diagnostic::build(Level::Error, DiagnosticType::Scope, span).annotation(
+                    Cow::Owned(format!("`{}` is not a FUNKSHON", self.interner.lookup(id))),
+                    span,
+                ),
+            ))
+        }
+    }
+
     fn validate_local(&mut self, id: StrId, span: Span) -> Failible<ValueTy> {
         if id == self.it {
             return Ok(ValueTy::Value);
@@ -261,56 +281,21 @@ impl LowerCompiler {
         })
     }
 
-    fn build_dynamic_fn(&mut self, id: StrId, arity: u8) {
-        self.c.ws(&format!(
-            include_str!("../clib/dyn_function.clol"),
-            id.get_id(),
-            arity,
-        ));
-
-        for i in 0..arity {
-            self.c.ws(&format!("LolValue arg_{i} = values[{i}]", i = i));
-            self.c.semi();
-        }
-
-        self.c.ws(&format!("lol_{}_fn(", id.get_id()));
-        let mut args = (0..arity).into_iter();
-        if let Some(n) = args.next() {
-            self.c.ws("arg_");
-            self.c.ws(&n.to_string());
-        }
-
-        for arg in args {
-            self.c.ws(", arg_");
-            self.c.ws(&arg.to_string());
-        }
-
-        self.c.wc(')');
-        self.c.semi();
-        self.c.ws("}\n");
-    }
-
     fn resolve_local(&mut self, id: StrId, span: Span) -> Failible<()> {
         if id == self.it {
             self.c.it();
         } else {
-            if let ValueTy::Function(arity) = self.validate_local(id, span)? {
-                if !self.deced_dyns.contains(&id) {
-                    self.deced_dyns.insert(id);
-                    let before_dec = self.c.write_dec();
-                    self.c.fn_dec_dyn(id);
-                    self.c.fn_id = before_dec;
-
-                    let mut old_len = self.c.fns.len();
-                    mem::swap(&mut old_len, &mut self.c.fn_id);
-                    self.c.fns.push(String::new());
-                    self.build_dynamic_fn(id, arity);
-                    mem::swap(&mut old_len, &mut self.c.fn_id);
-                }
-
-                self.c.function_ptr(id)
-            } else {
-                self.c.name(id);
+            self.c.name(id);
+            if let ValueTy::Function(..) = self.validate_local(id, span)? {
+                return Err(Diagnostic::build(Level::Error, DiagnosticType::Type, span)
+                    .annotation(
+                        Cow::Owned(format!(
+                            "the symbol `{}` is a FUNKSHON, not a value",
+                            self.interner.lookup(id)
+                        )),
+                        span,
+                    )
+                    .into());
             }
         }
 
@@ -362,34 +347,6 @@ impl LowerCompiler {
             self.compile_expr(arg)?;
         }
         self.c.wc(')');
-        Ok(())
-    }
-
-    fn build_dynamic_call(&mut self, id: StrId, args: Vec<Expr>, span: Span) -> Failible<()> {
-        self.c.ws("lol_call(");
-        self.c.ws(&args.len().to_string());
-        self.c.ws(", ");
-        self.c.name(id);
-        self.c.ws(", ");
-        if !args.is_empty() {
-            self.c.wc('(');
-            self.c.lol_value_ty();
-            self.c.ws("[]){");
-            let mut args = args.into_iter();
-            if let Some(arg) = args.next() {
-                self.compile_expr(arg)?;
-            }
-            for arg in args {
-                self.c.ws(", ");
-                self.compile_expr(arg)?;
-            }
-            self.c.wc('}');
-        } else {
-            self.c.ws("NULL");
-        }
-        self.c.ws(", ");
-        self.c.span(span);
-        self.c.ws(")");
         Ok(())
     }
 

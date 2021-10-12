@@ -109,6 +109,8 @@ pub enum ExprKind {
     All(Vec<Expr>),
     Any(Vec<Expr>),
     Not(Box<Expr>),
+
+    Function(StrId, u8),
 }
 
 impl ExprKind {
@@ -121,6 +123,7 @@ impl ExprKind {
             | Self::InterpStr(..)
             | Self::Bool(..)
             | Self::Null
+            | Self::Function(..)
             | Self::Variable(..) => false,
             Self::FunctionCall(..) => true,
             Self::Concat(es) | Self::All(es) | Self::Any(es) => {
