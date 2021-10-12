@@ -525,8 +525,6 @@ impl<'a> Parser<'a> {
             TokenKind::Win => ExprKind::Bool(true),
             TokenKind::Fail => ExprKind::Bool(false),
 
-            TokenKind::Noob => ExprKind::Null,
-
             TokenKind::Sum => self.expr_binop_of(OpTy::Add, false)?,
             TokenKind::Diff => self.expr_binop_of(OpTy::Sub, false)?,
             TokenKind::Quoshunt => self.expr_binop_of(OpTy::Div, false)?,
@@ -731,10 +729,7 @@ mod parse_test {
 I IZ UPPIN YR 10 AN YR 10 AN YR 123 MKAY
 KTHXBYE"#,
         function_call_3_args,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::FunctionCall(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
     );
 
     assert_ast!(
@@ -742,10 +737,7 @@ KTHXBYE"#,
 I IZ UPPIN YR 10 AN YR 10 MKAY
 KTHXBYE"#,
         function_call_2_args,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::FunctionCall(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
     );
 
     assert_ast!(
@@ -753,10 +745,7 @@ KTHXBYE"#,
 I IZ UPPIN MKAY
 KTHXBYE"#,
         function_call_no_args,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::FunctionCall(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
     );
 
     assert_ast!(
@@ -764,244 +753,163 @@ KTHXBYE"#,
 I IZ UPPIN YR 10 MKAY
 KTHXBYE"#,
         function_call_1_arg,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::FunctionCall(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::FunctionCall(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, \"hello\", KTHXBYE",
         expr_string,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::String(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::String(..), ..}),]
     );
 
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" " world" MKAY, KTHXBYE"#,
         concat_string_no_an_mkay,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Concat(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
     );
 
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" AN " world" MKAY, KTHXBYE"#,
         concat_string_mkay,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Concat(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
     );
 
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" " world", KTHXBYE"#,
         concat_string_no_an,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Concat(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
     );
 
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" AN " world", KTHXBYE"#,
         concat_string,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Concat(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Concat(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, 123, KTHXBYE",
         expr_int,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Int(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Int(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, ALL OF 123 AN 123 AN WIN MKAY, KTHXBYE",
         expr_all3,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::All(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::All(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, ALL OF 123 AN 123 MKAY, KTHXBYE",
         expr_all2,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::All(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::All(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, ALL OF 123 MKAY, KTHXBYE",
         expr_all1,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::All(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::All(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, ANY OF 123 AN 123 AN WIN MKAY, KTHXBYE",
         expr_any3,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Any(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Any(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, ANY OF 123 AN 123 MKAY, KTHXBYE",
         expr_any2,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Any(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Any(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, ANY OF 123 MKAY, KTHXBYE",
         expr_any1,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Any(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Any(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, SUM OF 1 AN 2, KTHXBYE",
         expr_add,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Add, ..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Add, ..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, DIFF OF 1 AN 2, KTHXBYE",
         expr_sub,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Sub, ..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Sub, ..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, PRODUKT OF 1 AN 2, KTHXBYE",
         expr_mul,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Mul, ..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Mul, ..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, QUOSHUNT OF 1 AN 2, KTHXBYE",
         expr_div,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Div, ..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Div, ..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, MOD OF 1 AN 2, KTHXBYE",
         expr_mod,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Mod, ..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Mod, ..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, BIGGR OF 1 AN 2, KTHXBYE",
         expr_max,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Max, ..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Max, ..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, SMALLR OF 1 AN 2, KTHXBYE",
         expr_min,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Min, ..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Min, ..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, BOTH SAEM 1 2, KTHXBYE",
         expr_same_no_an,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Equal, ..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Equal, ..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, DIFFRINT 1 2, KTHXBYE",
         expr_diff_no_an,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::NotEq, ..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::NotEq, ..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, BOTH SAEM 1 AN 2, KTHXBYE",
         expr_same,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Equal, ..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::Equal, ..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, DIFFRINT 1 AN 2, KTHXBYE",
         expr_diff,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::NotEq, ..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Operator(OpTy::NotEq, ..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, NOT WIN, KTHXBYE",
         expr_not,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Not(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Not(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, 123.123, KTHXBYE",
         expr_float,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Float(..),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Float(..), ..}),]
     );
 
     assert_ast!(
         "HAI 1.4, MAEK 10 A NUMBAR, KTHXBYE",
         float_cast,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Cast(_, Type::Float),
-            ..
-        }),]
+        [StatementKind::Expr(Expr {expr_kind: ExprKind::Cast(_, Type::Float), ..}),]
     );
 
     assert_ast!(

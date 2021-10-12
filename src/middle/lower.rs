@@ -1,27 +1,21 @@
 use std::mem;
 
-use rustc_hash::FxHashMap;
-use smallvec::SmallVec;
+use rustc_hash::FxHashSet;
 
 use crate::{
     backend::CBuilder,
     diagnostics::prelude::*,
-    frontend::ast::{Block, Expr, ExprKind, Ident, OpTy, StatementKind},
+    frontend::ast::{Block, Expr, ExprKind, Ident, StatementKind},
 };
 
 use super::{Interner, StrId};
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq)]
 enum RecentBlock {
     Function,
     Loop,
     Case,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-enum ValueTy {
-    Function(u8),
-    Value,
 }
 
 #[derive(Debug)]
@@ -34,9 +28,7 @@ struct Local {
 pub struct LowerCompiler {
     c: CBuilder,
     // map from interned string to it's stack position
-    valid_locals: FxHashMap<StrId, ValueTy>,
-    locals: SmallVec<[(StrId, usize); 16]>,
-    depth: usize,
+    valid_locals: FxHashSet<StrId>,
     interner: Interner,
     it: StrId,
     recent_block: RecentBlock,
@@ -46,9 +38,7 @@ impl LowerCompiler {
     pub fn new(debug: bool) -> Self {
         let mut new = Self {
             c: CBuilder::new(debug),
-            valid_locals: FxHashMap::default(),
-            locals: SmallVec::new(),
-            depth: 0,
+            valid_locals: FxHashSet::default(),
             interner: Interner::default(),
             it: StrId::default(),
             recent_block: RecentBlock::Function,
@@ -60,16 +50,8 @@ impl LowerCompiler {
 
     fn begin_scope(&mut self) {
         self.c.begin_scope();
-        self.depth += 1;
     }
-
     fn end_scope(&mut self) {
-        self.depth -= 1;
-        while self.locals.len() > 0 && self.locals[self.locals.len() - 1].1 > self.depth {
-            let str_id = self.locals[self.locals.len() - 1].0;
-            self.valid_locals.remove(&str_id);
-            self.locals.pop();
-        }
         self.c.end_scope();
     }
 
@@ -100,35 +82,52 @@ impl LowerCompiler {
         self.c.fns.push(String::new());
 
         let before_dec = self.c.write_dec();
-        self.c.fn_dec(name, &args);
+        self.c.lol_value_ty();
+        self.c.name(name);
         self.c.semi();
         self.c.fn_id = before_dec;
 
         self.c
             .debug_symbol("funkshon def", self.interner.lookup(name), span);
-        self.c.fn_dec(name, &args);
+        self.c.fn_dec(name);
         self.begin_scope();
         let old_locals = mem::take(&mut self.valid_locals);
-        let function_val = ValueTy::Function(args_len as u8);
+        self.c.args_check(args_len as u8);
         if rec {
-            self.valid_locals.insert(name, function_val);
-            self.locals.push((name, self.depth));
+            self.valid_locals.insert(name);
         }
-        for argument in args.into_iter() {
-            self.valid_locals.insert(argument, ValueTy::Value);
-            self.locals.push((argument, self.depth));
+        for (idx, argument) in args.into_iter().enumerate() {
+            self.valid_locals.insert(argument);
+            self.c.lol_value_ty();
+            self.c.name(argument);
+            self.c.ws(" = ");
+            self.c.fn_values();
+            self.c.wc('[');
+            self.c.ws(&idx.to_string());
+            self.c.wc(']');
+            self.c.semi();
         }
         self.compile(block)?;
 
         self.c.ret();
-        self.c.it();
+        self.compile_expr(Expr {
+            expr_kind: ExprKind::Null,
+            span,
+        })?;
         self.c.semi();
 
         self.end_scope();
+        self.c.lol_value_ty();
+        self.compile_assign(
+            name,
+            Expr {
+                span,
+                expr_kind: ExprKind::Function(name, args_len as u8),
+            },
+        )?;
         self.valid_locals = old_locals;
         if rec {
-            self.valid_locals.insert(name, function_val);
-            self.locals.push((name, self.depth));
+            self.valid_locals.insert(name);
         }
         mem::swap(&mut old_len, &mut self.c.fn_id);
         Ok(())
@@ -148,35 +147,19 @@ impl LowerCompiler {
                         span,
                     )
                     .annotation(
-                        Cow::Borrowed("a FUNKSHON can only be called with up to 255 arguments"),
+                        Cow::Borrowed("a funkshon can only be called with up to 255 arguments"),
                         span,
                     )
                     .into());
                 }
                 let span = id.1;
                 let interned = self.intern(id);
-                let arity = self.validate_fn(interned, span)?;
-                if (arg_len as u8) != arity {
-                    let span = expr.span;
-                    return Err(Diagnostic::build(
-                        Level::Error,
-                        DiagnosticType::FunctionArgumentMany,
-                        span,
-                    )
-                    .annotation(
-                        Cow::Owned(format!(
-                            "this FUNKSHON should take {} arugument(s), but it recived {}",
-                            arity, arg_len,
-                        )),
-                        span,
-                    )
-                    .into());
-                }
+                self.validate_local(interned, span)?;
                 self.c
                     .debug_symbol("funkshon call", self.interner.lookup(interned), span);
-                self.build_call(interned, args, expr.span)?;
+                self.build_call(interned, args)?;
             }
-            ExprKind::Function(fid, args) => self.c.function_ptr(fid),
+            ExprKind::Function(fid, args) => self.c.function_ptr(fid, args),
 
             ExprKind::Float(f) => self.c.float(f),
             ExprKind::Int(i) => self.c.int(i),
@@ -196,67 +179,9 @@ impl LowerCompiler {
             ExprKind::Any(es) => {}
             ExprKind::Concat(es) => {}
 
-            ExprKind::Operator(op, e1, e2) => {
-                let fn_name = match op {
-                    OpTy::Add => "lol_add",
-                    OpTy::Sub => "lol_sub",
-                    OpTy::Mul => "lol_mul",
-                    OpTy::Div => "lol_div",
-                    OpTy::Mod => "lol_mod",
-
-                    OpTy::Min => "lol_min",
-                    OpTy::Max => "lol_max",
-
-                    OpTy::And => "lol_and",
-                    OpTy::Or => "lol_or",
-                    OpTy::Xor => "lol_xor",
-
-                    OpTy::Equal => "lol_eq",
-                    OpTy::NotEq => "lol_neq",
-
-                    OpTy::GT => "lol_gt",
-                    OpTy::LT => "lol_lt",
-                    OpTy::GTE => "lol_gte",
-                    OpTy::LTE => "lol_lte",
-                };
-                self.c
-                    .debug_symbol("operator", fn_name, e1.span.combine(&e2.span));
-                self.c.ws(fn_name);
-                self.c.wc('(');
-                self.compile_expr(*e1)?;
-                self.c.ws(", ");
-                self.compile_expr(*e2)?;
-                self.c.ws(", ");
-                self.c.span(expr.span);
-                self.c.wc(')');
-            }
+            ExprKind::Operator(op, e1, e2) => {}
         }
         Ok(())
-    }
-
-    fn validate_fn(&mut self, id: StrId, span: Span) -> Failible<u8> {
-        if let ValueTy::Function(arity) =
-            self.valid_locals.get(&id).map(|i| *i).ok_or_else(|| {
-                Diagnostics::from(
-                    Diagnostic::build(Level::Error, DiagnosticType::Scope, span).annotation(
-                        Cow::Owned(format!(
-                            "cannot resolve the FUNKSHON `{}`",
-                            self.interner.lookup(id)
-                        )),
-                        span,
-                    ),
-                )
-            })?
-        {
-            Ok(arity)
-        } else {
-            Err(Diagnostics::from(
-                Diagnostic::build(Level::Error, DiagnosticType::Scope, span).annotation(
-                    Cow::Owned(format!("`{}` is not a FUNKSHON", self.interner.lookup(id))),
-                    span,
-                ),
-            ))
-        }
     }
 
     fn validate_local(&mut self, id: StrId, span: Span) -> Failible<()> {
@@ -304,8 +229,7 @@ impl LowerCompiler {
     }
 
     fn compile_assign(&mut self, id: StrId, expr: Expr) -> Failible<()> {
-        self.valid_locals.insert(id, ValueTy::Value);
-        self.locals.push((id, self.depth));
+        self.valid_locals.insert(id);
         self.c.name(id);
         self.c.ws(" = ");
         self.compile_expr(expr)?;
@@ -313,16 +237,26 @@ impl LowerCompiler {
         Ok(())
     }
 
-    fn build_call(&mut self, id: StrId, args: Vec<Expr>, span: Span) -> Failible<()> {
+    fn build_call(&mut self, id: StrId, args: Vec<Expr>) -> Failible<()> {
+        self.c.ws("lol_call");
+        self.c.wc('(');
+        self.c.ws(&args.len().to_string());
+        self.c.ws(", ");
         self.c.name(id);
-        self.c.ws("_fn(");
-        let mut args = args.into_iter();
-        if let Some(arg) = args.next() {
-            self.compile_expr(arg)?;
-        }
-        for arg in args {
-            self.c.ws(", ");
-            self.compile_expr(arg)?;
+        self.c.ws(", ");
+        if !args.is_empty() {
+            self.c.ws("(LolValue[]){");
+            let mut args = args.into_iter();
+            if let Some(arg) = args.next() {
+                self.compile_expr(arg)?;
+            }
+            for arg in args {
+                self.c.ws(", ");
+                self.compile_expr(arg)?;
+            }
+            self.c.wc('}');
+        } else {
+            self.c.ws("NULL");
         }
         self.c.wc(')');
         Ok(())
@@ -337,26 +271,8 @@ impl LowerCompiler {
                     self.compile_expr(e)?;
                     self.c.semi();
                 }
-                StatementKind::If(then, elif_es, else_block) => {
-                    self.c.ws("if (lol_to_bool(");
-                    self.c.it();
-                    self.c.ws("))");
-                    self.begin_scope();
-                    if let Some(th) = then {
-                        self.compile(th)?;
-                    }
-                    self.end_scope();
-
-                    self.c.ws("else");
-                    self.begin_scope();
-                    if let Some(else_bl) = else_block {
-                        self.compile(else_bl)?;
-                    }
-                    self.end_scope();
-                }
+                StatementKind::If(if_e, elif_es, else_e) => {}
                 StatementKind::Expr(e) => {
-                    self.c.it();
-                    self.c.ws(" = ");
                     self.compile_expr(e)?;
                     self.c.semi();
                 }
@@ -378,18 +294,7 @@ impl LowerCompiler {
                     self.compile_assign(ident, e)?;
                 }
                 StatementKind::Input(id) => {}
-                StatementKind::Print(e, no_newline) => {
-                    let fn_name = if no_newline {
-                        "lol_print"
-                    } else {
-                        "lol_println"
-                    };
-                    self.c.ws(fn_name);
-                    self.c.wc('(');
-                    self.compile_expr(e)?;
-                    self.c.wc(')');
-                    self.c.semi();
-                }
+                StatementKind::Print(e, no_newline) => {}
                 StatementKind::FunctionDef(id, args, block) => {
                     let fn_name = self.intern(id);
                     let args = args.into_iter().map(|arg| self.intern(arg)).collect();
