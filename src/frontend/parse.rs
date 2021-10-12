@@ -1,5 +1,3 @@
-use smol_str::SmolStr;
-
 use crate::ast::*;
 use crate::backend::interner::{Interner, StrId};
 use crate::diagnostics::prelude::*;
@@ -87,9 +85,9 @@ impl<'a> Parser<'a> {
     }
 
     fn version(&mut self) -> Failible<()> {
-        self.expect(TokenKind::Number(SmolStr::default()))?;
+        self.expect(TokenKind::Number(String::new()))?;
         self.expect(TokenKind::Dot)?;
-        self.expect(TokenKind::Number(SmolStr::default()))?;
+        self.expect(TokenKind::Number(String::new()))?;
         Ok(())
     }
 

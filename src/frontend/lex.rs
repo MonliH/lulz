@@ -1,4 +1,3 @@
-use smol_str::SmolStr;
 use unicode_names2::character;
 
 use std::fmt::{self, Display, Formatter};
@@ -96,7 +95,7 @@ pub enum TokenKind {
     Question,
     Bang,
 
-    Number(SmolStr),
+    Number(String),
     String(String),
     /// An interpolated string
     InterpStr(String, Vec<InterpEntry>),
@@ -306,7 +305,7 @@ impl<'a> Lexer<'a> {
             '-' => {
                 let c = self.peek_char();
                 match self.next()?.token_kind {
-                    TokenKind::Number(s) => TokenKind::Number(SmolStr::new(format!("-{}", s))),
+                    TokenKind::Number(s) => TokenKind::Number(format!("-{}", s)),
                     _ => {
                         return Err(Self::lexer_err(
                             c,
@@ -316,7 +315,7 @@ impl<'a> Lexer<'a> {
                 }
             }
             c if c.is_ascii_digit() => {
-                TokenKind::Number(SmolStr::new(self.consume_while(c, |c| c.is_ascii_digit())))
+                TokenKind::Number(self.consume_while(c, |c| c.is_ascii_digit()))
             }
             c => {
                 let span = Span::new(prev_pos, self.position, self.source_id);
@@ -810,11 +809,8 @@ mod lexer_test {
     #[test]
     fn numbers() {
         assert_map(&[
-            ("1234567809", TokenKind::Number(SmolStr::new("1234567809"))),
-            (
-                "-1234567809",
-                TokenKind::Number(SmolStr::new("-1234567809")),
-            ),
+            ("1234567809", TokenKind::Number("1234567809".to_string())),
+            ("-1234567809", TokenKind::Number("-1234567809".to_string())),
         ]);
     }
 
