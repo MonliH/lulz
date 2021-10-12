@@ -1,9 +1,13 @@
-use std::hash::{Hash, Hasher};
+use smol_str::SmolStr;
+use std::{
+    hash::{Hash, Hasher},
+    ops::{Deref, DerefMut},
+};
 
-use crate::{backend::interner::StrId, diagnostics::Span};
+use crate::diagnostics::Span;
 
 #[derive(Debug, Clone)]
-pub struct Ident(pub StrId, pub Span);
+pub struct Ident(pub SmolStr, pub Span);
 
 impl std::cmp::PartialEq for Ident {
     fn eq(&self, other: &Self) -> bool {
@@ -14,6 +18,26 @@ impl std::cmp::PartialEq for Ident {
 impl Hash for Ident {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state);
+    }
+}
+
+impl AsRef<str> for Ident {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
+impl Deref for Ident {
+    type Target = SmolStr;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Ident {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -92,7 +116,7 @@ impl std::cmp::PartialEq for InterpEntry {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum ExprKind {
-    Float(f32),
+    Float(f64),
     Int(i64),
     String(String),
     InterpStr(String, Vec<InterpEntry>),

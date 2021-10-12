@@ -11,8 +11,6 @@ smol_str = "0.1"
 rustc-hash = "1.1.0"
 unicode_names2 = "0.4.0"
 pico-args = { version = "0.4.1", features = ["short-space-opt"] }
-toolshed = "0.8.1"
-lightning-sys = { git = "https://github.com/Petelliott/lightning-sys", branch = "master" }
 
 [profile.release]
 lto = true

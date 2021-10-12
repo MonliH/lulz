@@ -1,12 +1,12 @@
 use smol_str::SmolStr;
+use std::iter::Peekable;
 
 use crate::ast::*;
-use crate::backend::interner::{Interner, StrId};
 use crate::diagnostics::prelude::*;
 use crate::lex::{Lexer, Token, TokenKind};
 
 pub struct Parser<'a> {
-    lexer: Lexer<'a>,
+    lexer: Peekable<Lexer<'a>>,
     current_span: Span,
     source_id: usize,
 }
@@ -16,12 +16,12 @@ impl<'a> Parser<'a> {
         Self {
             current_span: Span::new(0, 0, lexer.source_id),
             source_id: lexer.source_id,
-            lexer,
+            lexer: lexer.peekable(),
         }
     }
 
     fn next_token(&mut self) -> Failible<Token> {
-        let tok = self.lexer.next()?;
+        let tok = self.lexer.next().unwrap()?;
         self.current_span = tok.span;
         Ok(tok)
     }
@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
         // https://rust-lang.github.io/rfcs/2094-nll.html#problem-case-3-conditional-control-flow-across-functions
         //
         // NOTE: This code actually does compile with the nightly -Zpolonius flag.
-        match unsafe { raw_self.as_mut() }.unwrap().lexer.peek() {
+        match unsafe { raw_self.as_mut() }.unwrap().lexer.peek().unwrap() {
             Ok(t) => Ok(t),
             // The original err value **is DROPPED**
             Err(_) => Err(unsafe { raw_self.as_mut() }
@@ -161,7 +161,7 @@ impl<'a> Parser<'a> {
     }
 
     fn ident(&mut self) -> Failible<Ident> {
-        let id = self.expect(TokenKind::Ident(StrId::default()))?;
+        let id = self.expect(TokenKind::Ident(SmolStr::default()))?;
         match id.token_kind {
             TokenKind::Ident(s) => Ok(Ident(s, id.span)),
             _ => unreachable!(),
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::Yr)?;
         let block_name = self.ident()?;
         let mut fn_id = None;
-        if TokenKind::Ident(StrId::default()).eq(&self.peek_token()?.token_kind) {
+        if TokenKind::Ident(SmolStr::default()).eq(&self.peek_token()?.token_kind) {
             let func = self.ident()?;
             self.expect(TokenKind::Yr)?;
             let index = self.ident()?;
@@ -229,16 +229,13 @@ impl<'a> Parser<'a> {
             return Err(
                 Diagnostic::build(DiagnosticType::UnmatchedBlockName, block_name2.1)
                     .annotation(
-                        Cow::Owned(format!(
-                            "the block is called `{}` here",
-                            self.lexer.interner.lookup(block_name.0)
-                        )),
+                        Cow::Owned(format!("the block is called `{}` here", &block_name.0)),
                         block_name.1,
                     )
                     .annotation(
                         Cow::Owned(format!(
                             "but the block is closed with `{}` here",
-                            self.lexer.interner.lookup(block_name2.0)
+                            &block_name2.0
                         )),
                         block_name2.1,
                     )
@@ -486,7 +483,7 @@ impl<'a> Parser<'a> {
             return Ok(LolTy::Noob);
         }
         let id = self.ident()?;
-        Ok(match self.lexer.interner.lookup(id.0) {
+        Ok(match id.0.as_str() {
             "TROOF" => LolTy::Troof,
             "YARN" => LolTy::Yarn,
             "NUMBR" => LolTy::Numbr,
@@ -705,7 +702,7 @@ impl<'a> Parser<'a> {
                         match self.next_token()?.token_kind {
                             TokenKind::Number(n2) => ExprKind::Float(
                                 format!("{}.{}", n1, n2)
-                                    .parse::<f32>()
+                                    .parse::<f64>()
                                     .expect("Invalid floating point"),
                             ),
                             _ => {
@@ -752,8 +749,7 @@ mod parse_test {
         ($stream: expr, $err_ty: expr, $no_of_annotations: expr, $name: ident) => {
             #[test]
             fn $name() {
-                let mut interner = Interner::default();
-                let lexer = Lexer::new($stream.chars(), 0, &mut interner);
+                let lexer = Lexer::new($stream.chars(), 0);
                 let mut parser = Parser::new(lexer);
                 let ast = parser.parse();
                 match ast {
@@ -775,8 +771,7 @@ mod parse_test {
             #[test]
             #[allow(unused_mut, unused_variables)]
             fn $name() {
-                let mut interner = Interner::default();
-                let lexer = Lexer::new($stream.chars(), 0, &mut interner);
+                let lexer = Lexer::new($stream.chars(), 0);
                 let mut parser = Parser::new(lexer);
                 let ast = parser.parse();
                 let mut ast_iter = ast.expect("Failed to parse").0.into_iter();
