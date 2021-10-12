@@ -1,33 +1,65 @@
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug executable 'lulz'",
-      "cargo": {
-        "args": ["build", "--bin=lulz", "--package=lulz"],
-        "filter": {
-          "name": "lulz",
-          "kind": "bin"
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/a.out",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'lulz'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=lulz",
+                    "--package=lulz"
+                ],
+                "filter": {
+                    "name": "lulz",
+                    "kind": "bin"
+                }
+            },
+<<<<<<< HEAD
+            "args": ["tests/closures/recursive_closure.lol"],
+=======
+            "args": ["perfs/fib.lol"],
+>>>>>>> 8f3b689... Add optimizations
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'lulz'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=lulz",
+                    "--package=lulz"
+                ],
+                "filter": {
+                    "name": "lulz",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
         }
-      },
-      "args": ["tests/functions/basic_basic.lol"],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in executable 'lulz'",
-      "cargo": {
-        "args": ["test", "--no-run", "--bin=lulz", "--package=lulz"],
-        "filter": {
-          "name": "lulz",
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    }
-  ]
+    ]
 }

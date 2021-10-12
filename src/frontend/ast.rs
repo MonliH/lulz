@@ -92,8 +92,8 @@ impl std::cmp::PartialEq for InterpEntry {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum ExprKind {
-    Float(f64),
-    Int(i32),
+    Float(f32),
+    Int(i64),
     String(String),
     InterpStr(String, Vec<InterpEntry>),
     Bool(bool),

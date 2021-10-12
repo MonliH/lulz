@@ -705,7 +705,7 @@ impl<'a> Parser<'a> {
                         match self.next_token()?.token_kind {
                             TokenKind::Number(n2) => ExprKind::Float(
                                 format!("{}.{}", n1, n2)
-                                    .parse::<f64>()
+                                    .parse::<f32>()
                                     .expect("Invalid floating point"),
                             ),
                             _ => {
@@ -721,7 +721,7 @@ impl<'a> Parser<'a> {
                             }
                         }
                     }
-                    _ => ExprKind::Int(n1.parse::<i32>().expect("Invalid integer")),
+                    _ => ExprKind::Int(n1.parse::<i64>().expect("Invalid integer")),
                 }
             }
             _ => {
