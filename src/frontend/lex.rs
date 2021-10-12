@@ -263,7 +263,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn lexer_err(c: char, span: Span) -> Diagnostics {
-        Diagnostic::build(DiagnosticType::UnexpectedCharacter, span)
+        Diagnostic::build(Level::Error, DiagnosticType::UnexpectedCharacter, span)
             .annotation(Cow::Owned(format!("unexpected character `{}`", c)), span)
             .into()
     }
@@ -313,11 +313,13 @@ impl<'a> Lexer<'a> {
         let esc = self.consume_until(|c| c != ch && c != '"');
         if self.peek() == '"' {
             let span = Span::new(self.position, self.position + 1, self.source_id);
-            return Err(
-                Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span)
-                    .annotation(Cow::Borrowed("unclosed escape"), span)
-                    .into(),
-            );
+            return Err(Diagnostic::build(
+                Level::Error,
+                DiagnosticType::InvalidEscapeSequence,
+                span,
+            )
+            .annotation(Cow::Borrowed("unclosed escape"), span)
+            .into());
         } else {
             self.eat();
         }
@@ -357,7 +359,12 @@ impl<'a> Lexer<'a> {
                 if peeked == '<' {
                     let (esc, span) = self.get_str_esc('>')?;
                     let val = character(&esc).ok_or_else(|| {
-                        Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span).annotation(
+                        Diagnostic::build(
+                            Level::Error,
+                            DiagnosticType::InvalidEscapeSequence,
+                            span,
+                        )
+                        .annotation(
                             Cow::Owned(format!("invalid unicode normative name `{}`", esc)),
                             span,
                         )
@@ -373,6 +380,7 @@ impl<'a> Lexer<'a> {
                         continue;
                     } else {
                         return Err(Diagnostic::build(
+                            Level::Error,
                             DiagnosticType::InvalidEscapeSequence,
                             span,
                         )
@@ -387,30 +395,44 @@ impl<'a> Lexer<'a> {
                 if peeked == '(' {
                     let (esc, span) = self.get_str_esc(')')?;
                     let esc_num: u32 = u32::from_str_radix(&esc, 16).map_err(|_| {
-                        Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span)
-                            .annotation(Cow::Owned(format!("invalid hex string `{}`", esc)), span)
+                        Diagnostic::build(
+                            Level::Error,
+                            DiagnosticType::InvalidEscapeSequence,
+                            span,
+                        )
+                        .annotation(Cow::Owned(format!("invalid hex string `{}`", esc)), span)
                     })?;
                     let val = std::char::from_u32(esc_num).ok_or_else(|| {
-                        Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span)
-                            .annotation(Cow::Owned(format!("invalid escape hex `{}`", esc)), span)
+                        Diagnostic::build(
+                            Level::Error,
+                            DiagnosticType::InvalidEscapeSequence,
+                            span,
+                        )
+                        .annotation(Cow::Owned(format!("invalid escape hex `{}`", esc)), span)
                     })?;
                     acc.push(val);
                     continue;
                 }
 
                 let span = Span::new(self.position, self.position + 1, self.source_id);
-                return Err(
-                    Diagnostic::build(DiagnosticType::InvalidEscapeSequence, span)
-                        .annotation(Cow::Owned(format!("invalid escape `:{}`", peeked)), span)
-                        .into(),
-                );
+                return Err(Diagnostic::build(
+                    Level::Error,
+                    DiagnosticType::InvalidEscapeSequence,
+                    span,
+                )
+                .annotation(Cow::Owned(format!("invalid escape `:{}`", peeked)), span)
+                .into());
             } else if next == '"' {
                 break;
             } else if next == EOF {
                 let span = Span::new(self.position, self.position + 1, self.source_id);
-                return Err(Diagnostic::build(DiagnosticType::UnexpectedCharacter, span)
-                    .annotation(Cow::Borrowed("expected `\"`, found end of file"), span)
-                    .into());
+                return Err(Diagnostic::build(
+                    Level::Error,
+                    DiagnosticType::UnexpectedCharacter,
+                    span,
+                )
+                .annotation(Cow::Borrowed("expected `\"`, found end of file"), span)
+                .into());
             } else {
                 acc.push(next);
             }
@@ -540,7 +562,7 @@ mod lexer_test {
         for (source, err) in map.iter() {
             let mut lexer = Lexer::new(source.chars(), 0);
             assert_eq!(
-                lexer.next().unwrap().map_err(|e| e.into_inner()[0].ty),
+                lexer.next().unwrap().map_err(|e| e.inner()[0].ty),
                 Err(err.clone())
             );
         }
