@@ -1,4 +1,4 @@
-BTW {"output": "[hi, BYE, 10, WIN, FAIL, NOOB]\n"}
+BTW {"output": "[hi, BYE, 10, WIN, FAIL, NOOB]"}
 HAI 1.3
 I HAS A ARRAY ITZ A LIZT
 BTW Pass by reference

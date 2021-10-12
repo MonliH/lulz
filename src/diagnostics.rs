@@ -127,7 +127,12 @@ impl Diagnostic {
     }
 
     pub fn annotation(mut self, message: Cow<'static, str>, span: Span) -> Self {
-        self.annotations.push(Annotation::new(message, span));
+        self.annotations.push(Annotation { message, span });
+        self
+    }
+
+    pub fn remove_annotations(mut self) -> Self {
+        self.annotations.clear();
         self
     }
 

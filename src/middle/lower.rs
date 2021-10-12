@@ -349,29 +349,7 @@ impl LowerCompiler {
                 }
                 self.c.wc(')');
             }
-            ExprKind::GetItem(e, idx) => match idx {
-                Ok(idx_e) => {
-                    self.c.ws("lol_vec_index(");
-                    self.compile_expr(*e)?;
-                    self.c.comma();
-                    self.compile_expr(*idx_e)?;
-                    self.c.comma();
-                    self.c.span(expr.span);
-                    self.c.wc(')');
-                }
-                Err(is_front) => {
-                    self.c.ws(if is_front {
-                        "lol_vec_first"
-                    } else {
-                        "lol_vec_last"
-                    });
-                    self.c.wc('(');
-                    self.compile_expr(*e)?;
-                    self.c.comma();
-                    self.c.span(expr.span);
-                    self.c.wc(')');
-                }
-            },
+            _ => {}
         }
         Ok(())
     }
@@ -559,7 +537,7 @@ impl LowerCompiler {
         for stmt in ast.0.into_iter() {
             match stmt.statement_kind {
                 StatementKind::Loop {
-                    block_name: _,
+                    block_name,
                     fn_id,
                     block,
                 } => {
@@ -770,46 +748,7 @@ impl LowerCompiler {
                     self.c.ws(":\n");
                     self.recent_block = prev_block;
                 }
-                StatementKind::Append(source, expr) => {
-                    self.c.ws("lol_append(");
-                    self.compile_expr(source)?;
-                    self.c.comma();
-                    self.compile_expr(expr)?;
-                    self.c.comma();
-                    self.c.span(stmt.span);
-                    self.c.wc(')');
-                    self.c.semi();
-                }
-                StatementKind::SetItem(source, item, idx) => match idx {
-                    Ok(idx_e) => {
-                        self.c.ws("lol_vec_set(");
-                        self.compile_expr(source)?;
-                        self.c.comma();
-                        self.compile_expr(idx_e)?;
-                        self.c.comma();
-                        self.compile_expr(item)?;
-                        self.c.comma();
-                        self.c.span(stmt.span);
-                        self.c.wc(')');
-                        self.c.semi();
-                    }
-                    Err(is_front) => {
-                        self.c.ws(if is_front {
-                            "lol_vec_set_first"
-                        } else {
-                            "lol_vec_set_last"
-                        });
-                        self.c.wc('(');
-                        self.compile_expr(source)?;
-                        self.c.comma();
-                        self.compile_expr(item)?;
-                        self.c.comma();
-                        self.c.span(stmt.span);
-                        self.c.wc(')');
-                        self.c.semi();
-                    }
-                },
-                StatementKind::Import(..) => {}
+                _ => {}
             }
         }
 
