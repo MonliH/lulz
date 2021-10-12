@@ -42,16 +42,21 @@ impl Default for Value {
 
 impl Value {
     /// Convert to number if possible, otherwise leaving the value untouched.
-    /// Returns an `None` if the string is not a valid number, however.
-    #[inline(always)]
-    pub fn cast_try_num(self) -> Option<Self> {
-        Some(match self {
-            Int(_) => self,
-            Float(_) => self,
+    /// Returns an `Err()` if the string is not a valid number, however.
+    pub fn cast_try_num(self, span: Span, expr_name: &str) -> Failible<Self> {
+        Ok(match self {
+            IStr(..) => unreachable!(),
             Null => Int(0),
+            Float(_) => self,
+            Int(_) => self,
             Bool(b) => Int(b as i64),
             Fun(_) => {
-                return None;
+                return Err(Diagnostic::build(Level::Error, DiagnosticType::Type, span)
+                    .annotation(
+                        Cow::Borrowed("this value is a FUNKSHON, not a NUMBAR or NUMBR"),
+                        span,
+                    )
+                    .into())
             }
             Str(s) => {
                 if s.contains('.') {
@@ -59,18 +64,38 @@ impl Value {
                     if let Ok(f) = s.parse::<f64>() {
                         Float(f)
                     } else {
-                        return None;
+                        return Err(Diagnostic::build(
+                            Level::Error,
+                            DiagnosticType::Runtime,
+                            span,
+                        )
+                        .annotation(
+                            Cow::Owned(format!(
+                                "could not convert {} YARN to a NUMBAR",
+                                expr_name
+                            )),
+                            span,
+                        )
+                        .into());
                     }
                 } else {
                     // Parse int
                     if let Ok(f) = s.parse::<i64>() {
                         Int(f)
                     } else {
-                        return None;
+                        return Err(Diagnostic::build(
+                            Level::Error,
+                            DiagnosticType::Runtime,
+                            span,
+                        )
+                        .annotation(
+                            Cow::Owned(format!("could not convert {} YARN to a NUMBR", expr_name)),
+                            span,
+                        )
+                        .into());
                     }
                 }
             }
-            IStr(..) => unreachable!(),
         })
     }
 
@@ -122,19 +147,6 @@ impl Value {
         }
     }
 
-    fn conv_err(&self, span: Span, expected_ty: &'static str) -> Diagnostics {
-        Diagnostic::build(Level::Error, DiagnosticType::Runtime, span)
-            .annotation(
-                Cow::Owned(format!(
-                    "could not convert {} into a {}",
-                    self.ty(),
-                    expected_ty
-                )),
-                span,
-            )
-            .into()
-    }
-
     pub fn cast(self, ty: Type, span: Span) -> Failible<Self> {
         if Some(ty) == self.ast_ty() {
             return Ok(self);
@@ -142,16 +154,14 @@ impl Value {
         Ok(match ty {
             Type::Bool => Bool(self.to_bool()),
             Type::Null => Null,
-            Type::Float => match self.clone().cast_try_num() {
-                Some(Float(f)) => Float(f),
-                Some(Int(i)) => Float(i as f64),
-                None => return Err(self.conv_err(span, "NUMBAR")),
+            Type::Float => match self.cast_try_num(span, "this")? {
+                Float(f) => Float(f),
+                Int(i) => Float(i as f64),
                 _ => unreachable!(),
             },
-            Type::Int => match self.clone().cast_try_num() {
-                Some(Float(f)) => Int(f as i64),
-                Some(Int(i)) => Int(i),
-                None => return Err(self.conv_err(span, "NUMBR")),
+            Type::Int => match self.cast_try_num(span, "this")? {
+                Float(f) => Int(f as i64),
+                Int(i) => Int(i),
                 _ => unreachable!(),
             },
             Type::Str => Str(self.to_str()),
