@@ -449,14 +449,14 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn ty(&mut self) -> Failible<LolTy> {
+    fn ty(&mut self) -> Failible<Type> {
         let id = self.ident()?;
         Ok(match id.0.as_str() {
-            "TROOF" => LolTy::Troof,
-            "YARN" => LolTy::Yarn,
-            "NUMBR" => LolTy::Numbr,
-            "NUMBAR" => LolTy::Numbar,
-            "NOOB" => LolTy::Noob,
+            "TROOF" => Type::Bool,
+            "YARN" => Type::Str,
+            "NUMBR" => Type::Int,
+            "NUMBAR" => Type::Float,
+            "NOOB" => Type::Null,
             s => {
                 return Err(
                     Diagnostic::build(Level::Error, DiagnosticType::UnknownSymbol, id.1)
@@ -999,7 +999,7 @@ KTHXBYE"#,
         "HAI 1.4, MAEK 10 A NUMBAR, KTHXBYE",
         float_cast,
         [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Cast(_, LolTy::Numbar),
+            expr_kind: ExprKind::Cast(_, Type::Float),
             ..
         }),]
     );

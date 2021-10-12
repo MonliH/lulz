@@ -55,7 +55,7 @@ pub enum StatementKind {
     Expr(Expr),
     Case(Vec<(Expr, Block)>, Option<Block>),
     If(Option<Block>, Vec<(Expr, Block)>, Option<Block>),
-    MutCast(Ident, LolTy),
+    MutCast(Ident, Type),
     Break,
     Loop {
         block_name: Ident,
@@ -102,7 +102,7 @@ pub enum ExprKind {
     Variable(Ident),
     FunctionCall(Ident, Vec<Expr>),
     Concat(Vec<Expr>),
-    Cast(Box<Expr>, LolTy),
+    Cast(Box<Expr>, Type),
 
     Operator(OpTy, Box<Expr>, Box<Expr>),
 
@@ -160,35 +160,22 @@ pub enum OpTy {
     LTE,
 }
 
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LolTy {
-    Troof,
-    Noob,
-    Yarn,
-    Numbar,
-    Numbr,
-    Func,
+pub enum Type {
+    Null = 0,
+    Bool = 1,
+    Int = 2,
+    Float = 3,
+    Str = 4,
 }
 
-impl LolTy {
-    pub fn as_cast(&self) -> &'static str {
-        match self {
-            LolTy::Noob => "noob",
-            LolTy::Yarn => "yarn",
-            LolTy::Troof => "troof",
-            LolTy::Numbar => "numbar",
-            LolTy::Numbr => "numbr",
-            LolTy::Func => "fn",
-        }
-    }
-    pub fn as_macro(&self) -> &'static str {
-        match self {
-            LolTy::Noob => "NULL",
-            LolTy::Troof => "BOOL",
-            LolTy::Numbar => "DOUBLE",
-            LolTy::Yarn => "STRING",
-            LolTy::Numbr => "INT",
-            LolTy::Func => "FUN",
+impl Type {
+    pub fn from_num(id: u8) -> Option<Self> {
+        if id <= 4 {
+            Some(unsafe { transmute(id) })
+        } else {
+            None
         }
     }
 }

@@ -136,12 +136,7 @@ impl LowerCompiler {
 
     fn compile_expr(&mut self, expr: Expr) -> Failible<()> {
         match expr.expr_kind {
-            ExprKind::Cast(e, ty) => {
-                self.c.cast(ty);
-                self.c.wc('(');
-                self.compile_expr(*e)?;
-                self.c.wc(')');
-            }
+            ExprKind::Cast(e, ty) => {}
             ExprKind::InterpStr(s, interps) => {}
             ExprKind::FunctionCall(id, args) => {
                 let arg_len = args.len();
@@ -309,6 +304,8 @@ impl LowerCompiler {
     }
 
     fn compile_assign(&mut self, id: StrId, expr: Expr) -> Failible<()> {
+        self.valid_locals.insert(id, ValueTy::Value);
+        self.locals.push((id, self.depth));
         self.c.name(id);
         self.c.ws(" = ");
         self.compile_expr(expr)?;
@@ -374,8 +371,6 @@ impl LowerCompiler {
                             expr_kind: ExprKind::Null,
                         }),
                     )?;
-                    self.valid_locals.insert(ident, ValueTy::Value);
-                    self.locals.push((ident, self.depth));
                 }
                 StatementKind::Assignment(id, e) => {
                     self.c.debug_symbol("assign", id.0.as_str(), stmt.span);

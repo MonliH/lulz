@@ -77,21 +77,3 @@ BOOL_NUM_OP(lte, <=)
 
 EQ_OP(eq, ==, true, false)
 EQ_OP(neq, !=, false, true)
-
-LolValue to_lol_troof(LolValue value) { return BOOL_VALUE(lol_to_bool(value)); }
-
-LolValue to_lol_numbar(LolValue value) {
-  LolValue num = to_numeric(value);
-  if (IS_INT(num)) {
-    num = DOUBLE_VALUE((double)(AS_INT(num)));
-  }
-  return num;
-}
-
-LolValue to_lol_numbr(LolValue value) {
-  LolValue num = to_numeric(value);
-  if (IS_DOUBLE(num)) {
-    num = INT_VALUE((int64_t)(AS_DOUBLE(num)));
-  }
-  return num;
-}
