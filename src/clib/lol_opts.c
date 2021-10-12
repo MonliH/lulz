@@ -1,6 +1,5 @@
 #include "lol_runtime.h"
 #include <stdio.h>
-#include <string.h>
 
 LolValue to_numeric(LolValue val) {
   if (IS_INT(val) || IS_DOUBLE(val))
@@ -72,8 +71,6 @@ BOOL_NUM_OP(lte, <=)
       return BOOL_VALUE(AS_FUN(l) op AS_FUN(r));                               \
     else if (IS_NULL(l) && IS_NULL(r)) {                                       \
       return BOOL_VALUE(t);                                                    \
-    } else if (IS_STR(l) && IS_STR(r)) {                                       \
-      return BOOL_VALUE(strcmp(AS_CSTR(l), AS_CSTR(r)) op 0);                  \
     }                                                                          \
     return BOOL_VALUE(f);                                                      \
   }
@@ -98,25 +95,3 @@ LolValue to_lol_numbr(LolValue value) {
   }
   return num;
 }
-
-#define CMP_OP(name, cmp)                                                      \
-  LolValue lol_##name(LolValue left, LolValue right) {                         \
-    LolValue l = to_numeric(left);                                             \
-    LolValue r = to_numeric(right);                                            \
-    if (IS_INT(l) && IS_INT(r)) {                                              \
-      int32_t cl = AS_INT(l);                                                  \
-      int32_t cr = AS_INT(r);                                                  \
-      return (cmp) ? l : r;                                                    \
-    } else if (IS_INT(l) && IS_DOUBLE(r)) {                                    \
-      l = DOUBLE_VALUE((double)AS_INT(l));                                     \
-    } else if (IS_DOUBLE(l) && IS_INT(r)) {                                    \
-      r = DOUBLE_VALUE((double)AS_INT(r));                                     \
-    }                                                                          \
-    double cl = AS_DOUBLE(l);                                                  \
-    double cr = AS_DOUBLE(r);                                                  \
-    return (cmp) ? l : r;                                                      \
-  }
-
-CMP_OP(min, (cl < cr))
-CMP_OP(max, (cl > cr))
-
