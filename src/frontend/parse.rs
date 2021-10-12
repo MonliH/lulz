@@ -396,14 +396,11 @@ impl<'a> Parser<'a> {
     }
 
     fn print(&mut self, span: Span) -> Failible<Statement> {
-        let mut args = vec![self.expr()?];
-        while !(self.peek_eq(&TokenKind::Break)? || self.peek_eq(&TokenKind::Bang)?) {
-            args.push(self.expr()?);
-        }
+        let expr = self.expr()?;
         let no_newline = self.check(&TokenKind::Bang)?;
         Ok(Statement {
             span: Span::new(span.s, self.current_span.e, self.source_id),
-            statement_kind: StatementKind::Print(args, no_newline),
+            statement_kind: StatementKind::Print(expr, no_newline),
         })
     }
 
@@ -473,14 +470,6 @@ impl<'a> Parser<'a> {
     fn check(&mut self, token: &TokenKind) -> Failible<bool> {
         if self.peek_token()?.token_kind.eq(token) {
             self.next_token()?;
-            Ok(true)
-        } else {
-            Ok(false)
-        }
-    }
-
-    fn peek_eq(&mut self, token: &TokenKind) -> Failible<bool> {
-        if self.peek_token()?.token_kind.eq(token) {
             Ok(true)
         } else {
             Ok(false)

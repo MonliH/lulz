@@ -557,10 +557,7 @@ impl LowerCompiler {
                     };
                     self.c.ws(fn_name);
                     self.c.wc('(');
-                    self.compile_expr(Expr {
-                        span: stmt.span,
-                        expr_kind: ExprKind::Concat(e),
-                    })?;
+                    self.compile_expr(e)?;
                     self.c.wc(')');
                     self.c.semi();
                 }

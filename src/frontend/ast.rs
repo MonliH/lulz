@@ -76,7 +76,7 @@ pub enum StatementKind {
         block: Block,
     },
     Return(Expr),
-    Print(Vec<Expr>, bool),
+    Print(Expr, bool),
     Input(Ident),
 }
 
