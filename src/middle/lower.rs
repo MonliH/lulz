@@ -11,7 +11,7 @@ use crate::{
 
 use super::{Interner, StrId};
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq)]
 enum RecentBlock {
     Function,
     Loop,
@@ -408,14 +408,7 @@ impl LowerCompiler {
     fn compile(&mut self, ast: Block) -> Failible<()> {
         for stmt in ast.0.into_iter() {
             match stmt.statement_kind {
-                StatementKind::Break => match self.recent_block {
-                    RecentBlock::Function => {
-                        self.c.ws("return ");
-                        self.c.null();
-                        self.c.semi();
-                    }
-                    _ => {}
-                },
+                StatementKind::Break => {}
                 StatementKind::Return(e) => {
                     self.c.ret();
                     self.compile_expr(e)?;
@@ -482,11 +475,9 @@ impl LowerCompiler {
                     self.c.semi();
                 }
                 StatementKind::FunctionDef(id, args, block) => {
-                    let prev = mem::replace(&mut self.recent_block, RecentBlock::Function);
                     let fn_name = self.intern(id);
                     let args = args.into_iter().map(|arg| self.intern(arg)).collect();
-                    self.compile_func(fn_name, args, block, true, stmt.span)?;
-                    self.recent_block = prev;
+                    self.compile_func(fn_name, args, block, true, stmt.span)?
                 }
                 StatementKind::MutCast(id, ty) => {
                     self.c.debug_symbol("mut cast", id.0.as_str(), stmt.span);
