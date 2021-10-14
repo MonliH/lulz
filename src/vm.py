@@ -40,7 +40,8 @@ class Vm:
             os.write(1, "      ")
             for value in self.stack:
                 os.write(1, "[%s]" % value.str())
-            print()
+            os.write(1, "\n")
+
             instruction = self.read_byte()
             if instruction == OpCode.OP_RETURN:
                 print(self.pop().str())
@@ -52,3 +53,15 @@ class Vm:
                 l = self.pop()
                 r = self.pop()
                 self.push(l.add(r))
+            elif instruction == OpCode.OP_DIV:
+                l = self.pop()
+                r = self.pop()
+                self.push(l.div(r))
+            elif instruction == OpCode.OP_MUL:
+                l = self.pop()
+                r = self.pop()
+                self.push(l.mul(r))
+            elif instruction == OpCode.OP_SUB:
+                l = self.pop()
+                r = self.pop()
+                self.push(l.sub(r))

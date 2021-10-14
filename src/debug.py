@@ -19,13 +19,13 @@ def disassemble_instr(bytecode, offset):
     elif instr == OpCode.OP_CONSTANT:
         return const_instr("OP_CONSTANT", bytecode, offset)
     elif instr == OpCode.OP_ADD:
-        return const_instr("OP_ADD", bytecode, offset)
+        return simple_instr("OP_ADD", offset)
     elif instr == OpCode.OP_SUB:
-        return const_instr("OP_SUB", bytecode, offset)
+        return simple_instr("OP_SUB", offset)
     elif instr == OpCode.OP_DIV:
-        return const_instr("OP_DIV", bytecode, offset)
+        return simple_instr("OP_DIV", offset)
     elif instr == OpCode.OP_MUL:
-        return const_instr("OP_MUL", bytecode, offset)
+        return simple_instr("OP_MUL", offset)
     else:
         print("Unknown opcode %d" % instr)
         return offset + 1

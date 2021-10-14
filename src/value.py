@@ -1,5 +1,6 @@
 from rpython.rlib.objectmodel import instantiate
 
+
 class Value:
     def get_value(self):
         return self
@@ -12,6 +13,16 @@ class Value:
 
     def add(self, other):
         return self
+
+    def sub(self, other):
+        return self
+
+    def mul(self, other):
+        return self
+
+    def div(self, other):
+        return self
+
 
 class IntValue(Value):
     _immutable_fields_ = ["int_val"]
@@ -27,8 +38,30 @@ class IntValue(Value):
         if isinstance(other, IntValue):
             return IntValue(self.int_val + other.int_val)
         elif isinstance(other, FloatValue):
-            return IntValue(self.int_val + other.float_val)
+            return FloatValue(self.int_val + other.float_val)
         assert False
+
+    def mul(self, other):
+        if isinstance(other, IntValue):
+            return IntValue(self.int_val * other.int_val)
+        elif isinstance(other, FloatValue):
+            return FloatValue(self.int_val * other.float_val)
+        assert False
+
+    def div(self, other):
+        if isinstance(other, IntValue):
+            return IntValue(self.int_val // other.int_val)
+        elif isinstance(other, FloatValue):
+            return FloatValue(self.int_val / other.float_val)
+        assert False
+
+    def sub(self, other):
+        if isinstance(other, IntValue):
+            return IntValue(self.int_val - other.int_val)
+        elif isinstance(other, FloatValue):
+            return FloatValue(self.int_val - other.float_val)
+        assert False
+
 
 class FloatValue(Value):
     _immutable_fields_ = ["float_val"]
@@ -45,4 +78,25 @@ class FloatValue(Value):
             return FloatValue(self.float_val + other.int_val)
         elif isinstance(other, FloatValue):
             return FloatValue(self.float_val + other.float_val)
+        assert False
+
+    def div(self, other):
+        if isinstance(other, IntValue):
+            return FloatValue(self.float_val / other.int_val)
+        elif isinstance(other, FloatValue):
+            return FloatValue(self.float_val / other.float_val)
+        assert False
+
+    def mul(self, other):
+        if isinstance(other, IntValue):
+            return FloatValue(self.float_val * other.int_val)
+        elif isinstance(other, FloatValue):
+            return FloatValue(self.float_val * other.float_val)
+        assert False
+
+    def sub(self, other):
+        if isinstance(other, IntValue):
+            return FloatValue(self.float_val - other.int_val)
+        elif isinstance(other, FloatValue):
+            return FloatValue(self.float_val - other.float_val)
         assert False
