@@ -1,14 +1,70 @@
 from error import Span
 
 
+# Oh my goodness, lolcode has so many reserved keywords
 class TokenTy:
-    TOKEN_EOF = 0
-    TOKEN_DISPLAY = 1
-    TOKEN_NUMBER = 2
-    TOKEN_FLOAT = 3
-    TOKEN_IDENT = 4
-    TOKEN_ERROR = 5
-    TOKEN_STRING = 6
+    EOF = 0
+    NUMBER = 2
+    FLOAT = 3
+    IDENT = 4
+    ERROR = 5
+    STRING = 6
+
+    OP_QUESTION = 7
+    OP_BANG = 8
+    OP_COMMA = 9
+
+    A = 10
+    ALL = 11
+    AN = 12
+    ANY = 13
+    BIGGR = 14
+    BOTH = 15
+    DIFF = 17
+    DIFFRINT = 18
+    EITHER = 19
+    FOUND = 20
+    GIMMEH = 21
+    GTFO = 22
+    HOW = 23
+    I = 24
+    IF = 25
+    IM = 26
+    IN = 27
+    IS = 28
+    IZ = 29
+    MAEK = 30
+    MEBBE = 31
+    MKAY = 32
+    MOD = 33
+    NO = 34
+    NOT = 35
+    NOW = 36
+    O = 37
+    OF = 38
+    OMG = 39
+    OMGWTF = 40
+    OUTTA = 41
+    PRODUKT = 42
+    QUOSHUNT = 43
+    R = 44
+    RLY = 45
+    SAEM = 46
+    SAY = 47
+    SMALLR = 48
+    SMOOSH = 49
+    SO = 50
+    SUM = 51
+    TIL = 52
+    U = 53
+    UR = 54
+    VISIBLE = 55
+    WAI = 56
+    WILE = 57
+    WON = 58
+    WTF = 59
+    YA = 60
+    YR = 61
 
 
 class Token:
@@ -37,7 +93,7 @@ class Scanner:
         return self.idx >= len(self.source)
 
     def error_token(self, msg):
-        return Token(TokenTy.TOKEN_ERROR, Span(self.idx, self.idx), msg)
+        return Token(TokenTy.ERROR, Span(self.idx, self.idx), msg)
 
     def advance(self):
         old = self.idx
@@ -80,7 +136,7 @@ class Scanner:
     def scan_token(self):
         self.skip_whitespace()
         if self.is_at_end():
-            return self.make_thin_token(TokenTy.TOKEN_EOF)
+            return self.make_thin_token(TokenTy.EOF)
 
         start = self.idx
         c = self.advance()
@@ -103,7 +159,7 @@ class Scanner:
             return self.error_token("Unterminated string")
 
         tok = self.make_token(
-            TokenTy.TOKEN_STRING, start, self.source[start : self.idx]
+            TokenTy.STRING, start, self.source[start : self.idx]
         )
 
         # Eat the ending qoute
@@ -123,11 +179,11 @@ class Scanner:
                 self.advance()
 
             return self.make_token(
-                TokenTy.TOKEN_FLOAT, start, self.source[start : self.idx]
+                TokenTy.FLOAT, start, self.source[start : self.idx]
             )
 
         return self.make_token(
-            TokenTy.TOKEN_NUMBER, start, self.source[start : self.idx]
+            TokenTy.NUMBER, start, self.source[start : self.idx]
         )
 
     def ident(self):
@@ -141,9 +197,30 @@ class Scanner:
     def make_ident(self, start):
         slice = self.source[start : self.idx]
 
-        first = slice[0].lower()
-        if first == "d":
-            if slice[1:].lower() == "isplay":
-                return self.make_token(TokenTy.TOKEN_DISPLAY, start)
+        lower = slice.lower()
+        if lower[0] == "a":
+            if len(lower) == 1:
+                return self.make_token(TokenTy.A, start)
+            if lower[1] == "n":
+                if len(lower) == 2:
+                    return self.make_token(TokenTy.AN, start)
+                if lower[2:] == "y":
+                    return self.make_token(TokenTy.ANY, start)
+            if lower[1] == "l":
+                if lower[2:] == "l":
+                    return self.make_token(TokenTy.ALL, start)
+        if lower[0] == "b":
+            if lower[1] == "i" and lower[2:] == "ggr":
+                return self.make_token(TokenTy.BIGGR, start)
+            if lower[1] == "o" and lower[2:] == "th":
+                return self.make_token(TokenTy.BOTH, start)
+        if lower[0] == "d":
+            if lower[1:4] == "iff":
+                if len(lower) == 4:
+                    return self.make_token(TokenTy.DIFF, start)
+                if lower[4:] == "rint":
+                    return self.make_token(TokenTy.DIFFRINT, start)
+        if lower[0] == "v" and lower[1:] == "isible":
+                return self.make_token(TokenTy.VISIBLE, start)
 
-        return self.make_token(TokenTy.TOKEN_IDENT, start, slice)
+        return self.make_token(TokenTy.IDENT, start, slice)
