@@ -13,7 +13,11 @@ def disassemble(bytecode, name):
 def disassemble_instr(bytecode, offset):
     instr = bytecode.code[offset]
     pos = bytecode.pos[offset]
-    os.write(1, "%s  %s:%s  " % (fill(str(offset), 4), fill(str(pos.s), 4), fill(str(pos.e), 4)))
+    os.write(
+        1,
+        "%s  %s:%s  "
+        % (fill(str(offset), 4), fill(str(pos.s), 4), fill(str(pos.e), 4)),
+    )
     if instr == OpCode.OP_RETURN:
         return simple_instr("OP_RETURN", offset)
     elif instr == OpCode.OP_CONSTANT:
@@ -43,5 +47,12 @@ def simple_instr(text, offset):
 
 def const_instr(text, bytecode, offset):
     constant = bytecode.code[offset + 1]
-    print("%s %s %s" % (text, fill(str(constant), 4), fill(bytecode.constants[constant].str(), 15, " ")))
+    print(
+        "%s %s %s"
+        % (
+            text,
+            fill(str(constant), 4),
+            fill(bytecode.constants[constant].str(), 15, " "),
+        )
+    )
     return offset + 2

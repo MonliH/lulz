@@ -5,3 +5,11 @@ class Span:
         self.s = s
         self.e = e
 
+    def str(self):
+        return "%s:%s" % (self.s, self.e)
+
+    def __str__(self):
+        return self.str()
+
+    def __repr__(self):
+        return self.str()

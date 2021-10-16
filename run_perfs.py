@@ -26,7 +26,11 @@ for file in file_list:
         header = "{" + f.readline().split("{")[1]
     header = json.loads(header)
     sys.stdout.flush()
-    t = timeit.Timer(lambda: subprocess.call(['./target/release/lulz', file], stdout=subprocess.DEVNULL))
+    t = timeit.Timer(
+        lambda: subprocess.call(
+            ["./target/release/lulz", file], stdout=subprocess.DEVNULL
+        )
+    )
     trials = int(header["trials"])
     reps = int(header["reps"])
     r = t.repeat(trials, reps)

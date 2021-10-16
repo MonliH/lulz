@@ -1,6 +1,7 @@
 from bytecode import Chunk, OpCode
 from debug import disassemble_instr
 from value import Value
+from compiler import compile
 import os
 
 
@@ -27,11 +28,9 @@ class Vm:
 
     def pop(self):
         popped = self.stack.pop()
-        assert isinstance(popped, Value)
         return popped
 
     def push(self, value):
-        assert isinstance(value, Value)
         self.stack.append(value)
 
     def interpret(self):
@@ -44,7 +43,6 @@ class Vm:
 
             instruction = self.read_byte()
             if instruction == OpCode.OP_RETURN:
-                print(self.pop().str())
                 return Result.OK
             elif instruction == OpCode.OP_CONSTANT:
                 constant = self.read_constant()
@@ -65,3 +63,9 @@ class Vm:
                 l = self.pop()
                 r = self.pop()
                 self.push(l.sub(r))
+
+
+def interpret(source):
+    chunk = compile(source)
+    vm = Vm(chunk)
+    return vm.interpret()
