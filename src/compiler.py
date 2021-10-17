@@ -7,7 +7,8 @@ def compile(source):
     scanner = Scanner(source)
     while True:
         tok = scanner.scan_token()
-        print("ty: %s, text: '%s', %s" % (tok.ty, tok.text, tok.span.str()))
-        if tok.ty == TokenTy.EOF:
+        if not tok:
+            # EOF
             break
+        print("ty: %s, text: '%s', %s" % (tok.ty, tok.text, tok.span.str()))
     return Chunk([], [OpCode.OP_RETURN], [Span(0, 0)])

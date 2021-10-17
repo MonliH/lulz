@@ -67,6 +67,61 @@ class TokenTy:
     YR = 61
 
 
+token_map = {
+    "a": TokenTy.A,
+    "all": TokenTy.ALL,
+    "an": TokenTy.AN,
+    "any": TokenTy.ANY,
+    "biggr": TokenTy.BIGGR,
+    "both": TokenTy.BOTH,
+    "diff": TokenTy.DIFF,
+    "diffrint": TokenTy.DIFFRINT,
+    "either": TokenTy.EITHER,
+    "found": TokenTy.FOUND,
+    "gimmeh": TokenTy.GIMMEH,
+    "gtfo": TokenTy.GTFO,
+    "how": TokenTy.HOW,
+    "i": TokenTy.I,
+    "if": TokenTy.IF,
+    "im": TokenTy.IM,
+    "in": TokenTy.IN,
+    "is": TokenTy.IS,
+    "iz": TokenTy.IZ,
+    "maek": TokenTy.MAEK,
+    "mebbe": TokenTy.MEBBE,
+    "mkay": TokenTy.MKAY,
+    "mod": TokenTy.MOD,
+    "no": TokenTy.NO,
+    "not": TokenTy.NOT,
+    "now": TokenTy.NOW,
+    "o": TokenTy.O,
+    "of": TokenTy.OF,
+    "omg": TokenTy.OMG,
+    "omgwtf": TokenTy.OMGWTF,
+    "outta": TokenTy.OUTTA,
+    "produkt": TokenTy.PRODUKT,
+    "quoshunt": TokenTy.QUOSHUNT,
+    "r": TokenTy.R,
+    "rly": TokenTy.RLY,
+    "saem": TokenTy.SAEM,
+    "say": TokenTy.SAY,
+    "smallr": TokenTy.SMALLR,
+    "smoosh": TokenTy.SMOOSH,
+    "so": TokenTy.SO,
+    "sum": TokenTy.SUM,
+    "til": TokenTy.TIL,
+    "u": TokenTy.U,
+    "ur": TokenTy.UR,
+    "visible": TokenTy.VISIBLE,
+    "wai": TokenTy.WAI,
+    "wile": TokenTy.WILE,
+    "won": TokenTy.WON,
+    "wtf": TokenTy.WTF,
+    "ya": TokenTy.YA,
+    "yr": TokenTy.YR,
+}
+
+
 class Token:
     _immutable_fields_ = ["ty", "span", "text"]
 
@@ -133,10 +188,13 @@ class Scanner:
     def is_id_continue(self, c):
         return self.is_id_start(c) or c == "_" or self.is_digit(c)
 
+    def next(self):
+        return self.scan_token()
+
     def scan_token(self):
         self.skip_whitespace()
         if self.is_at_end():
-            return self.make_thin_token(TokenTy.EOF)
+            return None
 
         start = self.idx
         c = self.advance()
@@ -158,9 +216,7 @@ class Scanner:
         if self.is_at_end():
             return self.error_token("Unterminated string")
 
-        tok = self.make_token(
-            TokenTy.STRING, start, self.source[start : self.idx]
-        )
+        tok = self.make_token(TokenTy.STRING, start, self.source[start : self.idx])
 
         # Eat the ending qoute
         self.advance()
@@ -178,13 +234,9 @@ class Scanner:
             while self.is_digit(self.peek()):
                 self.advance()
 
-            return self.make_token(
-                TokenTy.FLOAT, start, self.source[start : self.idx]
-            )
+            return self.make_token(TokenTy.FLOAT, start, self.source[start : self.idx])
 
-        return self.make_token(
-            TokenTy.NUMBER, start, self.source[start : self.idx]
-        )
+        return self.make_token(TokenTy.NUMBER, start, self.source[start : self.idx])
 
     def ident(self):
         start = self.idx - 1
@@ -198,29 +250,7 @@ class Scanner:
         slice = self.source[start : self.idx]
 
         lower = slice.lower()
-        if lower[0] == "a":
-            if len(lower) == 1:
-                return self.make_token(TokenTy.A, start)
-            if lower[1] == "n":
-                if len(lower) == 2:
-                    return self.make_token(TokenTy.AN, start)
-                if lower[2:] == "y":
-                    return self.make_token(TokenTy.ANY, start)
-            if lower[1] == "l":
-                if lower[2:] == "l":
-                    return self.make_token(TokenTy.ALL, start)
-        if lower[0] == "b":
-            if lower[1] == "i" and lower[2:] == "ggr":
-                return self.make_token(TokenTy.BIGGR, start)
-            if lower[1] == "o" and lower[2:] == "th":
-                return self.make_token(TokenTy.BOTH, start)
-        if lower[0] == "d":
-            if lower[1:4] == "iff":
-                if len(lower) == 4:
-                    return self.make_token(TokenTy.DIFF, start)
-                if lower[4:] == "rint":
-                    return self.make_token(TokenTy.DIFFRINT, start)
-        if lower[0] == "v" and lower[1:] == "isible":
-                return self.make_token(TokenTy.VISIBLE, start)
+        if lower in token_map:
+            return self.make_token(token_map[lower], start)
 
         return self.make_token(TokenTy.IDENT, start, slice)
