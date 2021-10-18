@@ -188,13 +188,10 @@ class Scanner:
     def is_id_continue(self, c):
         return self.is_id_start(c) or c == "_" or self.is_digit(c)
 
-    def next(self):
-        return self.scan_token()
-
     def scan_token(self):
         self.skip_whitespace()
         if self.is_at_end():
-            return None
+            return self.make_thin_token(TokenTy.EOF)
 
         start = self.idx
         c = self.advance()

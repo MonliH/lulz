@@ -26,28 +26,6 @@ def entry_point(argv):
         print("Usage: lulz [path]")
         return 64
 
-    # chunk = Chunk()
-    # constant = chunk.add_constant(IntValue(2))
-    # constant2 = chunk.add_constant(IntValue(1))
-
-    # chunk.write(OpCode.OP_CONSTANT, Span(0, 0))
-    # chunk.write(constant, Span(0, 1))
-    # chunk.write(OpCode.OP_CONSTANT, Span(0, 0))
-    # chunk.write(constant2, Span(0, 1))
-    # chunk.write(OpCode.OP_CONSTANT, Span(0, 0))
-    # chunk.write(constant, Span(0, 1))
-
-    # chunk.write(OpCode.OP_ADD, Span(0, 1))
-    # chunk.write(OpCode.OP_MUL, Span(0, 1))
-
-    # chunk.write(OpCode.OP_RETURN, Span(1, 2))
-    # debug.disassemble(chunk, "test chunk")
-
-    # print("------")
-
-    # vm = Vm(chunk)
-    # vm.interpret()
-
 
 def target(driver, *args):
     return entry_point, None

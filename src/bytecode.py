@@ -3,12 +3,12 @@ from value import Value
 
 
 class OpCode:
-    OP_RETURN = 0
-    OP_CONSTANT = 1
-    OP_ADD = 2
-    OP_SUB = 3
-    OP_MUL = 4
-    OP_DIV = 5
+    RETURN = 0
+    CONSTANT = 1
+    ADD = 2
+    SUB = 3
+    MUL = 4
+    DIV = 5
 
 
 class Chunk:

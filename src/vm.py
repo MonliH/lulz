@@ -42,30 +42,31 @@ class Vm:
             os.write(1, "\n")
 
             instruction = self.read_byte()
-            if instruction == OpCode.OP_RETURN:
+            if instruction == OpCode.RETURN:
                 return Result.OK
-            elif instruction == OpCode.OP_CONSTANT:
+            elif instruction == OpCode.CONSTANT:
                 constant = self.read_constant()
                 self.push(constant)
-            elif instruction == OpCode.OP_ADD:
+            elif instruction == OpCode.ADD:
                 l = self.pop()
                 r = self.pop()
                 self.push(l.add(r))
-            elif instruction == OpCode.OP_DIV:
+            elif instruction == OpCode.DIV:
                 l = self.pop()
                 r = self.pop()
                 self.push(l.div(r))
-            elif instruction == OpCode.OP_MUL:
+            elif instruction == OpCode.MUL:
                 l = self.pop()
                 r = self.pop()
                 self.push(l.mul(r))
-            elif instruction == OpCode.OP_SUB:
+            elif instruction == OpCode.SUB:
                 l = self.pop()
                 r = self.pop()
                 self.push(l.sub(r))
 
 
 def interpret(source):
-    chunk = compile(source)
+    chunk = Chunk()
+    compile(source, chunk)
     vm = Vm(chunk)
     return vm.interpret()

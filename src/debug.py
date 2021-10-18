@@ -18,17 +18,17 @@ def disassemble_instr(bytecode, offset):
         "%s  %s:%s  "
         % (fill(str(offset), 4), fill(str(pos.s), 4), fill(str(pos.e), 4)),
     )
-    if instr == OpCode.OP_RETURN:
+    if instr == OpCode.RETURN:
         return simple_instr("OP_RETURN", offset)
-    elif instr == OpCode.OP_CONSTANT:
+    elif instr == OpCode.CONSTANT:
         return const_instr("OP_CONSTANT", bytecode, offset)
-    elif instr == OpCode.OP_ADD:
+    elif instr == OpCode.ADD:
         return simple_instr("OP_ADD", offset)
-    elif instr == OpCode.OP_SUB:
+    elif instr == OpCode.SUB:
         return simple_instr("OP_SUB", offset)
-    elif instr == OpCode.OP_DIV:
+    elif instr == OpCode.DIV:
         return simple_instr("OP_DIV", offset)
-    elif instr == OpCode.OP_MUL:
+    elif instr == OpCode.MUL:
         return simple_instr("OP_MUL", offset)
     else:
         print("Unknown opcode %d" % instr)
