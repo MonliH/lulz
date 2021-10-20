@@ -30,6 +30,8 @@ def disassemble_instr(bytecode, offset):
         return simple_instr("OP_DIV", offset)
     elif instr == OpCode.MUL:
         return simple_instr("OP_MUL", offset)
+    elif instr == OpCode.PRINT:
+        return simple_instr("PRINT", offset)
     else:
         print("Unknown opcode %d" % instr)
         return offset + 1

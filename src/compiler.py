@@ -12,6 +12,8 @@ class Builder:
         self.current = None
         self.previous = None
 
+        self.vars = {}
+
         self.chunk = chunk
 
     def error_at(self, token, message):
@@ -47,9 +49,19 @@ class Builder:
 
     def compile(self):
         self.advance()
-        self.expression()
-        self.consume(TokenTy.EOF, "expected end of file")
+
+        while not self.match(TokenTy.EOF):
+            self.declaration()
+
         self.end_compiler()
+
+    def declaration(self):
+        self.statement()
+
+    def statement(self):
+        if self.match(TokenTy.VISIBLE):
+            self.expression()
+            self.emit_byte(OpCode.PRINT)
 
     def of_x_an_y(self):
         self.consume(TokenTy.OF, "expected token `OF`")
