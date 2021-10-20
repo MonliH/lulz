@@ -1,6 +1,7 @@
 from bytecode import Chunk, OpCode
 from error import Span
 from scanner import Scanner, TokenTy
+from value import IntValue
 
 
 class Builder:
@@ -17,7 +18,7 @@ class Builder:
         if self.panic_mode:
             return
         self.panic_mode = True
-        print("[%s] Error: %s" % (token, message))
+        print("[%s] Error: %s" % (token.span.str(), message))
         self.had_error = True
 
     def error_at_current(self, message):
@@ -38,16 +39,43 @@ class Builder:
 
         self.error_at_current(message)
 
+    def match(self, token_ty):
+        if self.current.ty == token_ty:
+            self.advance()
+            return True
+        return False
+
     def compile(self):
         self.advance()
+        self.expression()
         self.consume(TokenTy.EOF, "expected end of file")
         self.end_compiler()
 
+    def of_x_an_y(self):
+        self.consume(TokenTy.OF, "expected token `OF`")
+        self.expression()
+        self.consume(TokenTy.AN, "expected token `AN`")
+        self.expression()
+
     def expression(self):
-        pass
+        if self.match(TokenTy.SUM):
+            self.of_x_an_y()
+            self.emit_byte(OpCode.ADD)
+        elif self.match(TokenTy.DIFF):
+            self.of_x_an_y()
+            self.emit_byte(OpCode.SUB)
+        elif self.match(TokenTy.PRODUKT):
+            self.of_x_an_y()
+            self.emit_byte(OpCode.MUL)
+        elif self.match(TokenTy.QUOSHUNT):
+            self.of_x_an_y()
+            self.emit_byte(OpCode.DIV)
+        else:
+            self.consume(TokenTy.NUMBER, "expected expression")
+            self.number()
 
     def number(self):
-        value = int(self.previous.text)
+        value = IntValue(int(self.previous.text))
         self.emit_constant(value)
 
     def emit_constant(self, value):
