@@ -10,6 +10,7 @@ class OpCode:
     MUL = 4
     DIV = 5
     PRINT = 6
+    POP = 7
 
 
 class Chunk:

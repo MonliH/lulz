@@ -62,6 +62,14 @@ class Builder:
         if self.match(TokenTy.VISIBLE):
             self.expression()
             self.emit_byte(OpCode.PRINT)
+        elif self.match(TokenTy.I):
+            self.consume(TokenTy.HAS, "expected token `HAS`")
+            self.consume(TokenTy.A, "expected token `A`")
+            self.consume(TokenTy.IDENT, "expected identifier")
+            self.consume(TokenTy.ITZ, "expected token `ITZ`")
+            self.expression()
+
+        self.expression()
 
     def of_x_an_y(self):
         self.consume(TokenTy.OF, "expected token `OF`")

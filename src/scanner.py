@@ -26,12 +26,15 @@ class TokenTy:
     FOUND = 20
     GIMMEH = 21
     GTFO = 22
+    HAS = 62
     HOW = 23
     I = 24
     IF = 25
     IM = 26
     IN = 27
     IS = 28
+    IT = 63
+    ITZ = 64
     IZ = 29
     MAEK = 30
     MEBBE = 31
@@ -80,6 +83,7 @@ token_map = {
     "found": TokenTy.FOUND,
     "gimmeh": TokenTy.GIMMEH,
     "gtfo": TokenTy.GTFO,
+    "has": TokenTy.HAS,
     "how": TokenTy.HOW,
     "i": TokenTy.I,
     "if": TokenTy.IF,

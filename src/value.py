@@ -100,3 +100,14 @@ class FloatValue(Value):
         elif isinstance(other, FloatValue):
             return FloatValue(self.float_val - other.float_val)
         assert False
+
+class StrValue(Value):
+    _immutable_fields_ = ["str_val"]
+
+    def __init__(self, str_val):
+        assert isinstance(str_val, str)
+        self.str_val = str_val
+
+    def str(self):
+        return self.str_val
+

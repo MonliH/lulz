@@ -66,6 +66,8 @@ class Vm:
             elif instruction == OpCode.PRINT:
                 value = self.pop()
                 print(value.str())
+            elif instruction == OpCode.POP:
+                self.pop()
 
 
 def interpret(source):
