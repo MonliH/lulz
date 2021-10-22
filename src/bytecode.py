@@ -11,6 +11,8 @@ class OpCode:
     DIV = 5
     PRINT = 6
     POP = 7
+    GLOBAL_DEF = 8
+    GLOBAL_GET = 9
 
 
 class Chunk:

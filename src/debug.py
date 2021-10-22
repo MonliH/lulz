@@ -32,6 +32,10 @@ def disassemble_instr(bytecode, offset):
         return simple_instr("OP_MUL", offset)
     elif instr == OpCode.PRINT:
         return simple_instr("PRINT", offset)
+    elif instr == OpCode.GLOBAL_DEF:
+        return double_instr("GLOBAL_DEF", bytecode, offset)
+    elif instr == OpCode.GLOBAL_GET:
+        return double_instr("GLOBAL_GET", bytecode, offset)
     else:
         print("Unknown opcode %d" % instr)
         return offset + 1
@@ -45,6 +49,12 @@ def fill(s, num, c="0"):
 def simple_instr(text, offset):
     print(text)
     return offset + 1
+
+
+def double_instr(text, bytecode, offset):
+    code_id = bytecode.code[offset+1]
+    print("%s    %s" % (text, fill(str(code_id), 4)))
+    return offset + 2
 
 
 def const_instr(text, bytecode, offset):

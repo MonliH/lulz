@@ -91,6 +91,8 @@ token_map = {
     "in": TokenTy.IN,
     "is": TokenTy.IS,
     "iz": TokenTy.IZ,
+    "it": TokenTy.IT,
+    "itz": TokenTy.ITZ,
     "maek": TokenTy.MAEK,
     "mebbe": TokenTy.MEBBE,
     "mkay": TokenTy.MKAY,

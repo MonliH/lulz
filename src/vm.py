@@ -18,6 +18,8 @@ class Vm:
         self.ip = 0
         self.stack = []
 
+        self.globals = {}
+
     def read_byte(self):
         old_ip = self.ip
         self.ip += 1
@@ -39,7 +41,10 @@ class Vm:
             os.write(1, "      ")
             for value in self.stack:
                 os.write(1, "[%s]" % value.str())
-            os.write(1, "\n")
+            os.write(1, "\n      { ")
+            for (k, v) in self.globals.items():
+                os.write(1, "%d: %s, " % (k, v.str()))
+            os.write(1, " }\n")
 
             instruction = self.read_byte()
             if instruction == OpCode.RETURN:
@@ -68,6 +73,13 @@ class Vm:
                 print(value.str())
             elif instruction == OpCode.POP:
                 self.pop()
+            elif instruction == OpCode.GLOBAL_DEF:
+                expr = self.pop()
+                idx = self.read_byte()
+                self.globals[idx] = expr
+            elif instruction == OpCode.GLOBAL_GET:
+                idx = self.read_byte()
+                self.push(self.globals[idx])
 
 
 def interpret(source):
