@@ -1,7 +1,13 @@
 from bytecode import Chunk, OpCode
 from error import Span
-from scanner import Scanner, TokenTy
+from scanner import Scanner, Token, TokenTy
 from value import IntValue
+
+
+class Local:
+    def __init__(self, name, depth):
+        self.name = name
+        self.depth = depth
 
 
 class Builder:
@@ -13,6 +19,9 @@ class Builder:
         self.previous = None
 
         self.globals = {}
+
+        self.scope_depth = 0
+        self.locals = []
 
         self.chunk = chunk
 
@@ -55,30 +64,27 @@ class Builder:
 
         self.end_compiler()
 
+    def check(self, token_ty):
+        return self.current.ty == token_ty
+
     def statement(self):
         if self.match(TokenTy.VISIBLE):
             self.expression()
             self.emit_byte(OpCode.PRINT)
         elif self.match(TokenTy.I):
-            self.consume(TokenTy.HAS, "expected token `HAS`")
-            self.consume(TokenTy.A, "expected token `A`")
-            self.consume(TokenTy.IDENT, "expected identifier")
+            self.consume(TokenTy.HAS, "expected token `HAS in declaration`")
+            self.consume(TokenTy.A, "expected token `A in declaration`")
+            self.consume(TokenTy.IDENT, "expected identifier in declaration")
             ident = self.previous
-            self.consume(TokenTy.ITZ, "expected token `ITZ`")
+            self.consume(TokenTy.ITZ, "expected token `ITZ in declaration`")
             self.expression()
-            global_id = self.intern_global(ident.text)
-            self.def_global(global_id)
+            self.def_variable(ident.text)
+        elif self.match(TokenTy.SLAB):
+            self.begin_scope()
+            self.block()
+            self.end_scope()
         else:
             self.expression()
-
-    def def_global(self, g_id):
-        self.emit_bytes(OpCode.GLOBAL_DEF, g_id)
-
-    def of_x_an_y(self):
-        self.consume(TokenTy.OF, "expected token `OF`")
-        self.expression()
-        self.consume(TokenTy.AN, "expected token `AN`")
-        self.expression()
 
     def expression(self):
         if self.match(TokenTy.SUM):
@@ -97,14 +103,73 @@ class Builder:
             self.number()
         else:
             self.consume(TokenTy.IDENT, "expected an expression")
-            self.variable()
+            self.get_variable()
 
-    def variable(self):
+    def block(self):
+        while (not self.check(TokenTy.KILL)) and (not self.check(TokenTy.EOF)):
+            self.statement()
+        self.consume(TokenTy.KILL, "expected token `KILL` after block")
+
+    def begin_scope(self):
+        self.scope_depth += 1
+
+    def end_scope(self):
+        self.scope_depth -= 1
+        while len(self.locals) and self.locals[-1].depth > self.scope_depth:
+            self.emit_byte(OpCode.POP)
+            self.locals.pop()
+
+    def def_variable(self, ident):
+        if self.scope_depth > 0:
+            self.dec_variable(ident)
+            return
+        g_id = self.intern_global(ident)
+        self.emit_bytes(OpCode.GLOBAL_DEF, g_id)
+
+    def of_x_an_y(self):
+        self.consume(TokenTy.OF, "expected token `OF` in operator")
+        self.expression()
+        self.consume(TokenTy.AN, "expected token `AN` in operator")
+        self.expression()
+
+    def resolve_local(self, name):
+        for i in range(len(self.locals) - 1, -1, -1):
+            local = self.locals[i]
+            if local.name == name:
+                return i
+        return -1
+
+    def get_variable(self):
+        var_pos = self.resolve_local(self.previous.text)
+        if var_pos != -1:
+            # Local exists
+            self.emit_bytes(OpCode.LOCAL_GET, var_pos)
+            return
+
         if self.previous.text in self.globals:
+            # Global exists
             slot = self.globals[self.previous.text]
             self.emit_bytes(OpCode.GLOBAL_GET, slot)
-        else:
-            self.error_at(self.previous, "undefined variable %s" % self.previous.text)
+            return
+
+        self.error_at(self.previous, "undefined variable %s" % self.previous.text)
+
+    def dec_variable(self, name):
+        for i in range(len(self.locals) - 1, -1, -1):
+            local = self.locals[i]
+            if local.depth != -1 and local.depth > self.scope_depth:
+                break
+
+            if local.name == name:
+                self.error_at(
+                    self.previous,
+                    "variable with this name already declared in this scope",
+                )
+
+        self.add_local(name)
+
+    def add_local(self, name):
+        self.locals.append(Local(name, len(self.locals)))
 
     def number(self):
         value = IntValue(int(self.previous.text))

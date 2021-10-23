@@ -13,6 +13,8 @@ class OpCode:
     POP = 7
     GLOBAL_DEF = 8
     GLOBAL_GET = 9
+    LOCAL_GET = 10
+    LOCAL_SET = 11
 
 
 class Chunk:

@@ -7,7 +7,9 @@ end = "KTHXBYE" ;
 
 statement = assignment | comment | declaration or assignment | import 
           | function def | expr | case | if | break | loop | return 
-          | multiline comment | print ;
+          | multiline comment | print | codeblock ;
+
+codeblock = "SLAB", block, "KILL";
 
 loop = "IM", "IN", "YR", ident, ident, "YR", ident, [ "TILL" | "WILE", expr ], lineterm, block, "IM", "OUTTA", "YR", ident ;
 

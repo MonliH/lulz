@@ -36,6 +36,7 @@ class TokenTy:
     IT = 63
     ITZ = 64
     IZ = 29
+    KILL = 66
     MAEK = 30
     MEBBE = 31
     MKAY = 32
@@ -54,6 +55,7 @@ class TokenTy:
     RLY = 45
     SAEM = 46
     SAY = 47
+    SLAB = 65
     SMALLR = 48
     SMOOSH = 49
     SO = 50
@@ -125,6 +127,8 @@ token_map = {
     "wtf": TokenTy.WTF,
     "ya": TokenTy.YA,
     "yr": TokenTy.YR,
+    "kill": TokenTy.KILL,
+    "slab": TokenTy.SLAB,
 }
 
 

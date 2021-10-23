@@ -80,6 +80,12 @@ class Vm:
             elif instruction == OpCode.GLOBAL_GET:
                 idx = self.read_byte()
                 self.push(self.globals[idx])
+            elif instruction == OpCode.LOCAL_GET:
+                idx = self.read_byte()
+                self.push(self.stack[idx])
+            elif instruction == OpCode.LOCAL_SET:
+                idx = self.read_byte()
+                self.stack[idx] = self.stack[len(self.stack) - 1]
 
 
 def interpret(source):
