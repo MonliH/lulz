@@ -48,6 +48,8 @@ def disassemble_instr(bytecode, offset):
         return double_instr("LOCAL_GET", bytecode, offset)
     elif instr == OpCode.LOCAL_SET:
         return double_instr("LOCAL_SET", bytecode, offset)
+    elif instr == OpCode.SET_IT:
+        return simple_instr("SET_IT", offset)
     else:
         print("Unknown opcode %d" % instr)
         return offset + 1

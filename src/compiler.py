@@ -85,6 +85,8 @@ class Builder:
             self.end_scope()
         else:
             self.expression()
+            # If an expression is on it's own, emit code to set the IT register
+            self.write_expression()
 
     def expression(self):
         if self.match(TokenTy.SUM):
@@ -107,9 +109,14 @@ class Builder:
             self.emit_byte(OpCode.PUSH_FAIL)
         elif self.match(TokenTy.NOOB):
             self.emit_byte(OpCode.PUSH_NOOB)
+        elif self.match(TokenTy.IT):
+            self.emit_byte(OpCode.GET_IT)
         else:
             self.consume(TokenTy.IDENT, "expected an expression")
             self.get_variable()
+
+    def write_expression(self):
+        self.emit_byte(OpCode.SET_IT)
 
     def block(self):
         while (not self.check(TokenTy.KILL)) and (not self.check(TokenTy.EOF)):

@@ -20,6 +20,7 @@ class Vm:
         assert isinstance(self.stack, list)
 
         self.globals = {}
+        self.it = NullValue()
 
     def read_byte(self):
         old_ip = self.ip
@@ -55,6 +56,7 @@ class Vm:
             os.write(1, "      ")
             for value in self.stack:
                 os.write(1, "[%s]" % value.str())
+            os.write(1, " IT: %s" % self.it.str())
             os.write(1, "\n      { ")
             for (k, v) in self.globals.items():
                 os.write(1, "%d: %s, " % (k, v.str()))
@@ -118,6 +120,10 @@ class Vm:
                 self.push(BoolValue(False))
             elif instruction == OpCode.PUSH_NOOB:
                 self.push(NullValue())
+            elif instruction == OpCode.SET_IT:
+                self.it = self.pop()
+            elif instruction == OpCode.GET_IT:
+                self.push(self.it)
 
 
 def interpret(source):

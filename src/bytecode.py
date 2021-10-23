@@ -21,6 +21,9 @@ class OpCode:
     PUSH_FAIL = 13
     PUSH_NOOB = 14
 
+    SET_IT = 15
+    GET_IT = 16
+
 
 class Chunk:
     def __init__(self, constants=[], code=[], pos=[]):
