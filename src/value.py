@@ -2,6 +2,8 @@ from rpython.rlib.objectmodel import instantiate
 
 
 class Value:
+    __slots__ = ()
+
     def get_value(self):
         return self
 
@@ -24,7 +26,55 @@ class Value:
         return self
 
 
+class BoolValue(Value):
+    __slots__ = ("bool_val",)
+    _immutable_fields_ = ["bool_val"]
+
+    def __init__(self, bool_val):
+        assert isinstance(bool_val, bool)
+        self.bool_val = bool_val
+
+    def str(self):
+        return "WIN" if self.bool_val else "FAIL"
+
+    def add(self, other):
+        return self
+
+    def sub(self, other):
+        return self
+
+    def mul(self, other):
+        return self
+
+    def div(self, other):
+        return self
+
+
+class NullValue(Value):
+    __slots__ = ()
+    _immutable_fields_ = []
+
+    def __init__(self):
+        pass
+
+    def str(self):
+        return "NOOB"
+
+    def add(self, other):
+        return self
+
+    def sub(self, other):
+        return self
+
+    def mul(self, other):
+        return self
+
+    def div(self, other):
+        return self
+
+
 class IntValue(Value):
+    __slots__ = ("int_val",)
     _immutable_fields_ = ["int_val"]
 
     def __init__(self, int_val):
@@ -64,6 +114,7 @@ class IntValue(Value):
 
 
 class FloatValue(Value):
+    __slots__ = ("float_val",)
     _immutable_fields_ = ["float_val"]
 
     def __init__(self, float_val):
@@ -101,7 +152,9 @@ class FloatValue(Value):
             return FloatValue(self.float_val - other.float_val)
         assert False
 
+
 class StrValue(Value):
+    __slots__ = ("str_val",)
     _immutable_fields_ = ["str_val"]
 
     def __init__(self, str_val):
@@ -110,4 +163,3 @@ class StrValue(Value):
 
     def str(self):
         return self.str_val
-

@@ -23,6 +23,7 @@ class TokenTy:
     DIFF = 17
     DIFFRINT = 18
     EITHER = 19
+    FAIL = 68
     FOUND = 20
     GIMMEH = 21
     GTFO = 22
@@ -42,6 +43,7 @@ class TokenTy:
     MKAY = 32
     MOD = 33
     NO = 34
+    NOOB = 69
     NOT = 35
     NOW = 36
     O = 37
@@ -66,6 +68,7 @@ class TokenTy:
     VISIBLE = 55
     WAI = 56
     WILE = 57
+    WIN = 67
     WON = 58
     WTF = 59
     YA = 60
@@ -129,6 +132,9 @@ token_map = {
     "yr": TokenTy.YR,
     "kill": TokenTy.KILL,
     "slab": TokenTy.SLAB,
+    "win": TokenTy.WIN,
+    "fail": TokenTy.FAIL,
+    "noob": TokenTy.NOOB,
 }
 
 

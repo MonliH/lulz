@@ -101,6 +101,12 @@ class Builder:
             self.emit_byte(OpCode.DIV)
         elif self.match(TokenTy.NUMBER):
             self.number()
+        elif self.match(TokenTy.WIN):
+            self.emit_byte(OpCode.PUSH_WIN)
+        elif self.match(TokenTy.FAIL):
+            self.emit_byte(OpCode.PUSH_FAIL)
+        elif self.match(TokenTy.NOOB):
+            self.emit_byte(OpCode.PUSH_NOOB)
         else:
             self.consume(TokenTy.IDENT, "expected an expression")
             self.get_variable()
@@ -169,7 +175,7 @@ class Builder:
         self.add_local(name)
 
     def add_local(self, name):
-        self.locals.append(Local(name, len(self.locals)))
+        self.locals.append(Local(name, self.scope_depth))
 
     def number(self):
         value = IntValue(int(self.previous.text))
@@ -211,3 +217,6 @@ def compile(source, chunk):
     #     print("ty: %s, text: '%s', %s" % (tok.ty, tok.text, tok.span.str()))
     parser = Builder(scanner, chunk)
     parser.compile()
+    if parser.had_error:
+        return None
+    return chunk

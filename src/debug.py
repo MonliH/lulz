@@ -34,6 +34,12 @@ def disassemble_instr(bytecode, offset):
         return simple_instr("PRINT", offset)
     elif instr == OpCode.POP:
         return simple_instr("POP", offset)
+    elif instr == OpCode.PUSH_WIN:
+        return simple_instr("PUSH_WIN", offset)
+    elif instr == OpCode.PUSH_FAIL:
+        return simple_instr("PUSH_FAIL", offset)
+    elif instr == OpCode.PUSH_NOOB:
+        return simple_instr("PUSH_NOOB", offset)
     elif instr == OpCode.GLOBAL_DEF:
         return double_instr("GLOBAL_DEF", bytecode, offset)
     elif instr == OpCode.GLOBAL_GET:

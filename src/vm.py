@@ -1,6 +1,6 @@
 from bytecode import Chunk, OpCode
 from debug import disassemble_instr
-from value import Value
+from value import BoolValue, FloatValue, IntValue, NullValue
 from compiler import compile
 import os
 
@@ -17,6 +17,7 @@ class Vm:
         self.chunk = chunk
         self.ip = 0
         self.stack = []
+        assert isinstance(self.stack, list)
 
         self.globals = {}
 
@@ -34,6 +35,19 @@ class Vm:
 
     def push(self, value):
         self.stack.append(value)
+
+    def is_number(self, value):
+        return isinstance(value, IntValue) or isinstance(value, FloatValue)
+
+    def numbers(self, l, r):
+        return self.is_number(l) and self.is_number(r)
+
+    def span(self):
+        return self.chunk.pos[self.ip]
+
+    def runtime_error(self, message):
+        print("[%s] Error: %s" % (self.span().str(), message))
+        return Result.RUNTIME_ERR
 
     def interpret(self):
         while True:
@@ -55,19 +69,31 @@ class Vm:
             elif instruction == OpCode.ADD:
                 l = self.pop()
                 r = self.pop()
-                self.push(l.add(r))
+                if self.numbers(l, r):
+                    self.push(l.add(r))
+                else:
+                    return self.runtime_error("operands of SUM must be numbers")
             elif instruction == OpCode.DIV:
                 l = self.pop()
                 r = self.pop()
-                self.push(l.div(r))
+                if self.numbers(l, r):
+                    self.push(l.div(r))
+                else:
+                    return self.runtime_error("operands of QUOSHUNT must be numbers")
             elif instruction == OpCode.MUL:
                 l = self.pop()
                 r = self.pop()
-                self.push(l.mul(r))
+                if self.numbers(l, r):
+                    self.push(l.mul(r))
+                else:
+                    return self.runtime_error("operands of PRODUKT must be numbers")
             elif instruction == OpCode.SUB:
                 l = self.pop()
                 r = self.pop()
-                self.push(l.sub(r))
+                if self.numbers(l, r):
+                    self.push(l.sub(r))
+                else:
+                    return self.runtime_error("operands of DIFF must be numbers")
             elif instruction == OpCode.PRINT:
                 value = self.pop()
                 print(value.str())
@@ -86,10 +112,17 @@ class Vm:
             elif instruction == OpCode.LOCAL_SET:
                 idx = self.read_byte()
                 self.stack[idx] = self.stack[len(self.stack) - 1]
+            elif instruction == OpCode.PUSH_WIN:
+                self.push(BoolValue(True))
+            elif instruction == OpCode.PUSH_FAIL:
+                self.push(BoolValue(False))
+            elif instruction == OpCode.PUSH_NOOB:
+                self.push(NullValue())
 
 
 def interpret(source):
-    chunk = Chunk()
-    compile(source, chunk)
+    chunk = compile(source, Chunk())
+    if chunk is None:
+        return Result.COMPILE_ERR
     vm = Vm(chunk)
     return vm.interpret()

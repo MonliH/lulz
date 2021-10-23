@@ -11,10 +11,15 @@ class OpCode:
     DIV = 5
     PRINT = 6
     POP = 7
+
     GLOBAL_DEF = 8
     GLOBAL_GET = 9
     LOCAL_GET = 10
     LOCAL_SET = 11
+
+    PUSH_WIN = 12
+    PUSH_FAIL = 13
+    PUSH_NOOB = 14
 
 
 class Chunk:
