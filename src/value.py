@@ -25,6 +25,9 @@ class Value:
     def div(self, other):
         return self
 
+    def eq(self, other):
+        return BoolValue(False)
+
     def is_truthy(self):
         return False
 
@@ -52,6 +55,11 @@ class BoolValue(Value):
     def div(self, other):
         return self
 
+    def eq(self, other):
+        if isinstance(other, BoolValue):
+            return BoolValue(self.bool_val == other.bool_val)
+        return BoolValue(False)
+
     def is_truthy(self):
         return self.bool_val
 
@@ -77,6 +85,11 @@ class NullValue(Value):
 
     def div(self, other):
         return self
+
+    def eq(self, other):
+        if isinstance(other, NullValue):
+            return BoolValue(True)
+        return BoolValue(False)
 
     def is_truthy(self):
         return False
@@ -121,6 +134,11 @@ class IntValue(Value):
             return FloatValue(self.int_val - other.float_val)
         assert False
 
+    def eq(self, other):
+        if isinstance(other, IntValue):
+            return BoolValue(self.int_val == other.int_val)
+        return BoolValue(False)
+
     def is_truthy(self):
         return self.int_val != 0
 
@@ -164,6 +182,11 @@ class FloatValue(Value):
             return FloatValue(self.float_val - other.float_val)
         assert False
 
+    def eq(self, other):
+        if isinstance(other, FloatValue):
+            return BoolValue(self.float_val == other.float_val)
+        return BoolValue(False)
+
     def is_truthy(self):
         return self.float_val != 0.0
 
@@ -181,3 +204,8 @@ class StrValue(Value):
 
     def is_truthy(self):
         return self.str_val != ""
+
+    def eq(self, other):
+        if isinstance(other, StrValue):
+            return BoolValue(self.str_val == other.str_val)
+        return BoolValue(False)

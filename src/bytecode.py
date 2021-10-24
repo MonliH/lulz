@@ -27,6 +27,8 @@ class OpCode:
     JUMP_IF_FALSE = 17
     JUMP = 18
 
+    EQ = 19
+
 
 class Chunk:
     def __init__(self, constants=[], code=[], pos=[]):

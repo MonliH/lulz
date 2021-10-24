@@ -1,7 +1,7 @@
 from bytecode import Chunk, OpCode
 from error import Span
 from scanner import Scanner, Token, TokenTy
-from value import FloatValue, IntValue
+from value import FloatValue, IntValue, StrValue
 import os
 
 
@@ -155,7 +155,9 @@ class Builder:
         self.chunk.code[offset] = jump
 
     def expression(self):
-        if self.match(TokenTy.SUM):
+        if self.match(TokenTy.STRING):
+            self.emit_constant(StrValue(self.previous.text))
+        elif self.match(TokenTy.SUM):
             self.of_x_an_y()
             self.emit_byte(OpCode.ADD)
         elif self.match(TokenTy.DIFF):
@@ -179,6 +181,12 @@ class Builder:
             self.emit_byte(OpCode.PUSH_NOOB)
         elif self.match(TokenTy.IT):
             self.emit_byte(OpCode.GET_IT)
+        elif self.match(TokenTy.BOTH):
+            self.consume(TokenTy.SAEM, "expected token `SAEM` after `BOTH`")
+            self.expression()
+            self.match(TokenTy.AN)
+            self.expression()
+            self.emit_byte(OpCode.EQ)
         else:
             self.consume(TokenTy.IDENT, "expected an expression")
             self.get_variable()

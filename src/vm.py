@@ -124,6 +124,10 @@ class Vm:
                 self.it = self.pop()
             elif instruction == OpCode.GET_IT:
                 self.push(self.it)
+            elif instruction == OpCode.EQ:
+                l = self.pop()
+                r = self.pop()
+                self.push(l.eq(r))
             elif instruction == OpCode.JUMP_IF_FALSE:
                 condition = self.it
                 offset = self.read_byte()
