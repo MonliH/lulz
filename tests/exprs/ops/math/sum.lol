@@ -1,4 +1,5 @@
-BTW { "output": "1293\n" }
+BTW { "output": "1293\n1293.2\n" }
 HAI 1.3
 VISIBLE SUM OF 1200 AN 93
+VISIBLE SUM OF "1200" an "93.2"
 KTHXBYE

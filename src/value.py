@@ -10,6 +10,12 @@ class Value:
     def __deepcopy__(self):
         return instantiate(self.__class__)
 
+    def type(self):
+        return ""
+
+    def dbg(self):
+        return "%s of type %s" % (self.str(), self.type())
+
     def str(self):
         return ""
 
@@ -31,6 +37,21 @@ class Value:
     def is_truthy(self):
         return False
 
+    def gt(self, other):
+        return BoolValue(False)
+
+    def lt(self, other):
+        return BoolValue(False)
+
+    def gte(self, other):
+        return BoolValue(False)
+
+    def lte(self, other):
+        return BoolValue(False)
+
+    def to_number(self):
+        return None
+
 
 class BoolValue(Value):
     __slots__ = ("bool_val",)
@@ -40,20 +61,11 @@ class BoolValue(Value):
         assert isinstance(bool_val, bool)
         self.bool_val = bool_val
 
+    def type(self):
+        return "TROOF"
+
     def str(self):
         return "WIN" if self.bool_val else "FAIL"
-
-    def add(self, other):
-        return self
-
-    def sub(self, other):
-        return self
-
-    def mul(self, other):
-        return self
-
-    def div(self, other):
-        return self
 
     def eq(self, other):
         if isinstance(other, BoolValue):
@@ -62,6 +74,9 @@ class BoolValue(Value):
 
     def is_truthy(self):
         return self.bool_val
+
+    def to_number(self):
+        return IntValue(1 if self.bool_val else 0)
 
 
 class NullValue(Value):
@@ -74,17 +89,8 @@ class NullValue(Value):
     def str(self):
         return "NOOB"
 
-    def add(self, other):
-        return self
-
-    def sub(self, other):
-        return self
-
-    def mul(self, other):
-        return self
-
-    def div(self, other):
-        return self
+    def type(self):
+        return "NOOB"
 
     def eq(self, other):
         if isinstance(other, NullValue):
@@ -93,6 +99,9 @@ class NullValue(Value):
 
     def is_truthy(self):
         return False
+
+    def to_number(self):
+        return IntValue(0)
 
 
 class IntValue(Value):
@@ -105,6 +114,9 @@ class IntValue(Value):
 
     def str(self):
         return str(self.int_val)
+
+    def type(self):
+        return "NUMBR"
 
     def add(self, other):
         if isinstance(other, IntValue):
@@ -137,10 +149,15 @@ class IntValue(Value):
     def eq(self, other):
         if isinstance(other, IntValue):
             return BoolValue(self.int_val == other.int_val)
+        elif isinstance(other, FloatValue):
+            return BoolValue(float(self.int_val) == other.float_val)
         return BoolValue(False)
 
     def is_truthy(self):
         return self.int_val != 0
+
+    def to_number(self):
+        return self
 
 
 class FloatValue(Value):
@@ -152,7 +169,10 @@ class FloatValue(Value):
         self.float_val = float_val
 
     def str(self):
-        return str(self.float_val)
+        return str(self.float_val).rstrip("0").rstrip(".")
+
+    def type(self):
+        return "NUMBAR"
 
     def add(self, other):
         if isinstance(other, IntValue):
@@ -185,10 +205,15 @@ class FloatValue(Value):
     def eq(self, other):
         if isinstance(other, FloatValue):
             return BoolValue(self.float_val == other.float_val)
+        elif isinstance(other, IntValue):
+            return BoolValue(self.float_val == float(other.int_val))
         return BoolValue(False)
 
     def is_truthy(self):
         return self.float_val != 0.0
+
+    def to_number(self):
+        return self
 
 
 class StrValue(Value):
@@ -202,6 +227,9 @@ class StrValue(Value):
     def str(self):
         return self.str_val
 
+    def type(self):
+        return "YARN"
+
     def is_truthy(self):
         return self.str_val != ""
 
@@ -209,3 +237,12 @@ class StrValue(Value):
         if isinstance(other, StrValue):
             return BoolValue(self.str_val == other.str_val)
         return BoolValue(False)
+
+    def to_number(self):
+        try:
+            if "." in self.str_val:
+                return FloatValue(float(self.str_val))
+            else:
+                return IntValue(int(self.str_val))
+        except:
+            return None

@@ -169,6 +169,12 @@ class Builder:
         elif self.match(TokenTy.QUOSHUNT):
             self.of_x_an_y()
             self.emit_byte(OpCode.DIV)
+        elif self.match(TokenTy.BIGGR):
+            self.of_x_an_y()
+            self.emit_byte(OpCode.MAX)
+        elif self.match(TokenTy.SMALLR):
+            self.of_x_an_y()
+            self.emit_byte(OpCode.MIN)
         elif self.match(TokenTy.NUMBER):
             self.number()
         elif self.match(TokenTy.FLOAT):
@@ -187,9 +193,26 @@ class Builder:
             self.match(TokenTy.AN)
             self.expression()
             self.emit_byte(OpCode.EQ)
+        elif self.match(TokenTy.IZ):
+            self.cmp_op()
         else:
             self.consume(TokenTy.IDENT, "expected an expression")
             self.get_variable()
+
+    def cmp_op(self):
+        self.expression()
+        if self.match(TokenTy.LES):
+            byte = OpCode.LTE if self.match(TokenTy.EQ) else OpCode.LT
+            self.consume(TokenTy.THEN, "expected token `THEN`")
+            self.expression()
+            self.emit_byte(byte)
+        elif self.match(TokenTy.GRETER):
+            byte = OpCode.GTE if self.match(TokenTy.EQ) else OpCode.GT
+            self.consume(TokenTy.THEN, "expected token `THEN`")
+            self.expression()
+            self.emit_byte(byte)
+        else:
+            self.error_at_current("expected comparison operator")
 
     def write_expression(self):
         self.emit_byte(OpCode.SET_IT)

@@ -29,6 +29,14 @@ class OpCode:
 
     EQ = 19
 
+    MIN = 20
+    MAX = 21
+
+    GT = 22
+    GTE = 23
+    LT = 24
+    LTE = 25
+
 
 class Chunk:
     def __init__(self, constants=[], code=[], pos=[]):

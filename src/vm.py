@@ -50,6 +50,13 @@ class Vm:
         print("[%s] Error: %s" % (self.span().str(), message))
         return Result.RUNTIME_ERR
 
+    def vton(self, value):
+        """Convert a value to a number"""
+        num_val = value.to_number()
+        if num_val:
+            return num_val
+        self.runtime_error("%s is not a NUMBAR or NUMBR" % value.dbg())
+
     def interpret(self):
         while True:
             disassemble_instr(self.chunk, self.ip)
@@ -69,33 +76,21 @@ class Vm:
                 constant = self.read_constant()
                 self.push(constant)
             elif instruction == OpCode.ADD:
-                l = self.pop()
-                r = self.pop()
-                if self.numbers(l, r):
-                    self.push(l.add(r))
-                else:
-                    return self.runtime_error("operands of SUM must be numbers")
+                l = self.vton(self.pop())
+                r = self.vton(self.pop())
+                self.push(l.add(r))
             elif instruction == OpCode.DIV:
-                l = self.pop()
-                r = self.pop()
-                if self.numbers(l, r):
-                    self.push(l.div(r))
-                else:
-                    return self.runtime_error("operands of QUOSHUNT must be numbers")
+                l = self.vton(self.pop())
+                r = self.vton(self.pop())
+                self.push(l.div(r))
             elif instruction == OpCode.MUL:
-                l = self.pop()
-                r = self.pop()
-                if self.numbers(l, r):
-                    self.push(l.mul(r))
-                else:
-                    return self.runtime_error("operands of PRODUKT must be numbers")
+                l = self.vton(self.pop())
+                r = self.vton(self.pop())
+                self.push(l.mul(r))
             elif instruction == OpCode.SUB:
-                l = self.pop()
-                r = self.pop()
-                if self.numbers(l, r):
-                    self.push(l.sub(r))
-                else:
-                    return self.runtime_error("operands of DIFF must be numbers")
+                l = self.vton(self.pop())
+                r = self.vton(self.pop())
+                self.push(l.sub(r))
             elif instruction == OpCode.PRINT:
                 value = self.pop()
                 print(value.str())

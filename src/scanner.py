@@ -23,9 +23,11 @@ class TokenTy:
     DIFF = 17
     DIFFRINT = 18
     EITHER = 19
+    EQ = 75
     FAIL = 68
     FOUND = 20
     GIMMEH = 21
+    GRETER = 76
     GTFO = 22
     HAI = 71
     HAS = 62
@@ -40,6 +42,7 @@ class TokenTy:
     IZ = 29
     KILL = 66
     KTHXBYE = 72
+    LES = 73
     MAEK = 30
     MEBBE = 31
     MKAY = 32
@@ -65,6 +68,7 @@ class TokenTy:
     SMOOSH = 49
     SO = 50
     SUM = 51
+    THEN = 74
     TIL = 52
     U = 53
     UR = 54
