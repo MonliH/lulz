@@ -25,6 +25,9 @@ class Value:
     def div(self, other):
         return self
 
+    def is_truthy(self):
+        return False
+
 
 class BoolValue(Value):
     __slots__ = ("bool_val",)
@@ -49,6 +52,9 @@ class BoolValue(Value):
     def div(self, other):
         return self
 
+    def is_truthy(self):
+        return self.bool_val
+
 
 class NullValue(Value):
     __slots__ = ()
@@ -71,6 +77,9 @@ class NullValue(Value):
 
     def div(self, other):
         return self
+
+    def is_truthy(self):
+        return False
 
 
 class IntValue(Value):
@@ -112,6 +121,9 @@ class IntValue(Value):
             return FloatValue(self.int_val - other.float_val)
         assert False
 
+    def is_truthy(self):
+        return self.int_val != 0
+
 
 class FloatValue(Value):
     __slots__ = ("float_val",)
@@ -152,6 +164,9 @@ class FloatValue(Value):
             return FloatValue(self.float_val - other.float_val)
         assert False
 
+    def is_truthy(self):
+        return self.float_val != 0.0
+
 
 class StrValue(Value):
     __slots__ = ("str_val",)
@@ -163,3 +178,6 @@ class StrValue(Value):
 
     def str(self):
         return self.str_val
+
+    def is_truthy(self):
+        return self.str_val != ""

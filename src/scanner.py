@@ -48,6 +48,7 @@ class TokenTy:
     NOW = 36
     O = 37
     OF = 38
+    OIC = 70
     OMG = 39
     OMGWTF = 40
     OUTTA = 41
@@ -135,6 +136,7 @@ token_map = {
     "win": TokenTy.WIN,
     "fail": TokenTy.FAIL,
     "noob": TokenTy.NOOB,
+    "oic": TokenTy.OIC,
 }
 
 
@@ -214,6 +216,12 @@ class Scanner:
 
         if c == '"':
             return self.string()
+        if c == "?":
+            return self.make_token(TokenTy.OP_QUESTION, start)
+        if c == "!":
+            return self.make_token(TokenTy.OP_QUESTION, start)
+        if c == ",":
+            return self.make_token(TokenTy.OP_COMMA, start)
         if self.is_digit(c):
             return self.number()
         if self.is_id_start(c):

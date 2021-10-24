@@ -60,7 +60,7 @@ class Builder:
         self.advance()
 
         while not self.match(TokenTy.EOF):
-            self.statement()
+            self.inner_block_stmt()
 
         self.end_compiler()
 
@@ -83,10 +83,66 @@ class Builder:
             self.begin_scope()
             self.block()
             self.end_scope()
+        elif self.match(TokenTy.O):
+            self.conditional()
         else:
             self.expression()
             # If an expression is on it's own, emit code to set the IT register
             self.write_expression()
+
+    def conditional(self):
+        self.consume(TokenTy.RLY, "expected token `RLY`")
+        self.consume(TokenTy.OP_QUESTION, "expected question mark")
+
+        else_jump = -1
+        if self.match(TokenTy.YA):
+            self.consume(TokenTy.RLY, "expected token `RLY`")
+            jump = self.emit_jump(OpCode.JUMP_IF_FALSE)
+            while not (
+                self.check(TokenTy.OIC)
+                or self.check(TokenTy.MEBBE)
+                or self.check(TokenTy.NO)
+            ):
+                self.inner_block_stmt()
+            else_jump = self.emit_jump(OpCode.JUMP)
+            self.patch_jump(jump)
+
+        else_if_jumps = []
+
+        while self.match(TokenTy.MEBBE):
+            self.expression()
+            self.write_expression()
+            jump = self.emit_jump(OpCode.JUMP_IF_FALSE)
+            while not (
+                self.check(TokenTy.MEBBE)
+                or self.check(TokenTy.NO)
+                or self.check(TokenTy.OIC)
+            ):
+                self.inner_block_stmt()
+            else_if_jumps.append(self.emit_jump(OpCode.JUMP))
+            self.patch_jump(jump)
+
+        if self.match(TokenTy.NO):
+            self.consume(TokenTy.WAI, "expected token `WAI`")
+            while not (self.check(TokenTy.OIC)):
+                self.inner_block_stmt()
+
+            if else_jump != -1:
+                self.patch_jump(else_jump)
+
+        for jump in else_if_jumps:
+            self.patch_jump(jump)
+
+        self.consume(TokenTy.OIC, "expected token `OIC` to end conditional")
+
+    def emit_jump(self, jmp_ty):
+        self.emit_byte(jmp_ty)
+        self.emit_byte(0)
+        return len(self.chunk.code) - 1
+
+    def patch_jump(self, offset):
+        jump = len(self.chunk.code) - offset - 1
+        self.chunk.code[offset] = jump
 
     def expression(self):
         if self.match(TokenTy.SUM):
@@ -118,9 +174,14 @@ class Builder:
     def write_expression(self):
         self.emit_byte(OpCode.SET_IT)
 
+    def inner_block_stmt(self):
+        self.statement()
+        # Optional comma at the end of a line
+        self.match(TokenTy.OP_COMMA)
+
     def block(self):
         while (not self.check(TokenTy.KILL)) and (not self.check(TokenTy.EOF)):
-            self.statement()
+            self.inner_block_stmt()
         self.consume(TokenTy.KILL, "expected token `KILL` after block")
 
     def begin_scope(self):

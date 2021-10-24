@@ -1,0 +1,6 @@
+BTW { "status": "error" }
+HAI 1.3
+I HAS A ARRAY ITZ A LIZT
+SHUV "HI" INTO BAK OF ARRAY
+KTHXBYE
+

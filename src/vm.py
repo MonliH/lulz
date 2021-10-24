@@ -1,5 +1,5 @@
 from bytecode import Chunk, OpCode
-from debug import disassemble_instr
+from debug import disassemble, disassemble_instr
 from value import BoolValue, FloatValue, IntValue, NullValue
 from compiler import compile
 import os
@@ -124,11 +124,20 @@ class Vm:
                 self.it = self.pop()
             elif instruction == OpCode.GET_IT:
                 self.push(self.it)
+            elif instruction == OpCode.JUMP_IF_FALSE:
+                condition = self.it
+                offset = self.read_byte()
+                if not condition.is_truthy():
+                    self.ip += offset
+            elif instruction == OpCode.JUMP:
+                offset = self.read_byte()
+                self.ip += offset
 
 
 def interpret(source):
     chunk = compile(source, Chunk())
     if chunk is None:
         return Result.COMPILE_ERR
+    disassemble(chunk, "Main")
     vm = Vm(chunk)
     return vm.interpret()
