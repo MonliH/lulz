@@ -1,7 +1,8 @@
 from bytecode import Chunk, OpCode
 from error import Span
 from scanner import Scanner, Token, TokenTy
-from value import IntValue
+from value import FloatValue, IntValue
+import os
 
 
 class Local:
@@ -29,7 +30,7 @@ class Builder:
         if self.panic_mode:
             return
         self.panic_mode = True
-        print("[%s] Error: %s" % (token.span.str(), message))
+        os.write(2, "[%s] Error: %s\n" % (token.span.str(), message))
         self.had_error = True
 
     def error_at_current(self, message):
@@ -59,10 +60,15 @@ class Builder:
     def compile(self):
         self.advance()
 
-        while not (self.match(TokenTy.EOF) or self.had_error):
+        self.consume(TokenTy.HAI, "expected `HAI` at start of code")
+        self.consume(TokenTy.FLOAT, "expected version number after `HAI`")
+
+        while not (self.is_at_end() or self.had_error):
             self.inner_block_stmt()
 
         self.end_compiler()
+
+        self.consume(TokenTy.KTHXBYE, "expected `KTHXBYE` at end of code")
 
     def check(self, token_ty):
         return self.current.ty == token_ty
@@ -102,6 +108,7 @@ class Builder:
                 self.check(TokenTy.OIC)
                 or self.check(TokenTy.MEBBE)
                 or self.check(TokenTy.NO)
+                or self.is_at_end()
                 or self.had_error
             ):
                 self.inner_block_stmt()
@@ -119,6 +126,7 @@ class Builder:
                 or self.check(TokenTy.NO)
                 or self.check(TokenTy.OIC)
                 or self.had_error
+                or self.is_at_end()
             ):
                 self.inner_block_stmt()
             else_if_jumps.append(self.emit_jump(OpCode.JUMP))
@@ -126,7 +134,7 @@ class Builder:
 
         if self.match(TokenTy.NO):
             self.consume(TokenTy.WAI, "expected token `WAI`")
-            while not (self.check(TokenTy.OIC)):
+            while not (self.check(TokenTy.OIC) or self.is_at_end()):
                 self.inner_block_stmt()
 
             if else_jump != -1:
@@ -161,6 +169,8 @@ class Builder:
             self.emit_byte(OpCode.DIV)
         elif self.match(TokenTy.NUMBER):
             self.number()
+        elif self.match(TokenTy.FLOAT):
+            self.float()
         elif self.match(TokenTy.WIN):
             self.emit_byte(OpCode.PUSH_WIN)
         elif self.match(TokenTy.FAIL):
@@ -182,11 +192,12 @@ class Builder:
         self.match(TokenTy.OP_COMMA)
 
     def block(self):
-        while not (
-            self.check(TokenTy.KILL) or self.check(TokenTy.EOF) or self.had_error
-        ):
+        while not (self.check(TokenTy.KILL) or self.is_at_end() or self.had_error):
             self.inner_block_stmt()
         self.consume(TokenTy.KILL, "expected token `KILL` after block")
+
+    def is_at_end(self):
+        return self.check(TokenTy.EOF) or self.check(TokenTy.KTHXBYE)
 
     def begin_scope(self):
         self.scope_depth += 1
@@ -251,6 +262,10 @@ class Builder:
 
     def number(self):
         value = IntValue(int(self.previous.text))
+        self.emit_constant(value)
+
+    def float(self):
+        value = FloatValue(float(self.previous.text))
         self.emit_constant(value)
 
     def intern_global(self, s):

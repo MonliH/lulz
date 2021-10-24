@@ -5,7 +5,10 @@ import subprocess
 import difflib
 from subprocess import Popen, PIPE, STDOUT
 from glob import iglob
-import build_api
+import sys
+
+if len(sys.argv) < 2 or sys.argv[1] != "--no-build":
+    import build_api
 
 GREEN = "\033[32m"
 RED = "\033[91m"

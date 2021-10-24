@@ -27,6 +27,7 @@ class TokenTy:
     FOUND = 20
     GIMMEH = 21
     GTFO = 22
+    HAI = 71
     HAS = 62
     HOW = 23
     I = 24
@@ -38,6 +39,7 @@ class TokenTy:
     ITZ = 64
     IZ = 29
     KILL = 66
+    KTHXBYE = 72
     MAEK = 30
     MEBBE = 31
     MKAY = 32
@@ -137,6 +139,8 @@ token_map = {
     "fail": TokenTy.FAIL,
     "noob": TokenTy.NOOB,
     "oic": TokenTy.OIC,
+    "hai": TokenTy.HAI,
+    "kthxbye": TokenTy.KTHXBYE,
 }
 
 
@@ -227,7 +231,7 @@ class Scanner:
         if self.is_id_start(c):
             return self.ident()
 
-        return self.error_token("Unexpected character")
+        return self.error_token("unexpected character `%s`" % c)
 
     def string(self):
         start = self.idx
@@ -271,6 +275,11 @@ class Scanner:
         slice = self.source[start : self.idx]
 
         lower = slice.lower()
+        if lower == "btw":
+            # Single line comment
+            while self.peek() != "\n" and not self.is_at_end():
+                self.advance()
+            return self.scan_token()
         if lower in token_map:
             return self.make_token(token_map[lower], start)
 

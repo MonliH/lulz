@@ -1,4 +1,5 @@
 import sys
+import os
 from bytecode import OpCode, Chunk
 import debug
 from value import IntValue
@@ -23,7 +24,7 @@ def entry_point(argv):
     if len(argv) == 2:
         return run_file(argv[1])
     else:
-        print("Usage: lulz [path]")
+        os.write(2, "Usage: lulz [path]\n")
         return 64
 
 

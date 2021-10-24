@@ -4,7 +4,7 @@ import os
 
 def disassemble(bytecode, name):
     # f-strings don't work with rpython :(
-    print("== %s ==" % name)
+    os.write(2, "== %s ==\n" % name)
     offset = 0
     while offset < len(bytecode.code):
         offset = disassemble_instr(bytecode, offset)
@@ -55,7 +55,7 @@ def disassemble_instr(bytecode, offset):
     elif instr == OpCode.SET_IT:
         return simple_instr("SET_IT", offset)
     else:
-        print("Unknown opcode %d" % instr)
+        os.write(2, "Unknown opcode %d\n" % instr)
         return offset + 1
 
 
@@ -65,24 +65,25 @@ def fill(s, num, c="0"):
 
 
 def simple_instr(text, offset):
-    print(text)
+    os.write(2, "%s\n" % text)
     return offset + 1
 
 
 def double_instr(text, bytecode, offset):
     code_id = bytecode.code[offset + 1]
-    print("%s    %s" % (text, fill(str(code_id), 4)))
+    os.write(2, "%s    %s\n" % (text, fill(str(code_id), 4)))
     return offset + 2
 
 
 def const_instr(text, bytecode, offset):
     constant = bytecode.code[offset + 1]
-    print(
-        "%s %s %s"
+    os.write(
+        2,
+        "%s %s %s\n"
         % (
             text,
             fill(str(constant), 4),
             fill(bytecode.constants[constant].str(), 15, " "),
-        )
+        ),
     )
     return offset + 2
