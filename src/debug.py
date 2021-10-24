@@ -14,7 +14,7 @@ def disassemble_instr(bytecode, offset):
     instr = bytecode.code[offset]
     pos = bytecode.pos[offset]
     os.write(
-        1,
+        2,
         "%s  %s:%s  "
         % (fill(str(offset), 4), fill(str(pos.s), 4), fill(str(pos.e), 4)),
     )

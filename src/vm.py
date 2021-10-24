@@ -53,14 +53,14 @@ class Vm:
     def interpret(self):
         while True:
             disassemble_instr(self.chunk, self.ip)
-            os.write(1, "      ")
+            os.write(2, "      ")
             for value in self.stack:
-                os.write(1, "[%s]" % value.str())
-            os.write(1, " IT: %s" % self.it.str())
-            os.write(1, "\n      { ")
+                os.write(2, "[%s]" % value.str())
+            os.write(2, " IT: %s" % self.it.str())
+            os.write(2, "\n      { ")
             for (k, v) in self.globals.items():
-                os.write(1, "%d: %s, " % (k, v.str()))
-            os.write(1, " }\n")
+                os.write(2, "%d: %s, " % (k, v.str()))
+            os.write(2, " }\n")
 
             instruction = self.read_byte()
             if instruction == OpCode.RETURN:

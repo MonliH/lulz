@@ -21,7 +21,7 @@ def colored(s: str, c: str) -> str:
 
 def run_file(filename, stdin) -> (str, int):
     p = Popen(
-        ["./target/release/lulz", filename],
+        ["./main-c", filename],
         stdout=PIPE,
         stdin=PIPE,
         stderr=PIPE,

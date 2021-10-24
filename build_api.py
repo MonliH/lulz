@@ -1,13 +1,13 @@
 import subprocess
 
-BUILD_SETTINGS = ["--release", "--target-dir", "target"]
+BUILD_SETTINGS = ["-O3"]
 
 print("Building...")
 try:
     subprocess.check_output(
         [
-            "cargo",
-            "build",
+            "rpython",
+            "src/main.py",
         ]
         + BUILD_SETTINGS
     )

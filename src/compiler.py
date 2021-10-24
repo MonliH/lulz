@@ -59,7 +59,7 @@ class Builder:
     def compile(self):
         self.advance()
 
-        while not self.match(TokenTy.EOF):
+        while not (self.match(TokenTy.EOF) or self.had_error):
             self.inner_block_stmt()
 
         self.end_compiler()
@@ -102,6 +102,7 @@ class Builder:
                 self.check(TokenTy.OIC)
                 or self.check(TokenTy.MEBBE)
                 or self.check(TokenTy.NO)
+                or self.had_error
             ):
                 self.inner_block_stmt()
             else_jump = self.emit_jump(OpCode.JUMP)
@@ -117,6 +118,7 @@ class Builder:
                 self.check(TokenTy.MEBBE)
                 or self.check(TokenTy.NO)
                 or self.check(TokenTy.OIC)
+                or self.had_error
             ):
                 self.inner_block_stmt()
             else_if_jumps.append(self.emit_jump(OpCode.JUMP))
@@ -180,7 +182,9 @@ class Builder:
         self.match(TokenTy.OP_COMMA)
 
     def block(self):
-        while (not self.check(TokenTy.KILL)) and (not self.check(TokenTy.EOF)):
+        while not (
+            self.check(TokenTy.KILL) or self.check(TokenTy.EOF) or self.had_error
+        ):
             self.inner_block_stmt()
         self.consume(TokenTy.KILL, "expected token `KILL` after block")
 
