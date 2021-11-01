@@ -254,7 +254,7 @@ class Scanner:
             self.advance()
 
         if self.is_at_end():
-            return self.error_token("Unterminated string")
+            return self.error_token("unterminated string")
 
         tok = self.make_token(TokenTy.STRING, start, self.source[start : self.idx])
 

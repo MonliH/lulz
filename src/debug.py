@@ -31,7 +31,7 @@ def disassemble_instr(bytecode, offset):
     elif instr == OpCode.MUL:
         return simple_instr("OP_MUL", offset)
     elif instr == OpCode.PRINT:
-        return simple_instr("PRINT", offset)
+        return double_instr("PRINT", bytecode, offset)
     elif instr == OpCode.POP:
         return simple_instr("POP", offset)
     elif instr == OpCode.PUSH_WIN:
@@ -58,6 +58,8 @@ def disassemble_instr(bytecode, offset):
         return simple_instr("MIN", offset)
     elif instr == OpCode.MAX:
         return simple_instr("MAX", offset)
+    elif instr == OpCode.EQ:
+        return simple_instr("EQ", offset)
     else:
         os.write(2, "Unknown opcode %d\n" % instr)
         return offset + 1
