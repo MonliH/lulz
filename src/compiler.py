@@ -59,24 +59,36 @@ class Builder:
 
     def compile(self):
         self.advance()
+        self.eat_break()
 
         self.consume(TokenTy.HAI, "expected `HAI` at start of code")
         self.consume(TokenTy.FLOAT, "expected version number after `HAI`")
+
+        self.eat_break()
 
         while not (self.is_at_end() or self.had_error):
             self.inner_block_stmt()
 
         self.end_compiler()
 
+        self.eat_break()
+
         self.consume(TokenTy.KTHXBYE, "expected `KTHXBYE` at end of code")
+
+        self.eat_break()
 
     def check(self, token_ty):
         return self.current.ty == token_ty
 
     def statement(self):
         if self.match(TokenTy.VISIBLE):
+            amount = 1
             self.expression()
-            self.emit_byte(OpCode.PRINT)
+            while not (self.is_at_end() or self.had_error or self.check(TokenTy.BREAK)):
+                self.expression()
+                amount += 1
+            self.line_break()
+            self.emit_bytes(OpCode.PRINT, amount)
         elif self.match(TokenTy.I):
             self.consume(TokenTy.HAS, "expected token `HAS in declaration`")
             self.consume(TokenTy.A, "expected token `A in declaration`")
@@ -85,6 +97,7 @@ class Builder:
             self.consume(TokenTy.ITZ, "expected token `ITZ in declaration`")
             self.expression()
             self.def_variable(ident.text)
+            self.line_break()
         elif self.match(TokenTy.SLAB):
             self.begin_scope()
             self.block()
@@ -95,14 +108,24 @@ class Builder:
             self.expression()
             # If an expression is on it's own, emit code to set the IT register
             self.write_expression()
+            self.line_break()
+
+    def line_break(self):
+        self.consume(TokenTy.BREAK, "expected line break")
+
+    def eat_break(self):
+        self.match(TokenTy.BREAK)
 
     def conditional(self):
         self.consume(TokenTy.RLY, "expected token `RLY`")
         self.consume(TokenTy.OP_QUESTION, "expected question mark")
 
+        self.eat_break()
+
         else_jump = -1
         if self.match(TokenTy.YA):
             self.consume(TokenTy.RLY, "expected token `RLY`")
+            self.eat_break()
             jump = self.emit_jump(OpCode.JUMP_IF_FALSE)
             while not (
                 self.check(TokenTy.OIC)
@@ -115,10 +138,14 @@ class Builder:
             else_jump = self.emit_jump(OpCode.JUMP)
             self.patch_jump(jump)
 
+        self.eat_break()
+
         else_if_jumps = []
 
         while self.match(TokenTy.MEBBE):
+            self.eat_break()
             self.expression()
+            self.eat_break()
             self.write_expression()
             jump = self.emit_jump(OpCode.JUMP_IF_FALSE)
             while not (
@@ -132,8 +159,11 @@ class Builder:
             else_if_jumps.append(self.emit_jump(OpCode.JUMP))
             self.patch_jump(jump)
 
+        self.eat_break()
+
         if self.match(TokenTy.NO):
             self.consume(TokenTy.WAI, "expected token `WAI`")
+            self.eat_break()
             while not (self.check(TokenTy.OIC) or self.is_at_end()):
                 self.inner_block_stmt()
 
@@ -142,6 +172,8 @@ class Builder:
 
         for jump in else_if_jumps:
             self.patch_jump(jump)
+
+        self.eat_break()
 
         self.consume(TokenTy.OIC, "expected token `OIC` to end conditional")
 
@@ -219,8 +251,8 @@ class Builder:
 
     def inner_block_stmt(self):
         self.statement()
-        # Optional comma at the end of a line
-        self.match(TokenTy.OP_COMMA)
+        # Optional break at end of a line
+        self.eat_break()
 
     def block(self):
         while not (self.check(TokenTy.KILL) or self.is_at_end() or self.had_error):

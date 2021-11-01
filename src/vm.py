@@ -76,24 +76,53 @@ class Vm:
                 constant = self.read_constant()
                 self.push(constant)
             elif instruction == OpCode.ADD:
-                l = self.vton(self.pop())
                 r = self.vton(self.pop())
+                l = self.vton(self.pop())
                 self.push(l.add(r))
             elif instruction == OpCode.DIV:
-                l = self.vton(self.pop())
                 r = self.vton(self.pop())
+                l = self.vton(self.pop())
                 self.push(l.div(r))
             elif instruction == OpCode.MUL:
-                l = self.vton(self.pop())
                 r = self.vton(self.pop())
+                l = self.vton(self.pop())
                 self.push(l.mul(r))
             elif instruction == OpCode.SUB:
-                l = self.vton(self.pop())
                 r = self.vton(self.pop())
+                l = self.vton(self.pop())
                 self.push(l.sub(r))
+            elif instruction == OpCode.GT:
+                r = self.vton(self.pop())
+                l = self.vton(self.pop())
+                self.push(l.gt(r))
+            elif instruction == OpCode.GTE:
+                r = self.vton(self.pop())
+                l = self.vton(self.pop())
+                self.push(l.gte(r))
+            elif instruction == OpCode.LT:
+                r = self.vton(self.pop())
+                l = self.vton(self.pop())
+                self.push(l.lt(r))
+            elif instruction == OpCode.LTE:
+                r = self.vton(self.pop())
+                l = self.vton(self.pop())
+                self.push(l.lte(r))
+            elif instruction == OpCode.MIN:
+                r = self.vton(self.pop())
+                l = self.vton(self.pop())
+                self.push(l.min(r))
+            elif instruction == OpCode.MAX:
+                r = self.vton(self.pop())
+                l = self.vton(self.pop())
+                self.push(l.max(r))
             elif instruction == OpCode.PRINT:
-                value = self.pop()
-                print(value.str())
+                num = self.read_byte()
+
+                for i in range(num):
+                    value = self.stack[len(self.stack) - num + i]
+                    os.write(1, value.str())
+
+                os.write(1, "\n")
             elif instruction == OpCode.POP:
                 self.pop()
             elif instruction == OpCode.GLOBAL_DEF:
@@ -120,8 +149,8 @@ class Vm:
             elif instruction == OpCode.GET_IT:
                 self.push(self.it)
             elif instruction == OpCode.EQ:
-                l = self.pop()
                 r = self.pop()
+                l = self.pop()
                 self.push(l.eq(r))
             elif instruction == OpCode.JUMP_IF_FALSE:
                 condition = self.it

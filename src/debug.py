@@ -54,6 +54,10 @@ def disassemble_instr(bytecode, offset):
         return double_instr("JUMP", bytecode, offset)
     elif instr == OpCode.SET_IT:
         return simple_instr("SET_IT", offset)
+    elif instr == OpCode.MIN:
+        return simple_instr("MIN", offset)
+    elif instr == OpCode.MAX:
+        return simple_instr("MAX", offset)
     else:
         os.write(2, "Unknown opcode %d\n" % instr)
         return offset + 1

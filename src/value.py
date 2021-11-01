@@ -52,6 +52,12 @@ class Value:
     def to_number(self):
         return None
 
+    def min(self, other):
+        return None
+
+    def max(self, other):
+        return None
+
 
 class BoolValue(Value):
     __slots__ = ("bool_val",)
@@ -146,12 +152,54 @@ class IntValue(Value):
             return FloatValue(self.int_val - other.float_val)
         assert False
 
+    def lt(self, other):
+        if isinstance(other, IntValue):
+            return IntValue(self.int_val < other.int_val)
+        elif isinstance(other, FloatValue):
+            return FloatValue(self.int_val < other.float_val)
+        assert False
+
+    def lte(self, other):
+        if isinstance(other, IntValue):
+            return IntValue(self.int_val <= other.int_val)
+        elif isinstance(other, FloatValue):
+            return FloatValue(self.int_val <= other.float_val)
+        assert False
+
+    def gte(self, other):
+        if isinstance(other, IntValue):
+            return IntValue(self.int_val >= other.int_val)
+        elif isinstance(other, FloatValue):
+            return FloatValue(self.int_val >= other.float_val)
+        assert False
+
+    def gt(self, other):
+        if isinstance(other, IntValue):
+            return IntValue(self.int_val > other.int_val)
+        elif isinstance(other, FloatValue):
+            return FloatValue(self.int_val > other.float_val)
+        assert False
+
     def eq(self, other):
         if isinstance(other, IntValue):
             return BoolValue(self.int_val == other.int_val)
         elif isinstance(other, FloatValue):
             return BoolValue(float(self.int_val) == other.float_val)
         return BoolValue(False)
+
+    def min(self, other):
+        if isinstance(other, IntValue):
+            return IntValue(min(self.int_val, other.int_val))
+        elif isinstance(other, FloatValue):
+            return FloatValue(min(float(self.int_val), other.float_val))
+        assert False
+
+    def max(self, other):
+        if isinstance(other, IntValue):
+            return IntValue(max(self.int_val, other.int_val))
+        elif isinstance(other, FloatValue):
+            return FloatValue(max(float(self.int_val), other.float_val))
+        assert False
 
     def is_truthy(self):
         return self.int_val != 0
@@ -208,6 +256,48 @@ class FloatValue(Value):
         elif isinstance(other, IntValue):
             return BoolValue(self.float_val == float(other.int_val))
         return BoolValue(False)
+
+    def lt(self, other):
+        if isinstance(other, IntValue):
+            return BoolValue(self.float_val < other.int_val)
+        elif isinstance(other, FloatValue):
+            return BoolValue(self.float_val < other.float_val)
+        assert False
+
+    def lte(self, other):
+        if isinstance(other, IntValue):
+            return BoolValue(self.float_val <= other.int_val)
+        elif isinstance(other, FloatValue):
+            return BoolValue(self.float_val <= other.float_val)
+        assert False
+
+    def gt(self, other):
+        if isinstance(other, IntValue):
+            return BoolValue(self.float_val > other.int_val)
+        elif isinstance(other, FloatValue):
+            return BoolValue(self.float_val > other.float_val)
+        assert False
+
+    def gte(self, other):
+        if isinstance(other, IntValue):
+            return BoolValue(self.float_val >= other.int_val)
+        elif isinstance(other, FloatValue):
+            return BoolValue(self.float_val >= other.float_val)
+        assert False
+
+    def min(self, other):
+        if isinstance(other, IntValue):
+            return FloatValue(min(self.float_val, float(other.int_val)))
+        elif isinstance(other, FloatValue):
+            return FloatValue(min(self.float_val, other.float_val))
+        assert False
+
+    def max(self, other):
+        if isinstance(other, IntValue):
+            return FloatValue(max(self.float_val, float(other.int_val)))
+        elif isinstance(other, FloatValue):
+            return FloatValue(max(self.float_val, other.float_val))
+        assert False
 
     def is_truthy(self):
         return self.float_val != 0.0

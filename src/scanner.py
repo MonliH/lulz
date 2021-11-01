@@ -12,7 +12,7 @@ class TokenTy:
 
     OP_QUESTION = 7
     OP_BANG = 8
-    OP_COMMA = 9
+    BREAK = 9
 
     A = 10
     ALL = 11
@@ -192,10 +192,18 @@ class Scanner:
         self.idx += 1
         return True
 
+    def skip_newlines(self):
+        while not self.is_at_end():
+            c = self.peek()
+            if c == "\n":
+                self.idx += 1
+            else:
+                break
+
     def skip_whitespace(self):
         while not self.is_at_end():
             c = self.peek()
-            if c == "\n" or c == "\t" or c == " ":
+            if c == "\t" or c == " ":
                 self.idx += 1
             else:
                 break
@@ -229,11 +237,14 @@ class Scanner:
         if c == "!":
             return self.make_token(TokenTy.OP_QUESTION, start)
         if c == ",":
-            return self.make_token(TokenTy.OP_COMMA, start)
+            return self.make_token(TokenTy.BREAK, start)
         if self.is_digit(c):
             return self.number()
         if self.is_id_start(c):
             return self.ident()
+        if c == "\n":
+            self.skip_newlines()
+            return self.make_token(TokenTy.BREAK, start)
 
         return self.error_token("unexpected character `%s`" % c)
 
