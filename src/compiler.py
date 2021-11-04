@@ -229,7 +229,13 @@ class Builder:
             self.cmp_op()
         else:
             self.consume(TokenTy.IDENT, "expected an expression")
-            self.get_variable()
+            varname = self.previous.text
+            if self.match(TokenTy.R):
+                # Variable Assignment
+                self.expression()
+                self.set_variable(varname)
+            else:
+                self.get_variable(varname)
 
     def cmp_op(self):
         self.expression()
@@ -291,20 +297,35 @@ class Builder:
                 return i
         return -1
 
-    def get_variable(self):
-        var_pos = self.resolve_local(self.previous.text)
+    def set_variable(self, varname):
+        var_pos = self.resolve_local(varname)
+        if var_pos != -1:
+            # Local exists
+            self.emit_bytes(OpCode.LOCAL_SET, var_pos)
+            return
+
+        if varname in self.globals:
+            # Global exists
+            slot = self.globals[varname]
+            self.emit_bytes(OpCode.GLOBAL_DEF, slot)
+            return
+
+        self.error_at(self.previous, "undefined variable %s" % varname)
+
+    def get_variable(self, varname):
+        var_pos = self.resolve_local(varname)
         if var_pos != -1:
             # Local exists
             self.emit_bytes(OpCode.LOCAL_GET, var_pos)
             return
 
-        if self.previous.text in self.globals:
+        if varname in self.globals:
             # Global exists
-            slot = self.globals[self.previous.text]
+            slot = self.globals[varname]
             self.emit_bytes(OpCode.GLOBAL_GET, slot)
             return
 
-        self.error_at(self.previous, "undefined variable %s" % self.previous.text)
+        self.error_at(self.previous, "undefined variable %s" % varname)
 
     def dec_variable(self, name):
         for i in range(len(self.locals) - 1, -1, -1):

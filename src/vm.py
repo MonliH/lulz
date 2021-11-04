@@ -126,9 +126,8 @@ class Vm:
             elif instruction == OpCode.POP:
                 self.pop()
             elif instruction == OpCode.GLOBAL_DEF:
-                expr = self.pop()
                 idx = self.read_byte()
-                self.globals[idx] = expr
+                self.globals[idx] = self.stack[len(self.stack) - 1]
             elif instruction == OpCode.GLOBAL_GET:
                 idx = self.read_byte()
                 self.push(self.globals[idx])
@@ -137,6 +136,8 @@ class Vm:
                 self.push(self.stack[idx])
             elif instruction == OpCode.LOCAL_SET:
                 idx = self.read_byte()
+                # Keep the expression on the stack
+                # (i.e., assignments are expressions)
                 self.stack[idx] = self.stack[len(self.stack) - 1]
             elif instruction == OpCode.PUSH_WIN:
                 self.push(BoolValue(True))
