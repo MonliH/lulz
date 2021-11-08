@@ -336,3 +336,24 @@ class StrValue(Value):
                 return IntValue(int(self.str_val))
         except:
             return None
+
+
+class FuncValue(Value):
+    __slots__ = ("arity", "chunk", "name")
+    _immutable_fields_ = ["arity", "name"]
+
+    def __init__(self, arity, chunk, name):
+        assert isinstance(arity, int)
+        assert isinstance(name, str)
+        self.arity = arity
+        self.chunk = chunk
+        self.name = name
+
+    def type(self):
+        return "FUNKSHUN"
+
+    def is_truthy(self):
+        return True
+
+    def str(self):
+        return "<FUNKSHUN %s>" % self.name

@@ -1,6 +1,6 @@
 from bytecode import Chunk, OpCode
 from debug import disassemble, disassemble_instr
-from value import BoolValue, FloatValue, IntValue, NullValue
+from value import BoolValue, FloatValue, FuncValue, IntValue, NullValue
 from compiler import compile
 import os
 
@@ -11,24 +11,32 @@ class Result:
     RUNTIME_ERR = 2
 
 
+class CallFrame:
+    __slots__ = ["fn", "ip", "frame_start"]
+    _immutable_fields_ = ["fn"]
+
+    def __init__(self, fn, ip, frame_start):
+        self.fn = fn
+        self.ip = ip
+        self.frame_start = frame_start
+
+
 class Vm:
-    def __init__(self, chunk):
-        assert isinstance(chunk, Chunk)
-        self.chunk = chunk
-        self.ip = 0
+    def __init__(self):
         self.stack = []
-        assert isinstance(self.stack, list)
+        self.frames = []
+        self.frame = None
 
         self.globals = {}
         self.it = NullValue()
 
     def read_byte(self):
-        old_ip = self.ip
-        self.ip += 1
-        return self.chunk.code[old_ip]
+        old_ip = self.frame.ip
+        self.frame.ip += 1
+        return self.frame.fn.chunk.code[old_ip]
 
     def read_constant(self):
-        return self.chunk.constants[self.read_byte()]
+        return self.frame.fn.chunk.constants[self.read_byte()]
 
     def pop(self):
         popped = self.stack.pop()
@@ -44,7 +52,7 @@ class Vm:
         return self.is_number(l) and self.is_number(r)
 
     def span(self):
-        return self.chunk.pos[self.ip]
+        return self.frame.fn.chunk.pos[self.frame.ip]
 
     def runtime_error(self, message):
         print("[%s] Error: %s" % (self.span().str(), message))
@@ -59,7 +67,7 @@ class Vm:
 
     def interpret(self):
         while True:
-            disassemble_instr(self.chunk, self.ip)
+            disassemble_instr(self.frame.fn.chunk, self.frame.ip)
             os.write(2, "      ")
             for value in self.stack:
                 os.write(2, "[%s]" % value.str())
@@ -133,12 +141,14 @@ class Vm:
                 self.push(self.globals[idx])
             elif instruction == OpCode.LOCAL_GET:
                 idx = self.read_byte()
-                self.push(self.stack[idx])
+                self.push(self.stack[self.frame.frame_start + idx])
             elif instruction == OpCode.LOCAL_SET:
                 idx = self.read_byte()
                 # Keep the expression on the stack
                 # (i.e., assignments are expressions)
-                self.stack[idx] = self.stack[len(self.stack) - 1]
+                self.stack[self.frame.frame_start + idx] = self.stack[
+                    len(self.stack) - 1
+                ]
             elif instruction == OpCode.PUSH_WIN:
                 self.push(BoolValue(True))
             elif instruction == OpCode.PUSH_FAIL:
@@ -157,16 +167,23 @@ class Vm:
                 condition = self.it
                 offset = self.read_byte()
                 if not condition.is_truthy():
-                    self.ip += offset
+                    self.frame.ip += offset
             elif instruction == OpCode.JUMP:
                 offset = self.read_byte()
-                self.ip += offset
+                self.frame.ip += offset
 
 
 def interpret(source):
-    chunk = compile(source, Chunk())
-    if chunk is None:
+    function = compile(source)
+    if function is None:
         return Result.COMPILE_ERR
-    disassemble(chunk, "Main")
-    vm = Vm(chunk)
+
+    disassemble(function.chunk, function.name)
+    vm = Vm()
+    vm.push(function)
+
+    frame = CallFrame(function, 0, 0)
+    vm.frames.append(frame)
+    vm.frame = frame
+
     return vm.interpret()

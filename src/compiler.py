@@ -1,7 +1,7 @@
 from bytecode import Chunk, OpCode
 from error import Span
 from scanner import Scanner, Token, TokenTy
-from value import FloatValue, IntValue, StrValue
+from value import FloatValue, FuncValue, IntValue, StrValue
 import os
 
 
@@ -11,20 +11,29 @@ class Local:
         self.depth = depth
 
 
+class FunctionTy:
+    FUNCTION = 0
+    SCRIPT = 1
+
+
 class Builder:
-    def __init__(self, lexer, chunk):
+    def __init__(self, lexer, ty, prev):
         self.lexer = lexer
         self.had_error = False
         self.panic_mode = False
         self.current = None
         self.previous = None
+        self.enclosing = prev
+        self.ty = ty
 
         self.globals = {}
 
         self.scope_depth = 0
         self.locals = []
 
-        self.chunk = chunk
+        self.add_local("")
+
+        self.function = FuncValue(0, Chunk(), "<script>")
 
     def error_at(self, token, message):
         if self.panic_mode:
@@ -77,11 +86,15 @@ class Builder:
 
         self.eat_break()
 
+        return self.function
+
     def check(self, token_ty):
         return self.current.ty == token_ty
 
     def statement(self):
-        if self.match(TokenTy.VISIBLE):
+        if self.match(TokenTy.HOW):
+            self.func_declaration()
+        elif self.match(TokenTy.VISIBLE):
             amount = 1
             self.expression()
             while not (self.is_at_end() or self.had_error or self.check(TokenTy.BREAK)):
@@ -109,6 +122,31 @@ class Builder:
             # If an expression is on it's own, emit code to set the IT register
             self.write_expression()
             self.line_break()
+
+    def func_declaration(self):
+        # HOW IZ I <name>
+        # <body>
+        # IF U SAY SO
+        self.consume(TokenTy.IZ, "expected token `IZ`")
+        self.consume(TokenTy.I, "expected token `I`")
+        self.consume(TokenTy.IDENT, "expected FUNKSHUN name")
+        fn_name = self.previous
+        self.mark_initialized()
+        self.function(FunctionTy.FUNCTION)
+        self.consume(TokenTy.IF, "expected token `IF`")
+        self.consume(TokenTy.U, "expected token `U`")
+        self.consume(TokenTy.SAY, "expected token `SAY`")
+        self.consume(TokenTy.SO, "expected token `SO`")
+        self.def_variable(fn_name.text)
+
+    def function(self, ty):
+        compiler = Builder(self.lexer, ty, self)
+        compiler.begin_scope()
+        while not (self.is_at_end() or self.had_error or self.check(TokenTy.IF)):
+            compiler.inner_block_stmt()
+
+        function = compiler.end_compiler()
+        self.emit_constant(FuncValue(function))
 
     def line_break(self):
         self.consume(TokenTy.BREAK, "expected line break")
@@ -177,14 +215,17 @@ class Builder:
 
         self.consume(TokenTy.OIC, "expected token `OIC` to end conditional")
 
+    def current_chunk(self):
+        return self.function.chunk
+
     def emit_jump(self, jmp_ty):
         self.emit_byte(jmp_ty)
         self.emit_byte(0)
-        return len(self.chunk.code) - 1
+        return len(self.current_chunk().code) - 1
 
     def patch_jump(self, offset):
-        jump = len(self.chunk.code) - offset - 1
-        self.chunk.code[offset] = jump
+        jump = len(self.current_chunk().code) - offset - 1
+        self.current_chunk().code[offset] = jump
 
     def expression(self):
         if self.match(TokenTy.STRING):
@@ -361,10 +402,11 @@ class Builder:
         self.emit_bytes(OpCode.CONSTANT, self.make_constant(value))
 
     def make_constant(self, value):
-        return self.chunk.add_constant(value)
+        return self.current_chunk().add_constant(value)
 
     def end_compiler(self):
         self.emit_return()
+        return self.function
 
     def emit_return(self):
         self.emit_byte(OpCode.RETURN)
@@ -374,10 +416,10 @@ class Builder:
         self.emit_byte(b2)
 
     def emit_byte(self, b):
-        self.chunk.write(b, self.previous.span)
+        self.current_chunk().write(b, self.previous.span)
 
 
-def compile(source, chunk):
+def compile(source):
     scanner = Scanner(source)
 
     # while True:
@@ -386,8 +428,8 @@ def compile(source, chunk):
     #         # EOF
     #         break
     #     print("ty: %s, text: '%s', %s" % (tok.ty, tok.text, tok.span.str()))
-    parser = Builder(scanner, chunk)
-    parser.compile()
+    parser = Builder(scanner, FunctionTy.SCRIPT, None)
+    function = parser.compile()
     if parser.had_error:
         return None
-    return chunk
+    return function
