@@ -141,6 +141,7 @@ class Builder:
 
     def function(self, ty, name):
         compiler = Builder(self.lexer, ty, self, name)
+        compiler.globals = self.globals
         compiler.previous = self.previous
         compiler.current = self.current
         compiler.advance()

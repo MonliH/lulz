@@ -155,6 +155,10 @@ class Vm:
                     value = self.stack[len(self.stack) - num + i]
                     os.write(1, value.str())
 
+                del_start = len(self.stack) - num
+                assert del_start >= 0
+                del self.stack[del_start:]
+
                 os.write(1, "\n")
             elif instruction == OpCode.POP:
                 self.pop()
