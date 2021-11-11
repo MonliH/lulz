@@ -1,4 +1,5 @@
 from bytecode import Chunk, OpCode
+from debug import disassemble
 from error import Span
 from scanner import Scanner, Token, TokenTy
 from value import FloatValue, FuncValue, IntValue, StrValue
@@ -17,7 +18,7 @@ class FunctionTy:
 
 
 class Builder:
-    def __init__(self, lexer, ty, prev):
+    def __init__(self, lexer, ty, prev, name="<script>"):
         self.lexer = lexer
         self.had_error = False
         self.panic_mode = False
@@ -33,7 +34,7 @@ class Builder:
 
         self.add_local("")
 
-        self.function = FuncValue(0, Chunk(), "<script>")
+        self.fn = FuncValue(0, Chunk([], [], []), name)
 
     def error_at(self, token, message):
         if self.panic_mode:
@@ -66,6 +67,9 @@ class Builder:
             return True
         return False
 
+    def check_prev(self, token_ty):
+        return self.previous.ty == token_ty
+
     def compile(self):
         self.advance()
         self.eat_break()
@@ -86,7 +90,7 @@ class Builder:
 
         self.eat_break()
 
-        return self.function
+        return self.fn
 
     def check(self, token_ty):
         return self.current.ty == token_ty
@@ -102,11 +106,10 @@ class Builder:
                 amount += 1
             self.line_break()
             self.emit_bytes(OpCode.PRINT, amount)
-        elif self.match(TokenTy.I):
+        elif self.match(TokenTy.I) and self.check(TokenTy.HAS):
             self.consume(TokenTy.HAS, "expected token `HAS in declaration`")
             self.consume(TokenTy.A, "expected token `A in declaration`")
-            self.consume(TokenTy.IDENT, "expected identifier in declaration")
-            ident = self.previous
+            ident = self.ident()
             self.consume(TokenTy.ITZ, "expected token `ITZ in declaration`")
             self.expression()
             self.def_variable(ident.text)
@@ -129,24 +132,27 @@ class Builder:
         # IF U SAY SO
         self.consume(TokenTy.IZ, "expected token `IZ`")
         self.consume(TokenTy.I, "expected token `I`")
-        self.consume(TokenTy.IDENT, "expected FUNKSHUN name")
-        fn_name = self.previous
-        self.mark_initialized()
-        self.function(FunctionTy.FUNCTION)
-        self.consume(TokenTy.IF, "expected token `IF`")
+        fn_name = self.ident()
+        self.function(FunctionTy.FUNCTION, fn_name.text)
         self.consume(TokenTy.U, "expected token `U`")
         self.consume(TokenTy.SAY, "expected token `SAY`")
         self.consume(TokenTy.SO, "expected token `SO`")
         self.def_variable(fn_name.text)
 
-    def function(self, ty):
-        compiler = Builder(self.lexer, ty, self)
+    def function(self, ty, name):
+        compiler = Builder(self.lexer, ty, self, name)
+        compiler.previous = self.previous
+        compiler.current = self.current
+        compiler.advance()
         compiler.begin_scope()
-        while not (self.is_at_end() or self.had_error or self.check(TokenTy.IF)):
+        while not (compiler.is_at_end() or compiler.had_error or compiler.check(TokenTy.IF)):
             compiler.inner_block_stmt()
 
+        compiler.consume(TokenTy.IF, "expected token `IF`")
         function = compiler.end_compiler()
-        self.emit_constant(FuncValue(function))
+        self.previous = compiler.previous
+        self.current = compiler.current
+        self.emit_constant(function)
 
     def line_break(self):
         self.consume(TokenTy.BREAK, "expected line break")
@@ -216,7 +222,7 @@ class Builder:
         self.consume(TokenTy.OIC, "expected token `OIC` to end conditional")
 
     def current_chunk(self):
-        return self.function.chunk
+        return self.fn.chunk
 
     def emit_jump(self, jmp_ty):
         self.emit_byte(jmp_ty)
@@ -228,7 +234,9 @@ class Builder:
         self.current_chunk().code[offset] = jump
 
     def expression(self):
-        if self.match(TokenTy.STRING):
+        if self.check_prev(TokenTy.I) or self.match(TokenTy.I):
+            self.call()
+        elif self.match(TokenTy.STRING):
             self.emit_constant(StrValue(self.previous.text))
         elif self.match(TokenTy.SUM):
             self.of_x_an_y()
@@ -278,6 +286,16 @@ class Builder:
             else:
                 self.get_variable(varname)
 
+    def call(self):
+        self.consume(TokenTy.IZ, "expected token `IZ`")
+        fn = self.expression()
+        self.consume(TokenTy.MKAY, "expected token `MKAY`")
+        self.emit_bytes(OpCode.CALL, 0)
+
+    def ident(self):
+        self.consume(TokenTy.IDENT, "expected identifier")
+        return self.previous
+
     def cmp_op(self):
         self.expression()
         if self.match(TokenTy.LES):
@@ -311,12 +329,17 @@ class Builder:
 
     def begin_scope(self):
         self.scope_depth += 1
+        self.clear_it()
 
     def end_scope(self):
         self.scope_depth -= 1
         while len(self.locals) and self.locals[-1].depth > self.scope_depth:
             self.emit_byte(OpCode.POP)
             self.locals.pop()
+
+    def clear_it(self):
+        self.emit_byte(OpCode.PUSH_NOOB)
+        self.emit_byte(OpCode.SET_IT)
 
     def def_variable(self, ident):
         if self.scope_depth > 0:
@@ -406,9 +429,11 @@ class Builder:
 
     def end_compiler(self):
         self.emit_return()
-        return self.function
+        disassemble(self.current_chunk(), self.fn.name)
+        return self.fn
 
     def emit_return(self):
+        self.emit_byte(OpCode.GET_IT)
         self.emit_byte(OpCode.RETURN)
 
     def emit_bytes(self, b1, b2):

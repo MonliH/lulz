@@ -16,7 +16,7 @@ def disassemble_instr(bytecode, offset):
     os.write(
         2,
         "%s  %s:%s  "
-        % (fill(str(offset), 4), fill(str(pos.s), 4), fill(str(pos.e), 4)),
+        % (zfill(str(offset), 4), zfill(str(pos.s), 4), zfill(str(pos.e), 4)),
     )
     if instr == OpCode.RETURN:
         return simple_instr("OP_RETURN", offset)
@@ -54,20 +54,27 @@ def disassemble_instr(bytecode, offset):
         return double_instr("JUMP", bytecode, offset)
     elif instr == OpCode.SET_IT:
         return simple_instr("SET_IT", offset)
+    elif instr == OpCode.GET_IT:
+        return simple_instr("GET_IT", offset)
     elif instr == OpCode.MIN:
         return simple_instr("MIN", offset)
     elif instr == OpCode.MAX:
         return simple_instr("MAX", offset)
     elif instr == OpCode.EQ:
         return simple_instr("EQ", offset)
+    elif instr == OpCode.CALL:
+        return double_instr("CALL", bytecode, offset)
     else:
         os.write(2, "Unknown opcode %d\n" % instr)
         return offset + 1
 
 
-def fill(s, num, c="0"):
+def fill(s, num, c):
     offset = max(0, num - len(s))
     return c * offset + s
+
+def zfill(s, num):
+    return fill(s, num, "0")
 
 
 def simple_instr(text, offset):
@@ -77,7 +84,7 @@ def simple_instr(text, offset):
 
 def double_instr(text, bytecode, offset):
     code_id = bytecode.code[offset + 1]
-    os.write(2, "%s    %s\n" % (text, fill(str(code_id), 4)))
+    os.write(2, "%s    %s\n" % (text, zfill(str(code_id), 4)))
     return offset + 2
 
 
@@ -88,7 +95,7 @@ def const_instr(text, bytecode, offset):
         "%s %s %s\n"
         % (
             text,
-            fill(str(constant), 4),
+            zfill(str(constant), 4),
             fill(bytecode.constants[constant].str(), 15, " "),
         ),
     )

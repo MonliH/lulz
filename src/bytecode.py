@@ -37,9 +37,11 @@ class OpCode:
     LT = 24
     LTE = 25
 
+    CALL = 26
+
 
 class Chunk:
-    def __init__(self, constants=[], code=[], pos=[]):
+    def __init__(self, constants, code, pos):
         self.constants = constants
         self.code = code
         self.pos = pos

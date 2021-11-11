@@ -55,7 +55,7 @@ class Vm:
         return self.frame.fn.chunk.pos[self.frame.ip]
 
     def runtime_error(self, message):
-        print("[%s] Error: %s" % (self.span().str(), message))
+        print("[%s] Error: %s, IDIOT!" % (self.span().str(), message))
         return Result.RUNTIME_ERR
 
     def vton(self, value):
@@ -64,6 +64,15 @@ class Vm:
         if num_val:
             return num_val
         self.runtime_error("%s is not a NUMBAR or NUMBR" % value.dbg())
+
+    def call_value(self, callee, arg_count):
+        if isinstance(callee, FuncValue):
+            self.frames.append(CallFrame(callee, 0, len(self.stack) - arg_count - 1))
+            self.frame = self.frames[-1]
+            return True
+
+        self.runtime_error("Can only call FUNKSHUNS")
+        return False
 
     def interpret(self):
         while True:
@@ -79,7 +88,23 @@ class Vm:
 
             instruction = self.read_byte()
             if instruction == OpCode.RETURN:
-                return Result.OK
+                ret_val = self.pop()
+                self.frames.pop()
+                if len(self.frames) == 0:
+                    # Pop off the <script> function
+                    self.pop()
+                    return Result.OK
+
+                idx = self.frame.frame_start
+                assert idx >= 0
+                del self.stack[idx:]
+                self.frame = self.frames[-1]
+                self.push(ret_val)
+            elif instruction == OpCode.CALL:
+                arg_count = self.read_byte()
+                if not self.call_value(self.stack[-1-arg_count], arg_count):
+                    return Result.RUNTIME_ERR
+                self.frame = self.frames[-1]
             elif instruction == OpCode.CONSTANT:
                 constant = self.read_constant()
                 self.push(constant)
@@ -178,12 +203,8 @@ def interpret(source):
     if function is None:
         return Result.COMPILE_ERR
 
-    disassemble(function.chunk, function.name)
     vm = Vm()
     vm.push(function)
-
-    frame = CallFrame(function, 0, 0)
-    vm.frames.append(frame)
-    vm.frame = frame
+    vm.call_value(function, 0)
 
     return vm.interpret()
