@@ -1,7 +1,7 @@
 from bytecode import Chunk, OpCode
 from debug import disassemble
 from error import Span
-from scanner import Scanner, Token, TokenTy
+from scanner import Scanner, Token, TokenTy, token_ty_map
 from value import FloatValue, FuncValue, IntValue, StrValue
 import os
 
@@ -40,7 +40,7 @@ class Builder:
         if self.panic_mode:
             return
         self.panic_mode = True
-        os.write(2, "[%s] Error: %s\n" % (token.span.str(), message))
+        os.write(2, "[%s] Error: %s, IDIOT!\n" % (token.span.str(), message))
         self.had_error = True
 
     def error_at_current(self, message):
@@ -59,7 +59,7 @@ class Builder:
             self.advance()
             return
 
-        self.error_at_current(message)
+        self.error_at_current("%s, found %s" % (message, token_ty_map[self.current.ty]))
 
     def match(self, token_ty):
         if self.current.ty == token_ty:
@@ -73,22 +73,18 @@ class Builder:
     def compile(self):
         self.advance()
         self.eat_break()
-
         self.consume(TokenTy.HAI, "expected `HAI` at start of code")
         self.consume(TokenTy.FLOAT, "expected version number after `HAI`")
-
         self.eat_break()
 
         while not (self.is_at_end() or self.had_error):
             self.inner_block_stmt()
 
         self.end_compiler()
-
-        self.eat_break()
-
-        self.consume(TokenTy.KTHXBYE, "expected `KTHXBYE` at end of code")
-
-        self.eat_break()
+        if not self.had_error:
+            self.eat_break()
+            self.consume(TokenTy.KTHXBYE, "expected `KTHXBYE` at end of code")
+            self.eat_break()
 
         return self.fn
 
@@ -96,8 +92,21 @@ class Builder:
         return self.current.ty == token_ty
 
     def statement(self):
+        self.eat_break()
+
         if self.match(TokenTy.HOW):
             self.func_declaration()
+        elif self.match(TokenTy.FOUND):
+            if self.ty == FunctionTy.SCRIPT:
+                self.error_at_current("cannot return from top-level code")
+            self.consume(TokenTy.YR, "expected token `YR`")
+            self.expression()
+            self.emit_return()
+        elif self.match(TokenTy.GTFO):
+            if self.ty == FunctionTy.SCRIPT:
+                self.error_at_current("cannot return from top-level code")
+            self.emit_byte(OpCode.PUSH_NOOB)
+            self.emit_return()
         elif self.match(TokenTy.VISIBLE):
             amount = 1
             self.expression()
@@ -107,10 +116,10 @@ class Builder:
             self.line_break()
             self.emit_bytes(OpCode.PRINT, amount)
         elif self.match(TokenTy.I) and self.check(TokenTy.HAS):
-            self.consume(TokenTy.HAS, "expected token `HAS in declaration`")
-            self.consume(TokenTy.A, "expected token `A in declaration`")
+            self.consume(TokenTy.HAS, "expected token `HAS` in declaration")
+            self.consume(TokenTy.A, "expected token `A` in declaration")
             ident = self.ident()
-            self.consume(TokenTy.ITZ, "expected token `ITZ in declaration`")
+            self.consume(TokenTy.ITZ, "expected token `ITZ` in declaration")
             self.expression()
             self.def_variable(ident.text)
             self.line_break()
@@ -134,32 +143,56 @@ class Builder:
         self.consume(TokenTy.I, "expected token `I`")
         fn_name = self.ident()
         self.function(FunctionTy.FUNCTION, fn_name.text)
+        self.consume(TokenTy.IF, "expected token `IF`")
         self.consume(TokenTy.U, "expected token `U`")
         self.consume(TokenTy.SAY, "expected token `SAY`")
         self.consume(TokenTy.SO, "expected token `SO`")
         self.def_variable(fn_name.text)
+
+    def function_args(self):
+        arity = 0
+        if self.match(TokenTy.YR):
+            arity = 1
+            ident = self.ident().text
+            self.add_local(ident)
+            self.eat_break()
+            while self.match(TokenTy.AN):
+                arity += 1
+                self.consume(TokenTy.YR, "expected token `YR`")
+                self.add_local(self.ident().text)
+                self.eat_break()
+        return arity
 
     def function(self, ty, name):
         compiler = Builder(self.lexer, ty, self, name)
         compiler.globals = self.globals
         compiler.previous = self.previous
         compiler.current = self.current
-        compiler.advance()
+        compiler.scope_depth = self.scope_depth
+
         compiler.begin_scope()
+        compiler.eat_break()
+        arity = compiler.function_args()
+        global_id = compiler.intern_global(name)
+
         while not (compiler.is_at_end() or compiler.had_error or compiler.check(TokenTy.IF)):
             compiler.inner_block_stmt()
 
-        compiler.consume(TokenTy.IF, "expected token `IF`")
         function = compiler.end_compiler()
+        function.arity = arity
         self.previous = compiler.previous
         self.current = compiler.current
         self.emit_constant(function)
+        self.emit_bytes(OpCode.GLOBAL_DEF, global_id)
+        if compiler.had_error:
+            self.had_error = True
 
     def line_break(self):
         self.consume(TokenTy.BREAK, "expected line break")
 
     def eat_break(self):
-        self.match(TokenTy.BREAK)
+        while self.match(TokenTy.BREAK):
+            pass
 
     def conditional(self):
         self.consume(TokenTy.RLY, "expected token `RLY`")
@@ -290,8 +323,22 @@ class Builder:
     def call(self):
         self.consume(TokenTy.IZ, "expected token `IZ`")
         fn = self.expression()
-        self.consume(TokenTy.MKAY, "expected token `MKAY`")
-        self.emit_bytes(OpCode.CALL, 0)
+        args = self.argument_list()
+        self.emit_bytes(OpCode.CALL, args)
+
+    def argument_list(self):
+        arg_count = 0
+        if self.match(TokenTy.YR):
+            self.expression()
+            arg_count = 1
+            while self.match(TokenTy.AN):
+                self.consume(TokenTy.YR, "expected token `YR`")
+                self.expression()
+                arg_count += 1
+
+        self.consume(TokenTy.MKAY, "expected token `MKAY` after arguments")
+
+        return arg_count
 
     def ident(self):
         self.consume(TokenTy.IDENT, "expected identifier")
@@ -429,12 +476,12 @@ class Builder:
         return self.current_chunk().add_constant(value)
 
     def end_compiler(self):
+        self.emit_byte(OpCode.GET_IT)
         self.emit_return()
         disassemble(self.current_chunk(), self.fn.name)
         return self.fn
 
     def emit_return(self):
-        self.emit_byte(OpCode.GET_IT)
         self.emit_byte(OpCode.RETURN)
 
     def emit_bytes(self, b1, b2):

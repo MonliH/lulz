@@ -1,85 +1,89 @@
 from error import Span
 
 
-# Oh my goodness, lolcode has so many reserved keywords
-class TokenTy:
-    EOF = 0
-    NUMBER = 2
-    FLOAT = 3
-    IDENT = 4
-    ERROR = 5
-    STRING = 6
+def enum(*sequential, **named):
+    enums = dict(zip(sequential, range(len(sequential))), **named)
+    reverse = dict((value, key) for key, value in enums.items())
+    return (type("Enum", (), enums), reverse)
 
-    OP_QUESTION = 7
-    OP_BANG = 8
-    BREAK = 9
 
-    A = 10
-    ALL = 11
-    AN = 12
-    ANY = 13
-    BIGGR = 14
-    BOTH = 15
-    DIFF = 17
-    DIFFRINT = 18
-    EITHER = 19
-    EQ = 75
-    FAIL = 68
-    FOUND = 20
-    GIMMEH = 21
-    GRETER = 76
-    GTFO = 22
-    HAI = 71
-    HAS = 62
-    HOW = 23
-    I = 24
-    IF = 25
-    IM = 26
-    IN = 27
-    IS = 28
-    IT = 63
-    ITZ = 64
-    IZ = 29
-    KILL = 66
-    KTHXBYE = 72
-    LES = 73
-    MAEK = 30
-    MEBBE = 31
-    MKAY = 32
-    MOD = 33
-    NO = 34
-    NOOB = 69
-    NOT = 35
-    NOW = 36
-    O = 37
-    OF = 38
-    OIC = 70
-    OMG = 39
-    OMGWTF = 40
-    OUTTA = 41
-    PRODUKT = 42
-    QUOSHUNT = 43
-    R = 44
-    RLY = 45
-    SAEM = 46
-    SAY = 47
-    SLAB = 65
-    SMALLR = 48
-    SMOOSH = 49
-    SO = 50
-    SUM = 51
-    THEN = 74
-    TIL = 52
-    U = 53
-    UR = 54
-    VISIBLE = 55
-    WAI = 56
-    WILE = 57
-    WIN = 67
-    WON = 58
-    WTF = 59
-    YA = 60
-    YR = 61
+(TokenTy, token_ty_map) = enum(
+    "EOF",
+    "NUMBER",
+    "FLOAT",
+    "IDENT",
+    "ERROR",
+    "STRING",
+    "OP_QUESTION",
+    "OP_BANG",
+    "BREAK",
+    "A",
+    "ALL",
+    "AN",
+    "ANY",
+    "BIGGR",
+    "BOTH",
+    "DIFF",
+    "DIFFRINT",
+    "EITHER",
+    "EQ",
+    "FAIL",
+    "FOUND",
+    "GIMMEH",
+    "GRETER",
+    "GTFO",
+    "HAI",
+    "HAS",
+    "HOW",
+    "I",
+    "IF",
+    "IM",
+    "IN",
+    "IS",
+    "IT",
+    "ITZ",
+    "IZ",
+    "KILL",
+    "KTHXBYE",
+    "LES",
+    "MAEK",
+    "MEBBE",
+    "MKAY",
+    "MOD",
+    "NO",
+    "NOOB",
+    "NOT",
+    "NOW",
+    "O",
+    "OF",
+    "OIC",
+    "OMG",
+    "OMGWTF",
+    "OUTTA",
+    "PRODUKT",
+    "QUOSHUNT",
+    "R",
+    "RLY",
+    "SAEM",
+    "SAY",
+    "SLAB",
+    "SMALLR",
+    "SMOOSH",
+    "SO",
+    "SUM",
+    "THEN",
+    "TIL",
+    "U",
+    "UR",
+    "VISIBLE",
+    "WAI",
+    "WILE",
+    "WIN",
+    "WON",
+    "WTF",
+    "YA",
+    "YR",
+)
 
 
 token_map = {
@@ -145,6 +149,10 @@ token_map = {
     "oic": TokenTy.OIC,
     "hai": TokenTy.HAI,
     "kthxbye": TokenTy.KTHXBYE,
+    "les": TokenTy.LES,
+    "greter": TokenTy.GRETER,
+    "eq": TokenTy.EQ,
+    "then": TokenTy.THEN,
 }
 
 

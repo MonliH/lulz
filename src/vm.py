@@ -67,6 +67,8 @@ class Vm:
 
     def call_value(self, callee, arg_count):
         if isinstance(callee, FuncValue):
+            if arg_count != callee.arity:
+                return False
             self.frames.append(CallFrame(callee, 0, len(self.stack) - arg_count - 1))
             self.frame = self.frames[-1]
             return True
@@ -76,15 +78,15 @@ class Vm:
 
     def interpret(self):
         while True:
-            disassemble_instr(self.frame.fn.chunk, self.frame.ip)
-            os.write(2, "      ")
-            for value in self.stack:
-                os.write(2, "[%s]" % value.str())
-            os.write(2, " IT: %s" % self.it.str())
-            os.write(2, "\n      { ")
-            for (k, v) in self.globals.items():
-                os.write(2, "%d: %s, " % (k, v.str()))
-            os.write(2, " }\n")
+            # disassemble_instr(self.frame.fn.chunk, self.frame.ip)
+            # os.write(1, "      ")
+            # for value in self.stack:
+            #     os.write(2, "[%s]" % value.str())
+            # os.write(2, " IT: %s" % self.it.str())
+            # os.write(2, "\n      { ")
+            # for (k, v) in self.globals.items():
+            #     os.write(2, "%d: %s, " % (k, v.str()))
+            # os.write(2, " }\n")
 
             instruction = self.read_byte()
             if instruction == OpCode.RETURN:
