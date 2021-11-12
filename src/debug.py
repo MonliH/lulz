@@ -32,6 +32,8 @@ def disassemble_instr(bytecode, offset):
         return simple_instr("OP_MUL", offset)
     elif instr == OpCode.PRINT:
         return double_instr("PRINT", bytecode, offset)
+    elif instr == OpCode.PRINTLN:
+        return double_instr("PRINTLN", bytecode, offset)
     elif instr == OpCode.POP:
         return simple_instr("POP", offset)
     elif instr == OpCode.PUSH_WIN:

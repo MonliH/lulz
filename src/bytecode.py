@@ -38,6 +38,7 @@ class OpCode:
     LTE = 25
 
     CALL = 26
+    PRINTLN = 27
 
 
 class Chunk:

@@ -110,11 +110,15 @@ class Builder:
         elif self.match(TokenTy.VISIBLE):
             amount = 1
             self.expression()
-            while not (self.is_at_end() or self.had_error or self.check(TokenTy.BREAK)):
+            while not (self.is_at_end() or self.had_error or self.check(TokenTy.BREAK) or self.check(TokenTy.OP_BANG)):
                 self.expression()
                 amount += 1
-            self.line_break()
-            self.emit_bytes(OpCode.PRINT, amount)
+            if self.match(TokenTy.OP_BANG):
+                self.emit_byte(OpCode.PRINT)
+            else:
+                self.emit_byte(OpCode.PRINTLN)
+                self.line_break()
+            self.emit_byte(amount)
         elif self.match(TokenTy.I) and self.check(TokenTy.HAS):
             self.consume(TokenTy.HAS, "expected token `HAS` in declaration")
             self.consume(TokenTy.A, "expected token `A` in declaration")
@@ -147,7 +151,6 @@ class Builder:
         self.consume(TokenTy.U, "expected token `U`")
         self.consume(TokenTy.SAY, "expected token `SAY`")
         self.consume(TokenTy.SO, "expected token `SO`")
-        self.def_variable(fn_name.text)
 
     def function_args(self):
         arity = 0

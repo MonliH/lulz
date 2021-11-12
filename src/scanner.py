@@ -243,7 +243,7 @@ class Scanner:
         if c == "?":
             return self.make_token(TokenTy.OP_QUESTION, start)
         if c == "!":
-            return self.make_token(TokenTy.OP_QUESTION, start)
+            return self.make_token(TokenTy.OP_BANG, start)
         if c == ",":
             return self.make_token(TokenTy.BREAK, start)
         if self.is_digit(c):

@@ -2,6 +2,7 @@ from bytecode import Chunk, OpCode
 from debug import disassemble, disassemble_instr
 from value import BoolValue, FloatValue, FuncValue, IntValue, NullValue
 from compiler import compile
+from rpython.rlib import rfile
 import os
 
 
@@ -9,6 +10,11 @@ class Result:
     OK = 0
     COMPILE_ERR = 1
     RUNTIME_ERR = 2
+
+
+class Limits:
+    STACK_MAX = 256
+    FRAMES_MAX = 256
 
 
 class CallFrame:
@@ -23,7 +29,9 @@ class CallFrame:
 
 class Vm:
     def __init__(self):
-        self.stack = []
+        self.stack = [None] * Limits.STACK_MAX
+        self.stack_top = 0
+
         self.frames = []
         self.frame = None
 
@@ -38,12 +46,13 @@ class Vm:
     def read_constant(self):
         return self.frame.fn.chunk.constants[self.read_byte()]
 
-    def pop(self):
-        popped = self.stack.pop()
-        return popped
-
     def push(self, value):
-        self.stack.append(value)
+        self.stack[self.stack_top] = value
+        self.stack_top += 1
+
+    def pop(self):
+        self.stack_top -= 1
+        return self.stack[self.stack_top]
 
     def is_number(self, value):
         return isinstance(value, IntValue) or isinstance(value, FloatValue)
@@ -69,19 +78,33 @@ class Vm:
         if isinstance(callee, FuncValue):
             if arg_count != callee.arity:
                 return False
-            self.frames.append(CallFrame(callee, 0, len(self.stack) - arg_count - 1))
+            self.frames.append(CallFrame(callee, 0, self.stack_top - arg_count - 1))
             self.frame = self.frames[-1]
             return True
 
         self.runtime_error("Can only call FUNKSHUNS")
         return False
 
+    def peek(self, dist):
+        return self.stack[self.stack_top - 1 - dist]
+
+    def vm_print(self):
+        num = self.read_byte()
+
+        for i in range(num):
+            value = self.peek(num - i - 1)
+            os.write(1, value.str())
+
+        self.stack_top -= num
+
     def interpret(self):
+        # stdin, _, _ = rfile.create_stdio()
         while True:
+            # stdin.readline(1024)
             # disassemble_instr(self.frame.fn.chunk, self.frame.ip)
-            # os.write(1, "      ")
-            # for value in self.stack:
-            #     os.write(2, "[%s]" % value.str())
+            # os.write(2, "      ")
+            # for i in range(self.stack_top):
+            #     os.write(2, "[%s]" % self.stack[i].str())
             # os.write(2, " IT: %s" % self.it.str())
             # os.write(2, "\n      { ")
             # for (k, v) in self.globals.items():
@@ -97,14 +120,12 @@ class Vm:
                     self.pop()
                     return Result.OK
 
-                idx = self.frame.frame_start
-                assert idx >= 0
-                del self.stack[idx:]
+                self.stack_top = self.frame.frame_start
                 self.frame = self.frames[-1]
                 self.push(ret_val)
             elif instruction == OpCode.CALL:
                 arg_count = self.read_byte()
-                if not self.call_value(self.stack[-1-arg_count], arg_count):
+                if not self.call_value(self.peek(arg_count), arg_count):
                     return Result.RUNTIME_ERR
                 self.frame = self.frames[-1]
             elif instruction == OpCode.CONSTANT:
@@ -151,22 +172,15 @@ class Vm:
                 l = self.vton(self.pop())
                 self.push(l.max(r))
             elif instruction == OpCode.PRINT:
-                num = self.read_byte()
-
-                for i in range(num):
-                    value = self.stack[len(self.stack) - num + i]
-                    os.write(1, value.str())
-
-                del_start = len(self.stack) - num
-                assert del_start >= 0
-                del self.stack[del_start:]
-
+                self.vm_print()
+            elif instruction == OpCode.PRINTLN:
+                self.vm_print()
                 os.write(1, "\n")
             elif instruction == OpCode.POP:
                 self.pop()
             elif instruction == OpCode.GLOBAL_DEF:
                 idx = self.read_byte()
-                self.globals[idx] = self.stack[len(self.stack) - 1]
+                self.globals[idx] = self.pop()
             elif instruction == OpCode.GLOBAL_GET:
                 idx = self.read_byte()
                 self.push(self.globals[idx])
@@ -177,9 +191,7 @@ class Vm:
                 idx = self.read_byte()
                 # Keep the expression on the stack
                 # (i.e., assignments are expressions)
-                self.stack[self.frame.frame_start + idx] = self.stack[
-                    len(self.stack) - 1
-                ]
+                self.stack[self.frame.frame_start + idx] = self.peek(0)
             elif instruction == OpCode.PUSH_WIN:
                 self.push(BoolValue(True))
             elif instruction == OpCode.PUSH_FAIL:
@@ -202,6 +214,9 @@ class Vm:
             elif instruction == OpCode.JUMP:
                 offset = self.read_byte()
                 self.frame.ip += offset
+            else:
+                print("Internal Error: Unknown Instruction %s" % instruction)
+                return Result.RUNTIME_ERR
 
 
 def interpret(source):
