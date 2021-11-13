@@ -1,7 +1,7 @@
 from rpython.rlib.objectmodel import instantiate
 
 
-class Value:
+class Value(object):
     __slots__ = ()
 
     def get_value(self):
@@ -19,46 +19,6 @@ class Value:
     def str(self):
         return ""
 
-    def add(self, other):
-        return self
-
-    def sub(self, other):
-        return self
-
-    def mul(self, other):
-        return self
-
-    def div(self, other):
-        return self
-
-    def eq(self, other):
-        return BoolValue(False)
-
-    def is_truthy(self):
-        return False
-
-    def gt(self, other):
-        return BoolValue(False)
-
-    def lt(self, other):
-        return BoolValue(False)
-
-    def gte(self, other):
-        return BoolValue(False)
-
-    def lte(self, other):
-        return BoolValue(False)
-
-    def to_number(self):
-        return None
-
-    def min(self, other):
-        return None
-
-    def max(self, other):
-        return None
-
-
 class BoolValue(Value):
     __slots__ = ("bool_val",)
     _immutable_fields_ = ["bool_val"]
@@ -73,17 +33,6 @@ class BoolValue(Value):
     def str(self):
         return "WIN" if self.bool_val else "FAIL"
 
-    def eq(self, other):
-        if isinstance(other, BoolValue):
-            return BoolValue(self.bool_val == other.bool_val)
-        return BoolValue(False)
-
-    def is_truthy(self):
-        return self.bool_val
-
-    def to_number(self):
-        return IntValue(1 if self.bool_val else 0)
-
 
 class NullValue(Value):
     __slots__ = ()
@@ -97,17 +46,6 @@ class NullValue(Value):
 
     def type(self):
         return "NOOB"
-
-    def eq(self, other):
-        if isinstance(other, NullValue):
-            return BoolValue(True)
-        return BoolValue(False)
-
-    def is_truthy(self):
-        return False
-
-    def to_number(self):
-        return IntValue(0)
 
 
 class IntValue(Value):
@@ -124,89 +62,6 @@ class IntValue(Value):
     def type(self):
         return "NUMBR"
 
-    def add(self, other):
-        if isinstance(other, IntValue):
-            return IntValue(self.int_val + other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.int_val + other.float_val)
-        assert False
-
-    def mul(self, other):
-        if isinstance(other, IntValue):
-            return IntValue(self.int_val * other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.int_val * other.float_val)
-        assert False
-
-    def div(self, other):
-        if isinstance(other, IntValue):
-            return IntValue(self.int_val // other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.int_val / other.float_val)
-        assert False
-
-    def sub(self, other):
-        if isinstance(other, IntValue):
-            return IntValue(self.int_val - other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.int_val - other.float_val)
-        assert False
-
-    def lt(self, other):
-        if isinstance(other, IntValue):
-            return IntValue(self.int_val < other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.int_val < other.float_val)
-        assert False
-
-    def lte(self, other):
-        if isinstance(other, IntValue):
-            return IntValue(self.int_val <= other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.int_val <= other.float_val)
-        assert False
-
-    def gte(self, other):
-        if isinstance(other, IntValue):
-            return IntValue(self.int_val >= other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.int_val >= other.float_val)
-        assert False
-
-    def gt(self, other):
-        if isinstance(other, IntValue):
-            return IntValue(self.int_val > other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.int_val > other.float_val)
-        assert False
-
-    def eq(self, other):
-        if isinstance(other, IntValue):
-            return BoolValue(self.int_val == other.int_val)
-        elif isinstance(other, FloatValue):
-            return BoolValue(float(self.int_val) == other.float_val)
-        return BoolValue(False)
-
-    def min(self, other):
-        if isinstance(other, IntValue):
-            return IntValue(min(self.int_val, other.int_val))
-        elif isinstance(other, FloatValue):
-            return FloatValue(min(float(self.int_val), other.float_val))
-        assert False
-
-    def max(self, other):
-        if isinstance(other, IntValue):
-            return IntValue(max(self.int_val, other.int_val))
-        elif isinstance(other, FloatValue):
-            return FloatValue(max(float(self.int_val), other.float_val))
-        assert False
-
-    def is_truthy(self):
-        return self.int_val != 0
-
-    def to_number(self):
-        return self
-
 
 class FloatValue(Value):
     __slots__ = ("float_val",)
@@ -221,89 +76,6 @@ class FloatValue(Value):
 
     def type(self):
         return "NUMBAR"
-
-    def add(self, other):
-        if isinstance(other, IntValue):
-            return FloatValue(self.float_val + other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.float_val + other.float_val)
-        assert False
-
-    def div(self, other):
-        if isinstance(other, IntValue):
-            return FloatValue(self.float_val / other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.float_val / other.float_val)
-        assert False
-
-    def mul(self, other):
-        if isinstance(other, IntValue):
-            return FloatValue(self.float_val * other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.float_val * other.float_val)
-        assert False
-
-    def sub(self, other):
-        if isinstance(other, IntValue):
-            return FloatValue(self.float_val - other.int_val)
-        elif isinstance(other, FloatValue):
-            return FloatValue(self.float_val - other.float_val)
-        assert False
-
-    def eq(self, other):
-        if isinstance(other, FloatValue):
-            return BoolValue(self.float_val == other.float_val)
-        elif isinstance(other, IntValue):
-            return BoolValue(self.float_val == float(other.int_val))
-        return BoolValue(False)
-
-    def lt(self, other):
-        if isinstance(other, IntValue):
-            return BoolValue(self.float_val < other.int_val)
-        elif isinstance(other, FloatValue):
-            return BoolValue(self.float_val < other.float_val)
-        assert False
-
-    def lte(self, other):
-        if isinstance(other, IntValue):
-            return BoolValue(self.float_val <= other.int_val)
-        elif isinstance(other, FloatValue):
-            return BoolValue(self.float_val <= other.float_val)
-        assert False
-
-    def gt(self, other):
-        if isinstance(other, IntValue):
-            return BoolValue(self.float_val > other.int_val)
-        elif isinstance(other, FloatValue):
-            return BoolValue(self.float_val > other.float_val)
-        assert False
-
-    def gte(self, other):
-        if isinstance(other, IntValue):
-            return BoolValue(self.float_val >= other.int_val)
-        elif isinstance(other, FloatValue):
-            return BoolValue(self.float_val >= other.float_val)
-        assert False
-
-    def min(self, other):
-        if isinstance(other, IntValue):
-            return FloatValue(min(self.float_val, float(other.int_val)))
-        elif isinstance(other, FloatValue):
-            return FloatValue(min(self.float_val, other.float_val))
-        assert False
-
-    def max(self, other):
-        if isinstance(other, IntValue):
-            return FloatValue(max(self.float_val, float(other.int_val)))
-        elif isinstance(other, FloatValue):
-            return FloatValue(max(self.float_val, other.float_val))
-        assert False
-
-    def is_truthy(self):
-        return self.float_val != 0.0
-
-    def to_number(self):
-        return self
 
 
 class StrValue(Value):
@@ -320,23 +92,6 @@ class StrValue(Value):
     def type(self):
         return "YARN"
 
-    def is_truthy(self):
-        return self.str_val != ""
-
-    def eq(self, other):
-        if isinstance(other, StrValue):
-            return BoolValue(self.str_val == other.str_val)
-        return BoolValue(False)
-
-    def to_number(self):
-        try:
-            if "." in self.str_val:
-                return FloatValue(float(self.str_val))
-            else:
-                return IntValue(int(self.str_val))
-        except:
-            return None
-
 
 class FuncValue(Value):
     __slots__ = ("arity", "chunk", "name")
@@ -351,9 +106,6 @@ class FuncValue(Value):
 
     def type(self):
         return "FUNKSHUN"
-
-    def is_truthy(self):
-        return True
 
     def str(self):
         return "<FUNKSHUN %s>" % self.name

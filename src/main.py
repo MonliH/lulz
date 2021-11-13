@@ -6,7 +6,6 @@ from value import IntValue
 from error import Span
 from vm import Result, Vm, interpret
 
-
 def run_file(filename):
     assert isinstance(filename, str)
     source = ""

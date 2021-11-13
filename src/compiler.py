@@ -380,17 +380,12 @@ class Builder:
 
     def begin_scope(self):
         self.scope_depth += 1
-        self.clear_it()
 
     def end_scope(self):
         self.scope_depth -= 1
         while len(self.locals) and self.locals[-1].depth > self.scope_depth:
             self.emit_byte(OpCode.POP)
             self.locals.pop()
-
-    def clear_it(self):
-        self.emit_byte(OpCode.PUSH_NOOB)
-        self.emit_byte(OpCode.SET_IT)
 
     def def_variable(self, ident):
         if self.scope_depth > 0:

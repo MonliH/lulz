@@ -11,4 +11,5 @@ better than CPython in many microbenchmarks.
 - has **additional extensions** (e.g., `RANDOM`, `ARGV`, and more)
 - has beautiful and informative **rust/clang-like-errors**
 
-47 tests
+49 tests working
+[good resource](https://tratt.net/laurie/blog/entries/fast_enough_vms_in_fast_enough_time.html)
