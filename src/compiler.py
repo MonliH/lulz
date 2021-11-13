@@ -133,11 +133,62 @@ class Builder:
             self.end_scope()
         elif self.match(TokenTy.O):
             self.conditional()
+        elif self.match(TokenTy.IM):
+            self.loop()
         else:
             self.expression()
             # If an expression is on it's own, emit code to set the IT register
             self.write_expression()
             self.line_break()
+
+    def save(self):
+        cur = self.current
+        prev = self.previous
+        lexer_pos = self.lexer.idx
+        return (cur, prev, lexer_pos)
+
+    def backtrack(self, data):
+        self.current = data[0]
+        self.prev = data[1]
+        self.lexer.idx = data[2]
+
+    def out_of_loop(self):
+        data = self.save()
+        if self.match(TokenTy.IM):
+            if self.match(TokenTy.OUTTA):
+                return True
+        # If the token is not IM OUTTA, backtrack
+        self.backtrack(data)
+        return False
+
+    def emit_loop(self, loop_start):
+        self.emit_byte(OpCode.LOOP)
+
+        offset = len(self.current_chunk().code) - loop_start + 1
+        self.emit_byte(offset)
+
+    def loop(self):
+        self.consume(TokenTy.IN, "expected token `IN`")
+        self.consume(TokenTy.YR, "expected token `IM`")
+        name = self.ident()
+        exit_jump = -1
+        if self.match(TokenTy.WILE):
+            loop_start = len(self.current_chunk().code)
+            self.expression()
+            exit_jump = self.emit_jump(OpCode.JUMP_IF_FALSE)
+            self.emit_byte(OpCode.POP)
+            while not (self.is_at_end() or self.out_of_loop()):
+                self.inner_block_stmt()
+
+            self.emit_loop(loop_start)
+
+        self.patch_jump(exit_jump)
+        self.emit_byte(OpCode.POP)
+
+        self.consume(TokenTy.YR, "expected token `YR`")
+        end_name = self.ident()
+        if name.text != end_name.text:
+            self.error_at_current("loop labels (%s and %s) do not match" % (name.text, end_name.text))
 
     def func_declaration(self):
         # HOW IZ I <name>

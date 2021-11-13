@@ -39,6 +39,7 @@ class OpCode:
 
     CALL = 26
     PRINTLN = 27
+    LOOP = 28
 
 
 class Chunk:

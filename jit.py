@@ -30,10 +30,19 @@ class TestLLtype(LLJitMixin):
 
         self.meta_interp(interp_w(vm), [], listcomp=True, listops=True, backendopt=True, inline=True)
 
+    def test_loop(self):
+        self.run_string("""HAI 1.3
+I HAS A idx ITZ 0
+IM IN YR LOOP WILE IZ idx LES THEN 5
+    VISIBLE idx
+    idx R SUM OF idx AN 1
+IM OUTTA YR LOOP
+KTHXBYE
+""")
+
     def test_recursive(self):
         self.run_string("""HAI 1.3
 
-BTW THIS IS THE SLOW FIB FUNCTION, WITH EXPONENTIAL RUNTIME
 HOW IZ I FIB YR N
     IZ N LES EQ THEN 1
     O RLY?
@@ -44,6 +53,6 @@ HOW IZ I FIB YR N
     OIC
 IF U SAY SO
 
-VISIBLE I IZ FIB YR 10 MKAY
+VISIBLE I IZ FIB YR 8 MKAY
 KTHXBYE
 """)

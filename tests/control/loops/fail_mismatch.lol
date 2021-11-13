@@ -1,0 +1,8 @@
+BTW { "status": "error" }
+HAI 1.2
+I HAS A i ITZ 0
+IM IN YR LOOP WILE IZ i LES THEN 5
+    VISIBLE i
+    i R SUM OF i AN 1
+IM OUTTA YR LOOP2
+KTHXBYE
