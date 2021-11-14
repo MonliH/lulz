@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn statement(&mut self) -> Failible<Statement> {
+    fn statement(&mut self) -> Failible<Stmt> {
         let next_token = self.next_token()?;
         match next_token.token_kind {
             TokenKind::Put => self.append(next_token.span),
@@ -140,9 +140,9 @@ impl<'a> Parser<'a> {
             TokenKind::Found => self.return_statement(next_token.span),
             TokenKind::Wtf => self.case(next_token.span),
             TokenKind::O => self.conditional(next_token.span),
-            TokenKind::Gtfo => Ok(Statement {
+            TokenKind::Gtfo => Ok(Stmt {
                 span: next_token.span,
-                statement_kind: StatementKind::Break,
+                ty: StmtTy::Break,
             }),
             TokenKind::Can => self.import(next_token.span),
             TokenKind::I => {
@@ -166,17 +166,17 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn append(&mut self, prev_span: Span) -> Failible<Statement> {
+    fn append(&mut self, prev_span: Span) -> Failible<Stmt> {
         let item = self.expr()?;
         self.expect(TokenKind::Into)?;
         let source = self.expr()?;
-        Ok(Statement {
-            statement_kind: StatementKind::Append(source, item),
+        Ok(Stmt {
+            ty: StmtTy::Append(source, item),
             span: prev_span.combine(&self.current_span),
         })
     }
 
-    fn assign_array(&mut self, prev_span: Span) -> Failible<Statement> {
+    fn assign_array(&mut self, prev_span: Span) -> Failible<Stmt> {
         let item = self.expr()?;
         self.expect(TokenKind::Into)?;
         let index = if self.check(&TokenKind::Bak)? {
@@ -188,13 +188,13 @@ impl<'a> Parser<'a> {
         };
         self.expect(TokenKind::Of)?;
         let source = self.expr()?;
-        Ok(Statement {
-            statement_kind: StatementKind::SetItem(source, item, index),
+        Ok(Stmt {
+            ty: StmtTy::SetItem(source, item, index),
             span: prev_span.combine(&self.current_span),
         })
     }
 
-    fn loop_statement(&mut self, span: Span) -> Failible<Statement> {
+    fn loop_statement(&mut self, span: Span) -> Failible<Stmt> {
         self.expect(TokenKind::In)?;
         self.expect(TokenKind::Yr)?;
         let block_name = self.ident()?;
@@ -244,8 +244,8 @@ impl<'a> Parser<'a> {
             );
         }
 
-        Ok(Statement {
-            statement_kind: StatementKind::Loop {
+        Ok(Stmt {
+            ty: StmtTy::Loop {
                 block_name,
                 fn_id,
                 block,
@@ -254,24 +254,24 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn return_statement(&mut self, span: Span) -> Failible<Statement> {
+    fn return_statement(&mut self, span: Span) -> Failible<Stmt> {
         self.expect(TokenKind::Yr)?;
         let expr = self.expr()?;
-        Ok(Statement {
+        Ok(Stmt {
             span: Span::new(span.s, self.current_span.e, self.source_id),
-            statement_kind: StatementKind::Return(expr),
+            ty: StmtTy::Return(expr),
         })
     }
 
-    fn input_statement(&mut self, span: Span) -> Failible<Statement> {
+    fn input_statement(&mut self, span: Span) -> Failible<Stmt> {
         let id = self.ident()?;
-        Ok(Statement {
+        Ok(Stmt {
             span: Span::new(span.s, self.current_span.e, self.source_id),
-            statement_kind: StatementKind::Input(id),
+            ty: StmtTy::Input(id),
         })
     }
 
-    fn function(&mut self, span: Span) -> Failible<Statement> {
+    fn function(&mut self, span: Span) -> Failible<Stmt> {
         self.expect(TokenKind::Iz)?;
         self.expect(TokenKind::I)?;
         let fn_name = self.ident()?;
@@ -293,9 +293,9 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::U)?;
         self.expect(TokenKind::Say)?;
         self.expect(TokenKind::So)?;
-        Ok(Statement {
+        Ok(Stmt {
             span: Span::new(span.s, self.current_span.e, self.source_id),
-            statement_kind: StatementKind::FunctionDef(fn_name, args, block),
+            ty: StmtTy::FunctionDef(fn_name, args, block),
         })
     }
 
@@ -309,13 +309,13 @@ impl<'a> Parser<'a> {
         Ok((expr, block))
     }
 
-    fn case(&mut self, span: Span) -> Failible<Statement> {
+    fn case(&mut self, span: Span) -> Failible<Stmt> {
         self.expect(TokenKind::Question)?;
         self.expect_lines()?;
         if self.check(&TokenKind::Oic)? {
-            Ok(Statement {
+            Ok(Stmt {
                 span: Span::new(span.s, self.current_span.e, self.source_id),
-                statement_kind: StatementKind::Case(Vec::new(), None),
+                ty: StmtTy::Case(Vec::new(), None),
             })
         } else {
             let mut cases = Vec::new();
@@ -341,14 +341,14 @@ impl<'a> Parser<'a> {
 
             self.expect(TokenKind::Oic)?;
 
-            Ok(Statement {
+            Ok(Stmt {
                 span: Span::new(span.s, self.current_span.e, self.source_id),
-                statement_kind: StatementKind::Case(cases, block),
+                ty: StmtTy::Case(cases, block),
             })
         }
     }
 
-    fn conditional(&mut self, span: Span) -> Failible<Statement> {
+    fn conditional(&mut self, span: Span) -> Failible<Stmt> {
         self.expect(TokenKind::Rly)?;
         self.expect(TokenKind::Question)?;
         self.expect(TokenKind::Break)?;
@@ -386,24 +386,24 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Oic)?;
 
-        Ok(Statement {
+        Ok(Stmt {
             span: Span::new(span.s, self.current_span.e, self.source_id),
-            statement_kind: StatementKind::If(ya_rly, mebee, no_wai),
+            ty: StmtTy::If(ya_rly, mebee, no_wai),
         })
     }
 
-    fn import(&mut self, span: Span) -> Failible<Statement> {
+    fn import(&mut self, span: Span) -> Failible<Stmt> {
         self.expect(TokenKind::I)?;
         self.expect(TokenKind::Has)?;
         let ident = self.ident()?;
         self.expect(TokenKind::Question)?;
-        Ok(Statement {
+        Ok(Stmt {
             span: Span::new(span.s, self.current_span.e, self.source_id),
-            statement_kind: StatementKind::Import(ident),
+            ty: StmtTy::Import(ident),
         })
     }
 
-    fn declaration_assignment(&mut self, span: Span) -> Failible<Statement> {
+    fn declaration_assignment(&mut self, span: Span) -> Failible<Stmt> {
         self.expect(TokenKind::Has)?;
         self.expect(TokenKind::A)?;
         let ident = self.ident()?;
@@ -416,31 +416,31 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-        Ok(Statement {
+        Ok(Stmt {
             span: Span::new(span.s, self.current_span.e, self.source_id),
-            statement_kind: StatementKind::DecAssign(ident, expr),
+            ty: StmtTy::DecAssign(ident, expr),
         })
     }
 
-    fn print(&mut self, span: Span) -> Failible<Statement> {
+    fn print(&mut self, span: Span) -> Failible<Stmt> {
         let mut args = vec![self.expr()?];
         while !(self.peek_eq(&TokenKind::Break)? || self.peek_eq(&TokenKind::Bang)?) {
             args.push(self.expr()?);
         }
         let no_newline = self.check(&TokenKind::Bang)?;
-        Ok(Statement {
+        Ok(Stmt {
             span: Span::new(span.s, self.current_span.e, self.source_id),
-            statement_kind: StatementKind::Print(args, no_newline),
+            ty: StmtTy::Print(args, no_newline),
         })
     }
 
-    fn assignment_or_expr(&mut self, prev: Token) -> Failible<Statement> {
+    fn assignment_or_expr(&mut self, prev: Token) -> Failible<Stmt> {
         let statement_kind = match self.peek_token()?.token_kind {
             TokenKind::Is => {
                 self.next_token()?;
                 self.expect(TokenKind::Now)?;
                 self.expect(TokenKind::A)?;
-                StatementKind::MutCast(
+                StmtTy::MutCast(
                     Ident(
                         match prev.token_kind {
                             TokenKind::Ident(s) => s,
@@ -454,7 +454,7 @@ impl<'a> Parser<'a> {
             TokenKind::R => {
                 self.next_token()?;
                 let expr = self.expr()?;
-                StatementKind::Assignment(
+                StmtTy::Assignment(
                     Ident(
                         match prev.token_kind {
                             TokenKind::Ident(s) => s,
@@ -467,14 +467,14 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let expr = self.expr_inner(Some(prev))?;
-                return Ok(Statement {
+                return Ok(Stmt {
                     span: expr.span,
-                    statement_kind: StatementKind::Expr(expr),
+                    ty: StmtTy::Expr(expr),
                 });
             }
         };
-        Ok(Statement {
-            statement_kind,
+        Ok(Stmt {
+            ty: statement_kind,
             span: Span::new(prev.span.s, self.current_span.e, self.source_id),
         })
     }
@@ -519,12 +519,12 @@ impl<'a> Parser<'a> {
         self.expr_inner(None)
     }
 
-    fn expr_binop_of(&mut self, op_ty: OpTy, an_optional: bool) -> Failible<ExprKind> {
+    fn expr_binop_of(&mut self, op_ty: OpTy, an_optional: bool) -> Failible<ExprTy> {
         self.expect(TokenKind::Of)?;
         self.expr_binop(op_ty, an_optional)
     }
 
-    fn expr_binop(&mut self, op_ty: OpTy, an_optional: bool) -> Failible<ExprKind> {
+    fn expr_binop(&mut self, op_ty: OpTy, an_optional: bool) -> Failible<ExprTy> {
         let left = self.expr()?;
         if an_optional {
             self.check(&TokenKind::An)?;
@@ -532,7 +532,7 @@ impl<'a> Parser<'a> {
             self.expect(TokenKind::An)?;
         }
         let right = self.expr()?;
-        Ok(ExprKind::Operator(op_ty, Box::new(left), Box::new(right)))
+        Ok(ExprTy::Operator(op_ty, Box::new(left), Box::new(right)))
     }
 
     fn repeated(&mut self) -> Failible<Vec<Expr>> {
@@ -591,20 +591,20 @@ impl<'a> Parser<'a> {
                 let left = self.expr()?;
                 let op = self.cmp_ops()?;
                 let right = self.expr()?;
-                ExprKind::Operator(op, Box::new(left), Box::new(right))
+                ExprTy::Operator(op, Box::new(left), Box::new(right))
             }
 
             TokenKind::Maek => {
                 let expr = self.expr()?;
                 self.expect(TokenKind::A)?;
                 let ty = self.ty()?;
-                ExprKind::Cast(Box::new(expr), ty)
+                ExprTy::Cast(Box::new(expr), ty)
             }
-            TokenKind::Ident(id) => ExprKind::Variable(Ident(id, to_match.span)),
-            TokenKind::String(s) => ExprKind::String(s),
-            TokenKind::InterpStr(s, interps) => ExprKind::InterpStr(s, interps),
-            TokenKind::Win => ExprKind::Bool(true),
-            TokenKind::Fail => ExprKind::Bool(false),
+            TokenKind::Ident(id) => ExprTy::Variable(Ident(id, to_match.span)),
+            TokenKind::String(s) => ExprTy::String(s),
+            TokenKind::InterpStr(s, interps) => ExprTy::InterpStr(s, interps),
+            TokenKind::Win => ExprTy::Bool(true),
+            TokenKind::Fail => ExprTy::Bool(false),
             TokenKind::Grab => {
                 let index = if self.check(&TokenKind::Bak)? {
                     Err(false)
@@ -615,10 +615,10 @@ impl<'a> Parser<'a> {
                 };
                 self.expect(TokenKind::Frum)?;
                 let source = self.expr()?;
-                ExprKind::GetItem(Box::new(source), index)
+                ExprTy::GetItem(Box::new(source), index)
             }
 
-            TokenKind::Noob => ExprKind::Null,
+            TokenKind::Noob => ExprTy::Null,
 
             TokenKind::Sum => self.expr_binop_of(OpTy::Add, false)?,
             TokenKind::Diff => self.expr_binop_of(OpTy::Sub, false)?,
@@ -641,10 +641,10 @@ impl<'a> Parser<'a> {
 
             TokenKind::Diffrint => self.expr_binop(OpTy::NotEq, true)?,
 
-            TokenKind::Not => ExprKind::UnaryOp(UnOpTy::Not, Box::new(self.expr()?)),
+            TokenKind::Not => ExprTy::UnaryOp(UnOpTy::Not, Box::new(self.expr()?)),
             TokenKind::Langth => {
                 self.expect(TokenKind::Of)?;
-                ExprKind::UnaryOp(UnOpTy::Length, Box::new(self.expr()?))
+                ExprTy::UnaryOp(UnOpTy::Length, Box::new(self.expr()?))
             }
 
             TokenKind::Smoosh => {
@@ -654,7 +654,7 @@ impl<'a> Parser<'a> {
                     args.push(self.expr()?);
                 }
                 self.check(&TokenKind::Mkay)?;
-                ExprKind::Concat(args)
+                ExprTy::Concat(args)
             }
 
             TokenKind::I => {
@@ -673,25 +673,25 @@ impl<'a> Parser<'a> {
                     }
                 }
                 self.expect(TokenKind::Mkay)?;
-                ExprKind::FunctionCall(name, args)
+                ExprTy::FunctionCall(name, args)
             }
 
             TokenKind::All => {
                 self.expect(TokenKind::Of)?;
                 let args = self.repeated()?;
-                ExprKind::All(args)
+                ExprTy::All(args)
             }
 
             TokenKind::Chain => {
                 self.expect(TokenKind::Of)?;
                 let args = self.repeated()?;
-                ExprKind::List(args)
+                ExprTy::List(args)
             }
 
             TokenKind::Any => {
                 self.expect(TokenKind::Of)?;
                 let args = self.repeated()?;
-                ExprKind::Any(args)
+                ExprTy::Any(args)
             }
 
             TokenKind::Number(n1) => {
@@ -701,7 +701,7 @@ impl<'a> Parser<'a> {
                     TokenKind::Dot => {
                         self.next_token()?;
                         match self.next_token()?.token_kind {
-                            TokenKind::Number(n2) => ExprKind::Float(
+                            TokenKind::Number(n2) => ExprTy::Float(
                                 format!("{}.{}", n1, n2)
                                     .parse::<f64>()
                                     .expect("Invalid floating point"),
@@ -719,7 +719,7 @@ impl<'a> Parser<'a> {
                             }
                         }
                     }
-                    _ => ExprKind::Int(n1.parse::<i32>().expect("Invalid integer")),
+                    _ => ExprTy::Int(n1.parse::<i64>().expect("Invalid integer")),
                 }
             }
             _ => {
@@ -736,7 +736,7 @@ impl<'a> Parser<'a> {
         };
 
         Ok(Expr {
-            expr_kind: kind,
+            ty: kind,
             span: Span::new(to_match.span.s, self.current_span.e, self.source_id),
         })
     }
@@ -779,7 +779,7 @@ mod parse_test {
                 let ast = parser.parse();
                 let mut ast_iter = ast.expect("Failed to parse").0.into_iter();
 
-                $(match ast_iter.next().unwrap().statement_kind {
+                $(match ast_iter.next().unwrap().ty {
                     $pat => {}
                     val => panic!("Unexpected statement: {:?}", val)
                 })*
@@ -792,99 +792,99 @@ mod parse_test {
     assert_ast!(
         "HAI 1.4, ident IS NOW A TROOF, KTHXBYE",
         ident_cast_mut,
-        [StatementKind::MutCast(..),]
+        [StmtTy::MutCast(..),]
     );
 
     #[rustfmt::skip]
     assert_ast!(
         "HAI 1.4\n\nI HAS A ident ITZ A LIZT\nKTHXBYE",
         lizt_dec,
-        [StatementKind::DecAssign(_, Some(Err(LolTy::Lizt))),]
+        [StmtTy::DecAssign(_, Some(Err(LolTy::Lizt))),]
     );
 
     #[rustfmt::skip]
     assert_ast!(
         "HAI 1.4\nPUT x INTO ARRAY\nKTHXBYE",
         lizt_append,
-        [StatementKind::Append(..),]
+        [StmtTy::Append(..),]
     );
 
     #[rustfmt::skip]
     assert_ast!(
         "HAI 1.4\nGRAB FRUNT FRUM ARRAY\nKTHXBYE",
         lizt_grab_frunt,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::GetItem(_, Err(true)), ..}),]
+        [StmtTy::Expr(Expr {ty: ExprTy::GetItem(_, Err(true)), ..}),]
     );
 
     #[rustfmt::skip]
     assert_ast!(
         "HAI 1.4\nGRAB BAK FRUM ARRAY\nKTHXBYE",
         lizt_grab_bak,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::GetItem(_, Err(false)), ..}),]
+        [StmtTy::Expr(Expr {ty: ExprTy::GetItem(_, Err(false)), ..}),]
     );
 
     #[rustfmt::skip]
     assert_ast!(
         "HAI 1.4\nGRAB expr FRUM ARRAY\nKTHXBYE",
         lizt_grab_idx,
-        [StatementKind::Expr(Expr {expr_kind: ExprKind::GetItem(_, Ok(_)), ..}),]
+        [StmtTy::Expr(Expr {ty: ExprTy::GetItem(_, Ok(_)), ..}),]
     );
 
     #[rustfmt::skip]
     assert_ast!(
         "HAI 1.4\nSHUV X INTO expr OF ARRAY\nKTHXBYE",
         lizt_shuv_idx,
-        [StatementKind::SetItem(_, _, Ok(_)),]
+        [StmtTy::SetItem(_, _, Ok(_)),]
     );
 
     #[rustfmt::skip]
     assert_ast!(
         "HAI 1.4\nSHUV X INTO FRUNT OF ARRAY\nKTHXBYE",
         lizt_shuv_frunt,
-        [StatementKind::SetItem(_, _, Err(true)),]
+        [StmtTy::SetItem(_, _, Err(true)),]
     );
 
     #[rustfmt::skip]
     assert_ast!(
         "HAI 1.4\nSHUV X INTO BAK OF ARRAY\nKTHXBYE",
         lizt_shuv_bak,
-        [StatementKind::SetItem(_, _, Err(false)),]
+        [StmtTy::SetItem(_, _, Err(false)),]
     );
 
     assert_ast!(
         "HAI 1.4\n\nI HAS A ident\nKTHXBYE",
         var_dec,
-        [StatementKind::DecAssign(..),]
+        [StmtTy::DecAssign(..),]
     );
 
     assert_ast!(
         "HAI 1.4, I HAS A ident ITZ 10, KTHXBYE",
         assign_dec_num,
-        [StatementKind::DecAssign(..),]
+        [StmtTy::DecAssign(..),]
     );
 
     assert_ast!(
         "HAI 1.4, I HAS A ident ITZ \"hello\", KTHXBYE",
         assign_dec_string,
-        [StatementKind::DecAssign(..),]
+        [StmtTy::DecAssign(..),]
     );
 
     assert_ast!(
         "HAI 1.4, VISIBLE \"hello, world\", KTHXBYE",
         print_string,
-        [StatementKind::Print(..),]
+        [StmtTy::Print(..),]
     );
 
     assert_ast!(
         "HAI 1.4, test_id R 10, KTHXBYE",
         assignment_value_integer,
-        [StatementKind::Assignment(..),]
+        [StmtTy::Assignment(..),]
     );
 
     assert_ast!(
         "HAI 1.4, test_id R \"hi\", KTHXBYE",
         assignment_value_string,
-        [StatementKind::Assignment(..),]
+        [StmtTy::Assignment(..),]
     );
 
     assert_ast!(
@@ -892,8 +892,8 @@ mod parse_test {
 I IZ UPPIN YR 10 AN YR 10 AN YR 123 MKAY
 KTHXBYE"#,
         function_call_3_args,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::FunctionCall(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::FunctionCall(..),
             ..
         }),]
     );
@@ -903,8 +903,8 @@ KTHXBYE"#,
 I IZ UPPIN YR 10 AN YR 10 MKAY
 KTHXBYE"#,
         function_call_2_args,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::FunctionCall(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::FunctionCall(..),
             ..
         }),]
     );
@@ -914,8 +914,8 @@ KTHXBYE"#,
 I IZ UPPIN MKAY
 KTHXBYE"#,
         function_call_no_args,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::FunctionCall(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::FunctionCall(..),
             ..
         }),]
     );
@@ -925,8 +925,8 @@ KTHXBYE"#,
 I IZ UPPIN YR 10 MKAY
 KTHXBYE"#,
         function_call_1_arg,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::FunctionCall(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::FunctionCall(..),
             ..
         }),]
     );
@@ -934,8 +934,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, \"hello\", KTHXBYE",
         expr_string,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::String(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::String(..),
             ..
         }),]
     );
@@ -943,8 +943,8 @@ KTHXBYE"#,
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" " world" MKAY, KTHXBYE"#,
         concat_string_no_an_mkay,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Concat(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Concat(..),
             ..
         }),]
     );
@@ -952,8 +952,8 @@ KTHXBYE"#,
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" AN " world" MKAY, KTHXBYE"#,
         concat_string_mkay,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Concat(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Concat(..),
             ..
         }),]
     );
@@ -961,8 +961,8 @@ KTHXBYE"#,
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" " world", KTHXBYE"#,
         concat_string_no_an,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Concat(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Concat(..),
             ..
         }),]
     );
@@ -970,8 +970,8 @@ KTHXBYE"#,
     assert_ast!(
         r#"HAI 1.4, SMOOSH "hi" AN " world", KTHXBYE"#,
         concat_string,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Concat(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Concat(..),
             ..
         }),]
     );
@@ -979,8 +979,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, 123, KTHXBYE",
         expr_int,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Int(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Int(..),
             ..
         }),]
     );
@@ -988,8 +988,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, CHAIN OF 123 AN 123 AN WIN MKAY, KTHXBYE",
         expr_chain3,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::List(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::List(..),
             ..
         }),]
     );
@@ -997,8 +997,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, CHAIN OF 123 AN 123 MKAY, KTHXBYE",
         expr_chain_2,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::List(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::List(..),
             ..
         }),]
     );
@@ -1006,8 +1006,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, CHAIN OF 123 MKAY, KTHXBYE",
         expr_chain1,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::List(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::List(..),
             ..
         }),]
     );
@@ -1015,8 +1015,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, ALL OF 123 AN 123 AN WIN MKAY, KTHXBYE",
         expr_all3,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::All(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::All(..),
             ..
         }),]
     );
@@ -1024,8 +1024,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, ALL OF 123 AN 123 MKAY, KTHXBYE",
         expr_all2,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::All(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::All(..),
             ..
         }),]
     );
@@ -1033,8 +1033,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, ALL OF 123 MKAY, KTHXBYE",
         expr_all1,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::All(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::All(..),
             ..
         }),]
     );
@@ -1042,8 +1042,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, ANY OF 123 AN 123 AN WIN MKAY, KTHXBYE",
         expr_any3,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Any(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Any(..),
             ..
         }),]
     );
@@ -1051,8 +1051,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, ANY OF 123 AN 123 MKAY, KTHXBYE",
         expr_any2,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Any(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Any(..),
             ..
         }),]
     );
@@ -1060,8 +1060,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, ANY OF 123 MKAY, KTHXBYE",
         expr_any1,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Any(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Any(..),
             ..
         }),]
     );
@@ -1069,8 +1069,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, SUM OF 1 AN 2, KTHXBYE",
         expr_add,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Add, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::Add, ..),
             ..
         }),]
     );
@@ -1078,8 +1078,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, DIFF OF 1 AN 2, KTHXBYE",
         expr_sub,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Sub, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::Sub, ..),
             ..
         }),]
     );
@@ -1087,8 +1087,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, PRODUKT OF 1 AN 2, KTHXBYE",
         expr_mul,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Mul, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::Mul, ..),
             ..
         }),]
     );
@@ -1096,8 +1096,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, QUOSHUNT OF 1 AN 2, KTHXBYE",
         expr_div,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Div, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::Div, ..),
             ..
         }),]
     );
@@ -1105,8 +1105,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, MOD OF 1 AN 2, KTHXBYE",
         expr_mod,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Mod, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::Mod, ..),
             ..
         }),]
     );
@@ -1114,8 +1114,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, BIGGR OF 1 AN 2, KTHXBYE",
         expr_max,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Max, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::Max, ..),
             ..
         }),]
     );
@@ -1123,8 +1123,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, SMALLR OF 1 AN 2, KTHXBYE",
         expr_min,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Min, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::Min, ..),
             ..
         }),]
     );
@@ -1132,8 +1132,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, IZ 1 LES EQ THEN 2, KTHXBYE",
         lte_expr,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::LTE, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::LTE, ..),
             ..
         }),]
     );
@@ -1141,8 +1141,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, IZ 1 GRETER EQ THEN 2, KTHXBYE",
         gte_expr,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::GTE, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::GTE, ..),
             ..
         }),]
     );
@@ -1150,8 +1150,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, IZ 1 LES THEN 2, KTHXBYE",
         lt_expr,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::LT, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::LT, ..),
             ..
         }),]
     );
@@ -1159,8 +1159,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, IZ 1 GRETER THEN 2, KTHXBYE",
         gt_expr,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::GT, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::GT, ..),
             ..
         }),]
     );
@@ -1168,8 +1168,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, BOTH SAEM 1 2, KTHXBYE",
         expr_same_no_an,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Equal, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::Equal, ..),
             ..
         }),]
     );
@@ -1177,8 +1177,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, DIFFRINT 1 2, KTHXBYE",
         expr_diff_no_an,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::NotEq, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::NotEq, ..),
             ..
         }),]
     );
@@ -1186,8 +1186,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, BOTH SAEM 1 AN 2, KTHXBYE",
         expr_same,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::Equal, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::Equal, ..),
             ..
         }),]
     );
@@ -1195,8 +1195,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, DIFFRINT 1 AN 2, KTHXBYE",
         expr_diff,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Operator(OpTy::NotEq, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Operator(OpTy::NotEq, ..),
             ..
         }),]
     );
@@ -1204,8 +1204,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, LANGTH OF \"hai\", KTHXBYE",
         expr_len,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::UnaryOp(UnOpTy::Length, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::UnaryOp(UnOpTy::Length, ..),
             ..
         }),]
     );
@@ -1213,8 +1213,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, NOT WIN, KTHXBYE",
         expr_not,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::UnaryOp(UnOpTy::Not, ..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::UnaryOp(UnOpTy::Not, ..),
             ..
         }),]
     );
@@ -1222,8 +1222,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, 123.123, KTHXBYE",
         expr_float,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Float(..),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Float(..),
             ..
         }),]
     );
@@ -1231,8 +1231,8 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, MAEK 10 A NUMBAR, KTHXBYE",
         float_cast,
-        [StatementKind::Expr(Expr {
-            expr_kind: ExprKind::Cast(_, LolTy::Numbar),
+        [StmtTy::Expr(Expr {
+            ty: ExprTy::Cast(_, LolTy::Numbar),
             ..
         }),]
     );
@@ -1240,7 +1240,7 @@ KTHXBYE"#,
     assert_ast!(
         "HAI 1.4, FOUND YR 10, KTHXBYE",
         return_stmt,
-        [StatementKind::Return(..),]
+        [StmtTy::Return(..),]
     );
 
     assert_ast!(
@@ -1250,7 +1250,7 @@ HOW IZ I MULTIPLY YR FIRSTOPERANT AN YR SECONDOPERANT
 IF U SAY SO
 KTHXBYE"#,
         function_with_two_args,
-        [StatementKind::FunctionDef(..),]
+        [StmtTy::FunctionDef(..),]
     );
 
     assert_ast!(
@@ -1260,7 +1260,7 @@ HOW IZ I MULTIPLY YR FIRSTOPERANT
 IF U SAY SO
 KTHXBYE"#,
         function_with_one_arg,
-        [StatementKind::FunctionDef(..),]
+        [StmtTy::FunctionDef(..),]
     );
 
     assert_ast!(
@@ -1270,7 +1270,7 @@ HOW IZ I MULTIPLY
 IF U SAY SO
 KTHXBYE"#,
         function_with_no_args,
-        [StatementKind::FunctionDef(..),]
+        [StmtTy::FunctionDef(..),]
     );
 
     assert_ast!(
@@ -1281,7 +1281,7 @@ WTF ?
 OIC
 KTHXBYE"#,
         case_with_omgwtf_block,
-        [StatementKind::Case(..),]
+        [StmtTy::Case(..),]
     );
 
     assert_ast!(
@@ -1296,7 +1296,7 @@ WTF ?
 OIC
 KTHXBYE"#,
         case_two_with_omgwtf_block,
-        [StatementKind::Case(..),]
+        [StmtTy::Case(..),]
     );
 
     assert_ast!(
@@ -1309,7 +1309,7 @@ WTF ?
 OIC
 KTHXBYE"#,
         case_two_block,
-        [StatementKind::Case(..),]
+        [StmtTy::Case(..),]
     );
 
     assert_ast!(
@@ -1320,7 +1320,7 @@ WTF ?
 OIC
 KTHXBYE"#,
         case_one_block,
-        [StatementKind::Case(..),]
+        [StmtTy::Case(..),]
     );
 
     assert_ast!(
@@ -1330,7 +1330,7 @@ WTF ?
 OIC
 KTHXBYE"#,
         case_with_omgwtf,
-        [StatementKind::Case(..),]
+        [StmtTy::Case(..),]
     );
 
     assert_ast!(
@@ -1342,7 +1342,7 @@ WTF ?
 OIC
 KTHXBYE"#,
         case_two_with_omgwtf,
-        [StatementKind::Case(..),]
+        [StmtTy::Case(..),]
     );
 
     assert_ast!(
@@ -1353,7 +1353,7 @@ WTF ?
 OIC
 KTHXBYE"#,
         case_two,
-        [StatementKind::Case(..),]
+        [StmtTy::Case(..),]
     );
 
     assert_ast!(
@@ -1363,7 +1363,7 @@ WTF ?
 OIC
 KTHXBYE"#,
         case_one,
-        [StatementKind::Case(..),]
+        [StmtTy::Case(..),]
     );
 
     assert_ast!(
@@ -1371,7 +1371,7 @@ KTHXBYE"#,
 GIMMEH hello
 KTHXBYE"#,
         input,
-        [StatementKind::Input(..),]
+        [StmtTy::Input(..),]
     );
 
     assert_ast!(
@@ -1380,7 +1380,7 @@ WTF ?
 OIC
 KTHXBYE"#,
         case_none,
-        [StatementKind::Case(..),]
+        [StmtTy::Case(..),]
     );
 
     #[rustfmt::skip]
@@ -1390,7 +1390,7 @@ IM IN YR block UPPIN YR i WILE WIN
 IM OUTTA YR block
 KTHXBYE"#,
         loop_simple_wile,
-        [StatementKind::Loop { .. },]
+        [StmtTy::Loop { .. },]
     );
 
     #[rustfmt::skip]
@@ -1401,7 +1401,7 @@ IM IN YR block UPPIN YR i WILE WIN
 IM OUTTA YR block
 KTHXBYE"#,
         loop_simple_wile_break,
-        [StatementKind::Loop { .. },]
+        [StmtTy::Loop { .. },]
     );
 
     #[rustfmt::skip]
@@ -1411,7 +1411,7 @@ IM IN YR block UPPIN YR i
 IM OUTTA YR block
 KTHXBYE"#,
         loop_simple,
-        [StatementKind::Loop { .. },]
+        [StmtTy::Loop { .. },]
     );
 
     #[rustfmt::skip]
@@ -1422,7 +1422,7 @@ IM IN YR block UPPIN YR i
 IM OUTTA YR block
 KTHXBYE"#,
         loop_simple_break,
-        [StatementKind::Loop { .. },]
+        [StmtTy::Loop { .. },]
     );
 
     #[rustfmt::skip]
@@ -1432,7 +1432,7 @@ IM IN YR block UPPIN YR i TIL WIN
 IM OUTTA YR block
 KTHXBYE"#,
         loop_simple_till,
-        [StatementKind::Loop { .. },]
+        [StmtTy::Loop { .. },]
     );
 
     #[rustfmt::skip]
@@ -1443,7 +1443,7 @@ IM IN YR block UPPIN YR i TIL WIN
 IM OUTTA YR block
 KTHXBYE"#,
         loop_simple_till_break,
-        [StatementKind::Loop { .. },]
+        [StmtTy::Loop { .. },]
     );
 
     #[rustfmt::skip]
@@ -1453,7 +1453,7 @@ IM IN YR block
 IM OUTTA YR block
 KTHXBYE"#,
         loop_forever_till_break,
-        [StatementKind::Loop { .. },]
+        [StmtTy::Loop { .. },]
     );
 
     assert_ast!(
@@ -1464,7 +1464,7 @@ O RLY?
 OIC
 KTHXBYE"#,
         if_no_wai,
-        [StatementKind::If(..),]
+        [StmtTy::If(..),]
     );
 
     assert_ast!(
@@ -1481,7 +1481,7 @@ O RLY?
 OIC
 KTHXBYE"#,
         if_full,
-        [StatementKind::If(..),]
+        [StmtTy::If(..),]
     );
 
     assert_ast!(
@@ -1494,7 +1494,7 @@ O RLY?
 OIC
 KTHXBYE"#,
         if_ya_rly_mebbe_single,
-        [StatementKind::If(..),]
+        [StmtTy::If(..),]
     );
 
     assert_ast!(
@@ -1509,7 +1509,7 @@ O RLY?
 OIC
 KTHXBYE"#,
         if_ya_rly_mebbe_many,
-        [StatementKind::If(..),]
+        [StmtTy::If(..),]
     );
 
     assert_ast!(
@@ -1523,7 +1523,7 @@ O RLY?
 OIC
 KTHXBYE"#,
         if_ya_rly_no_wai,
-        [StatementKind::If(..),]
+        [StmtTy::If(..),]
     );
 
     assert_ast!(
@@ -1535,7 +1535,7 @@ O RLY?
 OIC
 KTHXBYE"#,
         if_ya_rly,
-        [StatementKind::If(..),]
+        [StmtTy::If(..),]
     );
 
     assert_err!(

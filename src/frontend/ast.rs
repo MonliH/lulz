@@ -18,11 +18,11 @@ impl Hash for Ident {
 }
 
 #[derive(Debug, PartialEq, Clone, Default)]
-pub struct Block(pub Vec<Statement>, pub Span);
+pub struct Block(pub Vec<Stmt>, pub Span);
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Statement {
-    pub statement_kind: StatementKind,
+pub struct Stmt {
+    pub ty: StmtTy,
     pub span: Span,
 }
 
@@ -34,7 +34,7 @@ pub enum LoopCond {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum StatementKind {
+pub enum StmtTy {
     Assignment(Ident, Expr),
     DecAssign(Ident, Option<Result<Expr, LolTy>>),
     Import(Ident),
@@ -56,6 +56,7 @@ pub enum StatementKind {
         block: Block,
     },
     Return(Expr),
+    // bool = no_newline
     Print(Vec<Expr>, bool),
     Input(Ident),
 
@@ -71,13 +72,13 @@ pub enum StatementKind {
 
 #[derive(Debug, Clone)]
 pub struct Expr {
-    pub expr_kind: ExprKind,
+    pub ty: ExprTy,
     pub span: Span,
 }
 
 impl std::cmp::PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
-        self.expr_kind == other.expr_kind
+        self.ty == other.ty
     }
 }
 
@@ -91,9 +92,9 @@ impl std::cmp::PartialEq for InterpEntry {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub enum ExprKind {
+pub enum ExprTy {
     Float(f64),
-    Int(i32),
+    Int(i64),
     String(String),
     InterpStr(String, Vec<InterpEntry>),
     Bool(bool),
@@ -169,14 +170,14 @@ impl LolTy {
         }
     }
 
-    pub fn default_expr_kind(&self) -> ExprKind {
+    pub fn default_expr_kind(&self) -> ExprTy {
         match self {
-            LolTy::Troof => ExprKind::Bool(false),
-            LolTy::Numbar => ExprKind::Float(0.0),
-            LolTy::Numbr => ExprKind::Int(0),
-            LolTy::Yarn => ExprKind::String("".to_string()),
-            LolTy::Lizt => ExprKind::List(Vec::new()),
-            LolTy::Funkshun | LolTy::Noob => ExprKind::Null,
+            LolTy::Troof => ExprTy::Bool(false),
+            LolTy::Numbar => ExprTy::Float(0.0),
+            LolTy::Numbr => ExprTy::Int(0),
+            LolTy::Yarn => ExprTy::String("".to_string()),
+            LolTy::Lizt => ExprTy::List(Vec::new()),
+            LolTy::Funkshun | LolTy::Noob => ExprTy::Null,
         }
     }
 }

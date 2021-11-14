@@ -1,3 +1,4 @@
+import build_api
 import os
 from os import path
 import sys
@@ -7,12 +8,7 @@ import subprocess
 import difflib
 from subprocess import Popen, PIPE, STDOUT
 from glob import iglob
-
-if len(sys.argv) == 2:
-    compiler = sys.argv[1]
-else:
-    compiler = "gcc"
-
+from typing import Tuple
 
 GREEN = "\033[32m"
 RED = "\033[91m"
@@ -26,23 +22,9 @@ def colored(s: str, c: str) -> str:
     return f"{c}{s}{RESET}"
 
 
-def run_file(filename, stdin) -> (str, int):
+def run_file(filename, stdin) -> Tuple[bytes, int, bytes]:
     p = Popen(
-        [
-            "lulz",
-            filename,
-            "-b",
-            compiler,
-        ],
-        stdout=PIPE,
-        stdin=PIPE,
-        stderr=PIPE,
-    )
-    out, err = p.communicate()
-    if p.returncode != 0:
-        return (out, p.returncode, err)
-    p = Popen(
-        ["./lol.out"],
+        ["./target/release/lulz", filename],
         stdout=PIPE,
         stdin=PIPE,
         stderr=PIPE,
@@ -51,7 +33,7 @@ def run_file(filename, stdin) -> (str, int):
     return (out, p.returncode, err)
 
 
-rootdir_glob = path.join(path.dirname(__file__), "**/*.lol")
+rootdir_glob = path.join(path.dirname(__file__), "tests/**/*.lol")
 file_list = (f for f in iglob(rootdir_glob, recursive=True) if os.path.isfile(f))
 failed = 0
 passed = 0

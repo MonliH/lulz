@@ -11,6 +11,7 @@ unicode_names2 = "0.4.0"
 pico-args = { version = "0.4.1", features = ["short-space-opt"] }
 hashbrown = "0.11.2"
 libc = "0.2"
+mlua = { git = "https://github.com/khvzak/mlua.git", features = ["luajit52"] }
 
 [profile.release]
 lto = true

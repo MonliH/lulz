@@ -5,23 +5,24 @@ mod err;
 mod frontend;
 mod opts;
 
+use crate::backend::builtins::register_modules;
 use crate::backend::interner::Interner;
 use crate::diagnostics::Failible;
+use backend::translator::Translator;
 use codespan_reporting::files::SimpleFiles;
 use codespan_reporting::{
     term,
     term::termcolor::{ColorChoice, StandardStream},
 };
 use frontend::*;
-use libc::c_void;
-use std::rc::Rc;
 use std::{
     borrow::Cow,
     fs::read_to_string,
     io::{self, Read},
-    mem,
     process::exit,
 };
+
+use mlua::Lua;
 
 fn main() {
     let mut opts = err::report(
@@ -71,7 +72,14 @@ fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: opts::Opts) 
     let lexer = lex::Lexer::new(sources.get(id).unwrap().source().chars(), id, &mut interner);
     let mut parser = parse::Parser::new(lexer);
     let ast = parser.parse()?;
-    let main_strid = interner.intern("");
+
+    let mut translator = Translator::new();
+    translator.block(ast)?;
+
+    eprintln!("{}", translator.code);
+    let lj = Lua::new();
+    register_modules(&lj);
+    lj.load(&translator.code).exec().expect("Generated lua code should not crash");
 
     Ok(())
 }
