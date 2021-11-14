@@ -27,4 +27,3 @@ function _lulz_print(...)
         io.write(__lulz_to_str(args[i]))
     end
 end
-

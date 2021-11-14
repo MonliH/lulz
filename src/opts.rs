@@ -1,11 +1,11 @@
-use std::ffi::OsString;
+use std::{ffi::OsString, fmt::Write};
 
 pub const HELP: &str = "\
 lulz 0.1.0
 Jonathan Li
 
 USAGE:
-    lulz [FLAGS] [OPTIONS] <input> [-- COMPILER_OPTIONS]
+    lulz [FLAGS] [OPTIONS] <input>
 
 ARGS:
     <input>    Input file to compile. Use `-` to read from stdin
@@ -16,24 +16,13 @@ FLAGS:
 
 OPTIONS:
     -o, --output <file>                Output file [default: lol.out]
-
-COMPILER_OPTIONS:
-    Options to foward to the backend compiler.
+    --dump-lua <file>                  Dump generated lua code a specified file
+    -d, --debug                        Turn debug mode on (for development)
 ";
 
 pub fn parse() -> Result<Opts, pico_args::Error> {
     let mut args: Vec<_> = std::env::args_os().collect();
     args.remove(0);
-
-    let forwarded_args = if let Some(dash_dash) = args.iter().position(|arg| arg == "--") {
-        // Store all arguments following ...
-        let later_args = args.drain(dash_dash + 1..).collect();
-        // .. then remove the `--`
-        args.pop();
-        later_args
-    } else {
-        Vec::new()
-    };
 
     let mut pargs = pico_args::Arguments::from_vec(args);
 
@@ -46,8 +35,9 @@ pub fn parse() -> Result<Opts, pico_args::Error> {
         output: pargs
             .opt_value_from_str(["-o", "--output"])?
             .unwrap_or_else(|| "lol.out".to_string()),
+        dump_lua: pargs.opt_value_from_str("--dump-lua").unwrap(),
+        debug: pargs.contains(["-d", "--debug"]),
         input: pargs.free_from_str()?,
-        backend_args: forwarded_args,
     };
 
     let remaining = pargs.finish();
@@ -62,5 +52,6 @@ pub fn parse() -> Result<Opts, pico_args::Error> {
 pub struct Opts {
     pub output: String,
     pub input: String,
-    pub backend_args: Vec<OsString>,
+    pub dump_lua: Option<String>,
+    pub debug: bool
 }

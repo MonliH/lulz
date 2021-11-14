@@ -15,8 +15,8 @@ use backend::translator::Translator;
 use frontend::*;
 use std::{
     borrow::Cow,
-    fs::read_to_string,
-    io::{self, Read}
+    fs::{read_to_string, File},
+    io::{self, Read, Write},
 };
 
 use mlua::Lua;
@@ -42,27 +42,23 @@ fn main() {
     } else {
         err::report(
             read_to_string(&opts.input),
-            Cow::Borrowed("Failed to read file"),
+            Cow::Owned(format!("Failed to read file `{}`", opts.input)),
         )
     };
-    let id = SOURCEMAP.write().unwrap().add(std::mem::take(&mut opts.input), source);
+    let id = SOURCEMAP
+        .write()
+        .unwrap()
+        .add(std::mem::take(&mut opts.input), source);
     match pipeline(id, opts) {
         Ok(()) => {}
-        Err(es) => {
-
-        }
+        Err(es) => {}
     };
 }
-
 
 fn pipeline(id: usize, opts: opts::Opts) -> Failible<()> {
     let mut interner = Interner::default();
     let guard = SOURCEMAP.read().unwrap();
-    let lexer = lex::Lexer::new(
-        guard.get(id).unwrap().source().chars(),
-        id,
-        &mut interner,
-    );
+    let lexer = lex::Lexer::new(guard.get(id).unwrap().source().chars(), id, &mut interner);
     let mut parser = parse::Parser::new(lexer);
     let ast = parser.parse()?;
     std::mem::drop(guard);
@@ -70,7 +66,21 @@ fn pipeline(id: usize, opts: opts::Opts) -> Failible<()> {
     let mut translator = Translator::new(interner);
     translator.block(ast)?;
 
-    eprintln!("{}", translator.code);
+    if opts.debug {
+        eprintln!("{}", translator.code);
+    }
+
+    if let Some(filename) = opts.dump_lua {
+        let mut file = err::report(
+            File::create(&filename),
+            Cow::Owned(format!("Failed to open file `{}`", filename)),
+        );
+        err::report(
+            file.write(translator.code.as_bytes()),
+            Cow::Owned(format!("Failed to write to file `{}`", filename)),
+        );
+    }
+
     let lj = Lua::new();
     register_modules(&lj);
     lj.load(&translator.code)
