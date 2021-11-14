@@ -135,7 +135,6 @@ pub enum OpTy {
 
     And,
     Or,
-    Xor,
 
     Equal,
     NotEq,

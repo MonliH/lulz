@@ -90,7 +90,7 @@ impl Translator {
                 // TODO: check if init'ed
                 self.assignment(&name, &expr)?;
             }
-            _ => {}
+            _ => todo!("Statement not implemented: {:?}", stmt)
         }
         Ok(())
     }
@@ -103,6 +103,21 @@ impl Translator {
     }
 
     fn call(&mut self, f: &str, args: &[Expr]) -> TransRes {
+        self.writes(f);
+        self.lparen();
+        let mut args = args.iter();
+        if let Some(first) = args.next() {
+            self.expr(first)?;
+            for arg in args {
+                self.comma();
+                self.expr(arg)?;
+            }
+        }
+        self.rparen();
+        Ok(())
+    }
+
+    fn call_ref(&mut self, f: &str, args: &[&Expr]) -> TransRes {
         self.writes(f);
         self.lparen();
         let mut args = args.iter();
@@ -141,7 +156,31 @@ impl Translator {
                 self.boolean(b);
             }
             ExprTy::Variable(ref id) => self.ident(id),
-            _ => {}
+            ExprTy::Operator(op_ty, ref l, ref r) => self.operator(op_ty, &*l, &*r)?,
+            _ => todo!("Expression not implemented: {:?}", expr)
+        }
+        Ok(())
+    }
+
+    fn operator(&mut self, op_ty: OpTy, l: &Expr, r: &Expr) -> TransRes {
+        match op_ty {
+            OpTy::Add => self.call_ref(builtins::ops::LUA_ADD, &[l, r])?,
+            OpTy::Sub => self.call_ref(builtins::ops::LUA_SUB, &[l, r])?,
+            OpTy::Mul => self.call_ref(builtins::ops::LUA_MUL, &[l, r])?,
+            OpTy::Div => self.call_ref(builtins::ops::LUA_DIV, &[l, r])?,
+            OpTy::Mod => self.call_ref(builtins::ops::LUA_MOD, &[l, r])?,
+
+            OpTy::And => self.call_ref(builtins::ops::LUA_AND, &[l, r])?,
+            OpTy::Or => self.call_ref(builtins::ops::LUA_OR, &[l, r])?,
+
+            OpTy::Equal => self.call_ref(builtins::ops::LUA_EQ, &[l, r])?,
+            OpTy::NotEq => self.call_ref(builtins::ops::LUA_NEQ, &[l, r])?,
+
+            OpTy::GT => self.call_ref(builtins::ops::LUA_GT, &[l, r])?,
+            OpTy::LT => self.call_ref(builtins::ops::LUA_LT, &[l, r])?,
+            OpTy::GTE => self.call_ref(builtins::ops::LUA_GTE, &[l, r])?,
+            OpTy::LTE => self.call_ref(builtins::ops::LUA_LTE, &[l, r])?,
+            op => todo!("Operator not implemented: {:?}", op)
         }
         Ok(())
     }

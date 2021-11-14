@@ -637,7 +637,6 @@ impl<'a> Parser<'a> {
                 }
             }
             TokenKind::Either => self.expr_binop_of(OpTy::Or, true)?,
-            TokenKind::Won => self.expr_binop_of(OpTy::Xor, true)?,
 
             TokenKind::Diffrint => self.expr_binop(OpTy::NotEq, true)?,
 
