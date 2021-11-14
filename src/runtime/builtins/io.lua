@@ -13,18 +13,18 @@ function __lulz_to_str(v)
     end
 end
 
-function _lulz_println(pos, ...)
+function _lulz_println(...)
     local args = table.pack(...)
     for i=1,args.n do
-        io.write(__lulz_to_str(pos, args[i]))
+        io.write(__lulz_to_str(args[i]))
     end
     print()
 end
 
-function _lulz_print(pos, ...)
+function _lulz_print(...)
     local args = table.pack(...)
     for i=1,args.n do
-        io.write(__lulz_to_str(pos, args[i]))
+        io.write(__lulz_to_str(args[i]))
     end
 end
 

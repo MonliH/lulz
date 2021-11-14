@@ -113,7 +113,7 @@ impl Translator {
                 } else {
                     builtins::io::LUA_PRINTLN
                 },
-                Some(&Self::span_expr(stmt.span)),
+                None,
                 &exprs,
             )?,
             StmtTy::DecAssign(ref name, expr) => match expr {
