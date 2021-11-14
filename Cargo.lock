@@ -84,6 +84,7 @@ dependencies = [
  "hashbrown",
  "libc",
  "mlua",
+ "once_cell",
  "pico-args",
  "smallvec",
  "unicode_names2",

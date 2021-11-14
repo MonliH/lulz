@@ -1,4 +1,5 @@
 use mlua::Lua;
+use super::errors::register_raise_error;
 
 pub mod io {
     pub const LUA_PRINT: &str = "_lulz_print";
@@ -37,8 +38,11 @@ fn run_str(lj: &Lua, s: &str) {
 
 pub fn register_modules(lj: &Lua) {
     // Order of loading is important
+    register_raise_error(lj);
+
     // Load null first because it overrides the `type` built-in function (evil, I know)
     run_str(lj, include_module!("null"));
+
     run_str(lj, include_module!("io"));
     run_str(lj, include_module!("ops"));
 }

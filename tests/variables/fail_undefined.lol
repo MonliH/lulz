@@ -1,4 +1,5 @@
 BTW { "status": "error" }
 HAI 1.2
 VISIBLE TEST
+VISIBLE "HI"
 KTHXBYE

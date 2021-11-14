@@ -4,6 +4,7 @@ pub mod prelude {
 }
 
 use codespan_reporting::diagnostic;
+use std::fmt::{self, Display};
 
 #[derive(Eq, PartialEq, Debug, Clone, Copy, Default)]
 pub struct Span {
@@ -22,6 +23,14 @@ impl Span {
             file: self.file,
             s: self.s,
             e: other.e,
+        }
+    }
+
+    pub fn from_arr(arr: [usize; 3]) -> Self {
+        Self {
+            s: arr[0],
+            e: arr[1],
+            file: arr[2],
         }
     }
 }
@@ -96,6 +105,12 @@ impl DiagnosticType {
     }
 }
 
+impl Display for DiagnosticType {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "E{:0>3}: {}", *self as usize, self.name())
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Annotation {
     pub message: Cow<'static, str>,
@@ -138,7 +153,7 @@ impl Diagnostic {
         let initial = diagnostic::Diagnostic::error();
         initial
             .with_message(self.ty.description())
-            .with_code(&format!("E{:0>3}: {}", self.ty as usize, self.ty.name()))
+            .with_code(self.ty.to_string())
             .with_labels(
                 self.annotations
                     .into_iter()
