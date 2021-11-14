@@ -1,4 +1,4 @@
-BTW { "output": "Hello, World!\n" }
+BTW { "output": "Hello, World!\nHUH??\n" }
 HAI 1.3
 I HAS A MSG ITZ "BYE!"
 HOW IZ I PRINT_HELLO
@@ -8,4 +8,5 @@ IF U SAY SO
 
 MSG R "HUH??"
 I IZ PRINT_HELLO MKAY
+VISIBLE MSG
 KTHXBYE

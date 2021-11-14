@@ -693,6 +693,8 @@ impl<'a> Parser<'a> {
                 ExprTy::Any(args)
             }
 
+            TokenKind::It => ExprTy::It,
+
             TokenKind::Number(n1) => {
                 let peek = self.peek_token()?;
                 let peek_span = peek.span;

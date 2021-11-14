@@ -122,6 +122,7 @@ pub struct Annotation {
 pub struct Diagnostic {
     pub span: Span,
     pub ty: DiagnosticType,
+    pub note: Option<Cow<'static, str>>,
     pub annotations: SmallVec<[Annotation; 1]>,
 }
 
@@ -139,6 +140,7 @@ impl Diagnostic {
     pub fn build(ty: DiagnosticType, span: Span) -> Self {
         Self {
             annotations: SmallVec::new(),
+            note: None,
             ty,
             span,
         }
@@ -150,8 +152,8 @@ impl Diagnostic {
     }
 
     pub fn into_codespan(self) -> diagnostic::Diagnostic<usize> {
-        let initial = diagnostic::Diagnostic::error();
-        initial
+        let mut initial = diagnostic::Diagnostic::error();
+        initial = initial
             .with_message(self.ty.description())
             .with_code(self.ty.to_string())
             .with_labels(
@@ -159,6 +161,15 @@ impl Diagnostic {
                     .into_iter()
                     .map(|a| a.into_codespan())
                     .collect(),
-            )
+            );
+        if let Some(note) = self.note {
+            initial = initial.with_notes(vec![note.to_string()]);
+        }
+        initial
+    }
+
+    pub fn note(mut self, note: Cow<'static, str>) -> Self {
+        self.note = Some(note);
+        self
     }
 }

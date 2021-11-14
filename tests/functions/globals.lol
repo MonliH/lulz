@@ -1,0 +1,10 @@
+BTW { "output": "Hello, World!\n" }
+HAI 1.3
+I HAS A MSG ITZ "BYE!"
+HOW IZ I PRINT_HELLO
+    MSG R "Hello, World!"
+IF U SAY SO
+
+I IZ PRINT_HELLO MKAY
+VISIBLE MSG
+KTHXBYE

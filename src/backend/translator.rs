@@ -1,13 +1,18 @@
-use crate::diagnostics::Span;
+use hashbrown::HashSet;
+
+use crate::diagnostics::prelude::*;
 use crate::runtime::builtins;
 use crate::{diagnostics::Failible, frontend::ast::*};
 use std::fmt::Write;
 
-use super::interner::Interner;
+use super::interner::{Interner, StrId};
 
 pub struct Translator {
     pub code: String,
-    interner: Interner
+    interner: Interner,
+    local_scope: bool,
+    globals: HashSet<StrId>,
+    locals: Vec<HashSet<StrId>>,
 }
 
 type TransRes = Failible<()>;
@@ -16,7 +21,10 @@ impl Translator {
     pub fn new(interner: Interner) -> Self {
         Self {
             code: String::new(),
-            interner
+            interner,
+            local_scope: false,
+            globals: HashSet::new(),
+            locals: Vec::new(),
         }
     }
 
@@ -40,17 +48,36 @@ impl Translator {
         self.writec('\n');
     }
 
+    fn space(&mut self) {
+        self.writec(' ');
+    }
+
     fn eq(&mut self) {
         self.writec('=');
     }
 
     fn nil(&mut self) {
-        self.call_ref(builtins::null::LUA_NEW_NULL, None, &[])
-            .unwrap();
+        self.writes("nil");
     }
 
     fn boolean(&mut self, b: bool) {
         self.writes(if b { "true" } else { "false" })
+    }
+
+    fn end(&mut self) {
+        self.writes("end");
+    }
+
+    fn function(&mut self) {
+        self.writes("function");
+    }
+
+    fn local(&mut self) {
+        self.writes("local");
+    }
+
+    fn it_var(&mut self) {
+        self.writes("_lulz_it");
     }
 
     fn list(&mut self, first: Option<&Expr>, items: &[Expr]) -> TransRes {
@@ -97,11 +124,24 @@ impl Translator {
         let _ = self.code.write_char(c);
     }
 
-    pub fn block(&mut self, block: Block) -> TransRes {
+    fn _block(&mut self, block: Block) -> TransRes {
         for stmt in block.0.into_iter() {
             self.stmt(stmt)?;
             self.newline()
         }
+        Ok(())
+    }
+
+    pub fn outer_block(&mut self, block: Block) -> TransRes {
+        self._block(block)
+    }
+
+    fn block(&mut self, block: Block) -> TransRes {
+        let prev = std::mem::replace(&mut self.local_scope, true);
+        self.locals.push(HashSet::new());
+        self._block(block)?;
+        self.locals.pop();
+        self.local_scope = prev;
         Ok(())
     }
 
@@ -125,9 +165,9 @@ impl Translator {
                             span: stmt.span,
                         },
                     };
-                    self.assignment(&name, &e)?;
+                    self.declaration(&name, &e)?;
                 }
-                None => self.assignment(
+                None => self.declaration(
                     &name,
                     &Expr {
                         ty: ExprTy::Null,
@@ -136,19 +176,114 @@ impl Translator {
                 )?,
             },
             StmtTy::Assignment(name, expr) => {
-                // TODO: check if init'ed
                 self.assignment(&name, &expr)?;
+            }
+            StmtTy::FunctionDef(fn_name, args, block) => {
+                self.function();
+                self.space();
+                self.ident(&fn_name);
+                self.lparen();
+                let mut args = args.iter();
+                if let Some(first) = args.next() {
+                    self.ident(first);
+                    self.comma();
+                    for arg in args {
+                        self.ident(arg)
+                    }
+                }
+                self.rparen();
+                self.block(block)?;
+                self.end();
+            }
+            StmtTy::Expr(expr) => {
+                self.it_var();
+                self.eq();
+                self.expr(&expr)?;
             }
             _ => todo!("Statement not implemented: {:?}", stmt),
         }
         Ok(())
     }
 
-    fn assignment(&mut self, name: &Ident, expr: &Expr) -> TransRes {
+    fn declaration(&mut self, name: &Ident, expr: &Expr) -> TransRes {
+        if self.is_in_current_scope(name) {
+            // Don't allow declaration in the same scope
+            return Err(Diagnostic::build(DiagnosticType::Scope, name.1)
+                .annotation(
+                    Cow::Owned(format!(
+                        "variable `{}` cannot be re-declared",
+                        self.id_to_str(name)
+                    )),
+                    name.1,
+                )
+                .note(Cow::Borrowed(
+                    "declarations of the same name can only occur in different scopes",
+                ))
+                .into());
+        }
+
+        if self.local_scope {
+            self.define_local(name);
+            self.local();
+            self.space();
+        } else {
+            self.globals.insert(name.0);
+        }
+
         self.ident(name);
         self.eq();
         self.expr(expr)?;
+
         Ok(())
+    }
+
+    fn define_local(&mut self, name: &Ident) {
+        self.locals.last_mut().unwrap().insert(name.0);
+    }
+
+    fn undefined_var_error(&self, name: &Ident) -> Diagnostic {
+        Diagnostic::build(DiagnosticType::UnknownSymbol, name.1)
+            .annotation(
+                Cow::Owned(format!(
+                    "variable `{}` does not exist in scope",
+                    self.id_to_str(name)
+                )),
+                name.1,
+            )
+    }
+
+    fn assignment(&mut self, name: &Ident, expr: &Expr) -> TransRes {
+        if self.is_defined(name) {
+            self.ident(name);
+            self.eq();
+            self.expr(expr)?;
+            return Ok(());
+        }
+        Err(self.undefined_var_error(name).into())
+    }
+
+    fn id_to_str<'a>(&'a self, ident: &Ident) -> &'a str {
+        self.interner.lookup(ident.0)
+    }
+
+    fn is_global(&self, name: &Ident) -> bool {
+        self.globals.contains(&name.0)
+    }
+
+    fn is_local(&self, name: &Ident) -> bool {
+        self.locals.iter().any(|scope| scope.contains(&name.0))
+    }
+
+    fn is_defined(&self, name: &Ident) -> bool {
+        self.is_global(name) || self.is_local(name)
+    }
+
+    fn is_in_current_scope(&mut self, name: &Ident) -> bool {
+        if self.local_scope {
+            self.is_local(name)
+        } else {
+            self.is_global(name)
+        }
     }
 
     fn call(&mut self, f: &str, first: Option<&Expr>, args: &[Expr]) -> TransRes {
@@ -178,34 +313,35 @@ impl Translator {
     }
 
     fn expr(&mut self, expr: &Expr) -> TransRes {
-        match expr.ty {
+        match &expr.ty {
             ExprTy::Int(i) => {
                 self.writes(&i.to_string());
             }
             ExprTy::Float(i) => {
                 self.writes(&i.to_string());
             }
-            ExprTy::String(ref s) => {self.raw_string(s)}
+            ExprTy::String(s) => self.raw_string(s),
             ExprTy::Null => {
                 self.nil();
             }
             ExprTy::Bool(b) => {
-                self.boolean(b);
+                self.boolean(*b);
             }
             ExprTy::Variable(ref id) => {
-                self.writes(builtins::null::LUA_CHECK_VARIABLE);
-                self.lparen();
-                self.write_span(expr.span);
-                self.comma();
-                let var = self.interner.lookup(id.0).to_string();
-                self.raw_string(&var);
-                self.comma();
+                if !self.is_defined(id) {
+                    return Err(self.undefined_var_error(id).into())
+                }
                 self.ident(id);
-                self.rparen();
             }
-            ExprTy::Operator(op_ty, ref l, ref r) => self.operator(op_ty, &*l, &*r)?,
+            ExprTy::Operator(op_ty, ref l, ref r) => self.operator(*op_ty, &*l, &*r)?,
             ExprTy::Span(span) => {
-                self.write_span(span);
+                self.write_span(*span);
+            }
+            ExprTy::FunctionCall(fn_name, args) => {
+                self.ident(&fn_name);
+                self.lparen();
+                self.list(None, &args)?;
+                self.rparen();
             }
             _ => todo!("Expression not implemented: {:?}", expr),
         }

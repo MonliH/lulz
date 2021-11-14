@@ -13,6 +13,7 @@ use crate::runtime::builtins::register_modules;
 use crate::sourcemap::SOURCEMAP;
 use backend::translator::Translator;
 use frontend::*;
+use runtime::errors::raise_errors;
 use std::{
     borrow::Cow,
     fs::{read_to_string, File},
@@ -51,7 +52,9 @@ fn main() {
         .add(std::mem::take(&mut opts.input), source);
     match pipeline(id, opts) {
         Ok(()) => {}
-        Err(es) => {}
+        Err(es) => {
+            raise_errors(es)
+        }
     };
 }
 
@@ -64,7 +67,7 @@ fn pipeline(id: usize, opts: opts::Opts) -> Failible<()> {
     std::mem::drop(guard);
 
     let mut translator = Translator::new(interner);
-    translator.block(ast)?;
+    translator.outer_block(ast)?;
 
     if opts.debug {
         eprintln!("{}", translator.code);

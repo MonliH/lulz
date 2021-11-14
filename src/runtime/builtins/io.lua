@@ -8,7 +8,7 @@ function __lulz_to_str(v)
         return v
     elseif ty == "boolean" then
         return v and "WIN" or "FAIL"
-    elseif ty == "lulz_null" then
+    elseif ty == "nil" then
         return "NOOB"
     end
 end

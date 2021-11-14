@@ -102,6 +102,7 @@ pub enum ExprTy {
     List(Vec<Expr>),
 
     Null,
+    It,
 
     Variable(Ident),
     FunctionCall(Ident, Vec<Expr>),
