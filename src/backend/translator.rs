@@ -179,6 +179,7 @@ impl Translator {
                 self.assignment(&name, &expr)?;
             }
             StmtTy::FunctionDef(fn_name, args, block) => {
+                self.define_in_scope(&fn_name);
                 self.function();
                 self.space();
                 self.ident(&fn_name);
@@ -227,7 +228,7 @@ impl Translator {
             self.local();
             self.space();
         } else {
-            self.globals.insert(name.0);
+            self.define_global(name);
         }
 
         self.ident(name);
@@ -237,8 +238,20 @@ impl Translator {
         Ok(())
     }
 
+    fn define_global(&mut self, name: &Ident) {
+        self.globals.insert(name.0);
+    }
+
     fn define_local(&mut self, name: &Ident) {
         self.locals.last_mut().unwrap().insert(name.0);
+    }
+
+    fn define_in_scope(&mut self, name: &Ident) {
+        if self.local_scope {
+            self.define_local(name)
+        } else {
+            self.define_global(name)
+        }
     }
 
     fn undefined_var_error(&self, name: &Ident) -> Diagnostic {
