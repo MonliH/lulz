@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use crate::{backend::interner::StrId, diagnostics::Span};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Ident(pub StrId, pub Span);
 
 impl std::cmp::PartialEq for Ident {

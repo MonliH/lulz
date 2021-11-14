@@ -242,14 +242,13 @@ impl Translator {
     }
 
     fn undefined_var_error(&self, name: &Ident) -> Diagnostic {
-        Diagnostic::build(DiagnosticType::UnknownSymbol, name.1)
-            .annotation(
-                Cow::Owned(format!(
-                    "variable `{}` does not exist in scope",
-                    self.id_to_str(name)
-                )),
-                name.1,
-            )
+        Diagnostic::build(DiagnosticType::UnknownSymbol, name.1).annotation(
+            Cow::Owned(format!(
+                "variable `{}` does not exist in this scope",
+                self.id_to_str(name)
+            )),
+            name.1,
+        )
     }
 
     fn assignment(&mut self, name: &Ident, expr: &Expr) -> TransRes {
@@ -329,7 +328,7 @@ impl Translator {
             }
             ExprTy::Variable(ref id) => {
                 if !self.is_defined(id) {
-                    return Err(self.undefined_var_error(id).into())
+                    return Err(self.undefined_var_error(id).into());
                 }
                 self.ident(id);
             }
@@ -338,7 +337,7 @@ impl Translator {
                 self.write_span(*span);
             }
             ExprTy::FunctionCall(fn_name, args) => {
-                self.ident(&fn_name);
+                self.expr(&Self::make_id_expr(*fn_name))?;
                 self.lparen();
                 self.list(None, &args)?;
                 self.rparen();
@@ -346,6 +345,13 @@ impl Translator {
             _ => todo!("Expression not implemented: {:?}", expr),
         }
         Ok(())
+    }
+
+    fn make_id_expr(id: Ident) -> Expr {
+        Expr {
+            span: id.1,
+            ty: ExprTy::Variable(id),
+        }
     }
 
     fn write_span(&mut self, span: Span) {
