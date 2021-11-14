@@ -1,4 +1,4 @@
-function _lulz_add(l, r)
+function _lulz_add(pos, l, r)
     if type(l) == "string" and type(r) == "string" then
         return l..r
     else
@@ -6,51 +6,51 @@ function _lulz_add(l, r)
     end
 end
 
-function _lulz_sub(l, r)
+function _lulz_sub(pos, l, r)
     return l - r
 end
 
-function _lulz_mul(l, r)
+function _lulz_mul(pos, l, r)
     return l * r
 end
 
-function _lulz_div(l, r)
+function _lulz_div(pos, l, r)
     return l / r
 end
 
-function _lulz_mod(l, r)
+function _lulz_mod(pos, l, r)
     return l % r
 end
 
-function _lulz_and(l, r)
+function _lulz_and(pos, l, r)
     return l and r
 end
 
-function _lulz_or(l, r)
+function _lulz_or(pos, l, r)
     return l or r
 end
 
-function _lulz_eq(l, r)
+function _lulz_eq(pos, l, r)
     return l == r
 end
 
-function _lulz_neq(l, r)
+function _lulz_neq(pos, l, r)
     return l ~= r
 end
 
-function _lulz_gt(l, r)
+function _lulz_gt(pos, l, r)
     return l > r
 end
 
-function _lulz_lt(l, r)
+function _lulz_lt(pos, l, r)
     return l < r
 end
 
-function _lulz_gte(l, r)
+function _lulz_gte(pos, l, r)
     return l >= r
 end
 
-function _lulz_lte(l, r)
+function _lulz_lte(pos, l, r)
     return l <= r
 end
 

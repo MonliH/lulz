@@ -4,8 +4,9 @@ mod diagnostics;
 mod err;
 mod frontend;
 mod opts;
+mod runtime;
 
-use crate::backend::builtins::register_modules;
+use crate::runtime::builtins::register_modules;
 use crate::backend::interner::Interner;
 use crate::diagnostics::Failible;
 use backend::translator::Translator;
@@ -83,3 +84,4 @@ fn pipeline(sources: &SimpleFiles<String, String>, id: usize, opts: opts::Opts) 
 
     Ok(())
 }
+

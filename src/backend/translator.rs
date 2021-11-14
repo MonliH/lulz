@@ -1,4 +1,5 @@
-use super::builtins;
+use crate::diagnostics::Span;
+use crate::runtime::builtins;
 use crate::{diagnostics::Failible, frontend::ast::*};
 use std::fmt::Write;
 
@@ -40,11 +41,44 @@ impl Translator {
     }
 
     fn nil(&mut self) {
-        self.writes("nil");
+        self.call_ref(builtins::null::LUA_NEW_NULL, None, &[]).unwrap();
     }
 
     fn boolean(&mut self, b: bool) {
         self.writes(if b { "true" } else { "false" })
+    }
+
+    fn list(&mut self, first: Option<&Expr>, items: &[Expr]) -> TransRes {
+        let mut items = items.iter();
+        let next = first.map(|f| Some(f)).unwrap_or_else(|| items.next());
+        if let Some(first) = next {
+            self.expr(first)?;
+            for item in items {
+                self.comma();
+                self.expr(item)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn list_ref(&mut self, first: Option<&Expr>, items: &[&Expr]) -> TransRes {
+        let mut items = items.iter();
+        let next = first.map(|f| Some(f)).unwrap_or_else(|| items.next().copied());
+        if let Some(first) = next {
+            self.expr(first)?;
+            for item in items {
+                self.comma();
+                self.expr(item)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn array(&mut self, first: Option<&Expr>, items: &[Expr]) -> TransRes {
+        self.writec('{');
+        self.list(first, items)?;
+        self.writec('}');
+        Ok(())
     }
 
     fn writes(&mut self, s: &str) {
@@ -72,10 +106,11 @@ impl Translator {
                 } else {
                     builtins::io::LUA_PRINTLN
                 },
+                Some(&Self::span_expr(stmt.span)),
                 &exprs,
             )?,
-            StmtTy::DecAssign(ref name, expr) => {
-                if let Some(var) = expr {
+            StmtTy::DecAssign(ref name, expr) => match expr {
+                Some(var) => {
                     let e = match var {
                         Ok(e) => e,
                         Err(t) => Expr {
@@ -85,12 +120,19 @@ impl Translator {
                     };
                     self.assignment(&name, &e)?;
                 }
-            }
+                None => self.assignment(
+                    &name,
+                    &Expr {
+                        ty: ExprTy::Null,
+                        span: Span::default(),
+                    },
+                )?,
+            },
             StmtTy::Assignment(name, expr) => {
                 // TODO: check if init'ed
                 self.assignment(&name, &expr)?;
             }
-            _ => todo!("Statement not implemented: {:?}", stmt)
+            _ => todo!("Statement not implemented: {:?}", stmt),
         }
         Ok(())
     }
@@ -102,32 +144,18 @@ impl Translator {
         Ok(())
     }
 
-    fn call(&mut self, f: &str, args: &[Expr]) -> TransRes {
+    fn call(&mut self, f: &str, first: Option<&Expr>, args: &[Expr]) -> TransRes {
         self.writes(f);
         self.lparen();
-        let mut args = args.iter();
-        if let Some(first) = args.next() {
-            self.expr(first)?;
-            for arg in args {
-                self.comma();
-                self.expr(arg)?;
-            }
-        }
+        self.list(first, args)?;
         self.rparen();
         Ok(())
     }
 
-    fn call_ref(&mut self, f: &str, args: &[&Expr]) -> TransRes {
+    fn call_ref(&mut self, f: &str, first: Option<&Expr>, args: &[&Expr]) -> TransRes {
         self.writes(f);
         self.lparen();
-        let mut args = args.iter();
-        if let Some(first) = args.next() {
-            self.expr(first)?;
-            for arg in args {
-                self.comma();
-                self.expr(arg)?;
-            }
-        }
+        self.list_ref(first, args)?;
         self.rparen();
         Ok(())
     }
@@ -157,30 +185,54 @@ impl Translator {
             }
             ExprTy::Variable(ref id) => self.ident(id),
             ExprTy::Operator(op_ty, ref l, ref r) => self.operator(op_ty, &*l, &*r)?,
-            _ => todo!("Expression not implemented: {:?}", expr)
+            ExprTy::Span(span) => {
+                self.array(None, &[
+                    Self::int_expr(span.s as i64),
+                    Self::int_expr(span.e as i64),
+                    Self::int_expr(span.file as i64),
+                ])
+                .unwrap();
+            }
+            _ => todo!("Expression not implemented: {:?}", expr),
         }
         Ok(())
     }
 
+    fn int_expr(n: i64) -> Expr {
+        Expr {
+            ty: ExprTy::Int(n),
+            span: Span::default(),
+        }
+    }
+
+    fn span_expr(span: Span) -> Expr {
+        Expr {
+            ty: ExprTy::Span(span),
+            span,
+        }
+    }
+
     fn operator(&mut self, op_ty: OpTy, l: &Expr, r: &Expr) -> TransRes {
+        let span = l.span.combine(&r.span);
+        let span_expr = &Self::span_expr(span);
         match op_ty {
-            OpTy::Add => self.call_ref(builtins::ops::LUA_ADD, &[l, r])?,
-            OpTy::Sub => self.call_ref(builtins::ops::LUA_SUB, &[l, r])?,
-            OpTy::Mul => self.call_ref(builtins::ops::LUA_MUL, &[l, r])?,
-            OpTy::Div => self.call_ref(builtins::ops::LUA_DIV, &[l, r])?,
-            OpTy::Mod => self.call_ref(builtins::ops::LUA_MOD, &[l, r])?,
+            OpTy::Add => self.call_ref(builtins::ops::LUA_ADD, None, &[span_expr, l, r])?,
+            OpTy::Sub => self.call_ref(builtins::ops::LUA_SUB, None, &[span_expr, l, r])?,
+            OpTy::Mul => self.call_ref(builtins::ops::LUA_MUL, None, &[span_expr, l, r])?,
+            OpTy::Div => self.call_ref(builtins::ops::LUA_DIV, None, &[span_expr, l, r])?,
+            OpTy::Mod => self.call_ref(builtins::ops::LUA_MOD, None, &[span_expr, l, r])?,
 
-            OpTy::And => self.call_ref(builtins::ops::LUA_AND, &[l, r])?,
-            OpTy::Or => self.call_ref(builtins::ops::LUA_OR, &[l, r])?,
+            OpTy::And => self.call_ref(builtins::ops::LUA_AND, None, &[span_expr, l, r])?,
+            OpTy::Or => self.call_ref(builtins::ops::LUA_OR, None, &[span_expr, l, r])?,
 
-            OpTy::Equal => self.call_ref(builtins::ops::LUA_EQ, &[l, r])?,
-            OpTy::NotEq => self.call_ref(builtins::ops::LUA_NEQ, &[l, r])?,
+            OpTy::Equal => self.call_ref(builtins::ops::LUA_EQ, None, &[span_expr, l, r])?,
+            OpTy::NotEq => self.call_ref(builtins::ops::LUA_NEQ, None, &[span_expr, l, r])?,
 
-            OpTy::GT => self.call_ref(builtins::ops::LUA_GT, &[l, r])?,
-            OpTy::LT => self.call_ref(builtins::ops::LUA_LT, &[l, r])?,
-            OpTy::GTE => self.call_ref(builtins::ops::LUA_GTE, &[l, r])?,
-            OpTy::LTE => self.call_ref(builtins::ops::LUA_LTE, &[l, r])?,
-            op => todo!("Operator not implemented: {:?}", op)
+            OpTy::GT => self.call_ref(builtins::ops::LUA_GT, None, &[span_expr, l, r])?,
+            OpTy::LT => self.call_ref(builtins::ops::LUA_LT, None, &[span_expr, l, r])?,
+            OpTy::GTE => self.call_ref(builtins::ops::LUA_GTE, None, &[span_expr, l, r])?,
+            OpTy::LTE => self.call_ref(builtins::ops::LUA_LTE, None, &[span_expr, l, r])?,
+            op => todo!("Operator not implemented: {:?}", op),
         }
         Ok(())
     }

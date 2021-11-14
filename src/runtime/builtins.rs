@@ -5,6 +5,10 @@ pub mod io {
     pub const LUA_PRINTLN: &str = "_lulz_println";
 }
 
+pub mod null {
+    pub const LUA_NEW_NULL: &str = "_lulz_NewNull";
+}
+
 pub mod ops {
     pub const LUA_ADD: &str = "_lulz_add";
     pub const LUA_SUB: &str = "_lulz_sub";
@@ -32,6 +36,9 @@ fn run_str(lj: &Lua, s: &str) {
 }
 
 pub fn register_modules(lj: &Lua) {
+    // Order of loading is important
+    // Load null first because it overrides the `type` built-in function (evil, I know)
+    run_str(lj, include_module!("null"));
     run_str(lj, include_module!("io"));
     run_str(lj, include_module!("ops"));
 }

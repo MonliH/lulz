@@ -93,6 +93,7 @@ impl std::cmp::PartialEq for InterpEntry {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum ExprTy {
+    Span(Span),
     Float(f64),
     Int(i64),
     String(String),
