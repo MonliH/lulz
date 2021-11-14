@@ -67,7 +67,7 @@ fn pipeline(id: usize, opts: opts::Opts) -> Failible<()> {
     let ast = parser.parse()?;
     std::mem::drop(guard);
 
-    let mut translator = Translator::new();
+    let mut translator = Translator::new(interner);
     translator.block(ast)?;
 
     eprintln!("{}", translator.code);

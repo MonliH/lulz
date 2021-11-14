@@ -18,3 +18,11 @@ type = function(obj)
     end
     return otype
 end
+
+function _lulz_check_variable(pos, name, var)
+    if type(var) == "nil" then
+        _ffi_lulz_error(pos, "variable `" .. name .. "` is undefined")
+    else
+        return var
+    end
+end

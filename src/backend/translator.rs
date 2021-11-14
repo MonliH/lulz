@@ -3,16 +3,20 @@ use crate::runtime::builtins;
 use crate::{diagnostics::Failible, frontend::ast::*};
 use std::fmt::Write;
 
+use super::interner::Interner;
+
 pub struct Translator {
     pub code: String,
+    interner: Interner
 }
 
 type TransRes = Failible<()>;
 
 impl Translator {
-    pub fn new() -> Self {
+    pub fn new(interner: Interner) -> Self {
         Self {
             code: String::new(),
+            interner
         }
     }
 
@@ -41,7 +45,8 @@ impl Translator {
     }
 
     fn nil(&mut self) {
-        self.call_ref(builtins::null::LUA_NEW_NULL, None, &[]).unwrap();
+        self.call_ref(builtins::null::LUA_NEW_NULL, None, &[])
+            .unwrap();
     }
 
     fn boolean(&mut self, b: bool) {
@@ -63,7 +68,9 @@ impl Translator {
 
     fn list_ref(&mut self, first: Option<&Expr>, items: &[&Expr]) -> TransRes {
         let mut items = items.iter();
-        let next = first.map(|f| Some(f)).unwrap_or_else(|| items.next().copied());
+        let next = first
+            .map(|f| Some(f))
+            .unwrap_or_else(|| items.next().copied());
         if let Some(first) = next {
             self.expr(first)?;
             for item in items {
@@ -164,6 +171,12 @@ impl Translator {
         self.writes(&format!("_{}", id.0.inner()));
     }
 
+    fn raw_string(&mut self, s: &str) {
+        self.quotation();
+        self.writes(&s.replace("\\", "\\\\").replace("\"", "\\\""));
+        self.quotation();
+    }
+
     fn expr(&mut self, expr: &Expr) -> TransRes {
         match expr.ty {
             ExprTy::Int(i) => {
@@ -172,30 +185,43 @@ impl Translator {
             ExprTy::Float(i) => {
                 self.writes(&i.to_string());
             }
-            ExprTy::String(ref s) => {
-                self.quotation();
-                self.writes(&s.replace("\\", "\\\\").replace("\"", "\\\""));
-                self.quotation();
-            }
+            ExprTy::String(ref s) => {self.raw_string(s)}
             ExprTy::Null => {
                 self.nil();
             }
             ExprTy::Bool(b) => {
                 self.boolean(b);
             }
-            ExprTy::Variable(ref id) => self.ident(id),
+            ExprTy::Variable(ref id) => {
+                self.writes(builtins::null::LUA_CHECK_VARIABLE);
+                self.lparen();
+                self.write_span(expr.span);
+                self.comma();
+                let var = self.interner.lookup(id.0).to_string();
+                self.raw_string(&var);
+                self.comma();
+                self.ident(id);
+                self.rparen();
+            }
             ExprTy::Operator(op_ty, ref l, ref r) => self.operator(op_ty, &*l, &*r)?,
             ExprTy::Span(span) => {
-                self.array(None, &[
-                    Self::int_expr(span.s as i64),
-                    Self::int_expr(span.e as i64),
-                    Self::int_expr(span.file as i64),
-                ])
-                .unwrap();
+                self.write_span(span);
             }
             _ => todo!("Expression not implemented: {:?}", expr),
         }
         Ok(())
+    }
+
+    fn write_span(&mut self, span: Span) {
+        self.array(
+            None,
+            &[
+                Self::int_expr(span.s as i64),
+                Self::int_expr(span.e as i64),
+                Self::int_expr(span.file as i64),
+            ],
+        )
+        .unwrap();
     }
 
     fn int_expr(n: i64) -> Expr {

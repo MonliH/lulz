@@ -8,6 +8,7 @@ pub mod io {
 
 pub mod null {
     pub const LUA_NEW_NULL: &str = "_lulz_NewNull";
+    pub const LUA_CHECK_VARIABLE: &str = "_lulz_check_variable";
 }
 
 pub mod ops {

@@ -2,7 +2,7 @@ function table.pack(...)
   return { n = select("#", ...), ... }
 end
 
-function __lulz_to_str(pos, v)
+function __lulz_to_str(v)
     local ty = type(v)
     if ty == "number" or ty == "string" then
         return v
@@ -10,8 +10,6 @@ function __lulz_to_str(pos, v)
         return v and "WIN" or "FAIL"
     elseif ty == "lulz_null" then
         return "NOOB"
-    elseif ty == "nil" then
-        _ffi_lulz_error(pos, "variable is undefined")
     end
 end
 
@@ -29,3 +27,4 @@ function _lulz_print(pos, ...)
         io.write(__lulz_to_str(pos, args[i]))
     end
 end
+
