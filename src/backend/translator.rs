@@ -60,6 +60,10 @@ impl Translator {
         self.writes("nil");
     }
 
+    fn then(&mut self) {
+        self.writes("then");
+    }
+
     fn boolean(&mut self, b: bool) {
         self.writes(if b { "true" } else { "false" })
     }
@@ -125,6 +129,7 @@ impl Translator {
     }
 
     fn _block(&mut self, block: Block) -> TransRes {
+        self.newline();
         for stmt in block.0.into_iter() {
             self.stmt(stmt)?;
             self.newline()
@@ -132,17 +137,22 @@ impl Translator {
         Ok(())
     }
 
-    pub fn outer_block(&mut self, block: Block) -> TransRes {
-        self._block(block)
+    fn fn_block(&mut self, block: Block) -> TransRes {
+        let prev = std::mem::replace(&mut self.local_scope, true);
+        self._block(block)?;
+        self.local_scope = prev;
+        Ok(())
     }
 
     fn block(&mut self, block: Block) -> TransRes {
-        let prev = std::mem::replace(&mut self.local_scope, true);
-        self.locals.push(HashSet::new());
-        self._block(block)?;
-        self.locals.pop();
-        self.local_scope = prev;
+        self.new_scope();
+        self.fn_block(block)?;
+        self.pop_scope();
         Ok(())
+    }
+
+    pub fn outer_block(&mut self, block: Block) -> TransRes {
+        self._block(block)
     }
 
     fn stmt(&mut self, stmt: Stmt) -> TransRes {
@@ -184,21 +194,57 @@ impl Translator {
                 self.space();
                 self.ident(&fn_name);
                 self.lparen();
+                self.new_scope();
                 let mut args = args.iter();
                 if let Some(first) = args.next() {
                     self.ident(first);
-                    self.comma();
+                    self.define_local(first);
                     for arg in args {
-                        self.ident(arg)
+                        self.comma();
+                        self.ident(arg);
+                        self.define_local(arg);
                     }
                 }
                 self.rparen();
-                self.block(block)?;
+                self.fn_block(block)?;
+                self.pop_scope();
                 self.end();
             }
             StmtTy::Expr(expr) => {
                 self.it_var();
                 self.eq();
+                self.expr(&expr)?;
+            }
+            StmtTy::If(if_case, else_if_cases, else_case) => {
+                if if_case.is_none() && else_if_cases.is_empty() && else_case.is_none() {
+                    // Nothing to emit
+                    return Ok(());
+                }
+                self.writes("if");
+                self.space();
+                self.it_var();
+                self.space();
+                self.then();
+                if let Some(if_block) = if_case {
+                    self.block(if_block)?;
+                }
+                for (expr, block) in else_if_cases {
+                    self.writes("elseif");
+                    self.space();
+                    self.expr(&expr)?;
+                    self.space();
+                    self.then();
+                    self.block(block)?;
+                }
+                if let Some(else_block) = else_case {
+                    self.writes("else");
+                    self.block(else_block)?;
+                }
+                self.end();
+            }
+            StmtTy::Return(expr) => {
+                self.writes("return");
+                self.space();
                 self.expr(&expr)?;
             }
             _ => todo!("Statement not implemented: {:?}", stmt),
@@ -252,6 +298,14 @@ impl Translator {
         } else {
             self.define_global(name)
         }
+    }
+
+    fn new_scope(&mut self) {
+        self.locals.push(HashSet::new());
+    }
+
+    fn pop_scope(&mut self) {
+        self.locals.pop();
     }
 
     fn undefined_var_error(&self, name: &Ident) -> Diagnostic {

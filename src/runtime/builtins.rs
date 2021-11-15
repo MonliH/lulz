@@ -35,6 +35,7 @@ fn run_str(lj: &Lua, s: &str) {
 pub fn register_modules(lj: &Lua) {
     // Order of loading is important
     register_raise_error(lj);
+    run_str(lj, include_module!("it"));
     run_str(lj, include_module!("io"));
     run_str(lj, include_module!("ops"));
 }
