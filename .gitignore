@@ -4,3 +4,7 @@ basic.lol
 release
 build
 test.lua
+# run_perfs.py data
+*.temp
+*.csv
+/_perfs

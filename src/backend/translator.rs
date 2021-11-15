@@ -451,22 +451,22 @@ impl Translator {
         let span = l.span.combine(&r.span);
         let span_expr = &Self::span_expr(span);
         match op_ty {
-            OpTy::Add => self.call_ref(builtins::ops::LUA_ADD, None, &[span_expr, l, r])?,
-            OpTy::Sub => self.call_ref(builtins::ops::LUA_SUB, None, &[span_expr, l, r])?,
-            OpTy::Mul => self.call_ref(builtins::ops::LUA_MUL, None, &[span_expr, l, r])?,
-            OpTy::Div => self.call_ref(builtins::ops::LUA_DIV, None, &[span_expr, l, r])?,
-            OpTy::Mod => self.call_ref(builtins::ops::LUA_MOD, None, &[span_expr, l, r])?,
+            OpTy::Add => self.call_ref(builtins::ops::LUA_ADD, None, &[l, r])?,
+            OpTy::Sub => self.call_ref(builtins::ops::LUA_SUB, None, &[l, r])?,
+            OpTy::Mul => self.call_ref(builtins::ops::LUA_MUL, None, &[l, r])?,
+            OpTy::Div => self.call_ref(builtins::ops::LUA_DIV, None, &[l, r])?,
+            OpTy::Mod => self.call_ref(builtins::ops::LUA_MOD, None, &[l, r])?,
 
-            OpTy::And => self.call_ref(builtins::ops::LUA_AND, None, &[span_expr, l, r])?,
-            OpTy::Or => self.call_ref(builtins::ops::LUA_OR, None, &[span_expr, l, r])?,
+            OpTy::And => self.call_ref(builtins::ops::LUA_AND, None, &[l, r])?,
+            OpTy::Or => self.call_ref(builtins::ops::LUA_OR, None, &[l, r])?,
 
-            OpTy::Equal => self.call_ref(builtins::ops::LUA_EQ, None, &[span_expr, l, r])?,
-            OpTy::NotEq => self.call_ref(builtins::ops::LUA_NEQ, None, &[span_expr, l, r])?,
+            OpTy::Equal => self.call_ref(builtins::ops::LUA_EQ, None, &[l, r])?,
+            OpTy::NotEq => self.call_ref(builtins::ops::LUA_NEQ, None, &[l, r])?,
 
-            OpTy::GT => self.call_ref(builtins::ops::LUA_GT, None, &[span_expr, l, r])?,
-            OpTy::LT => self.call_ref(builtins::ops::LUA_LT, None, &[span_expr, l, r])?,
-            OpTy::GTE => self.call_ref(builtins::ops::LUA_GTE, None, &[span_expr, l, r])?,
-            OpTy::LTE => self.call_ref(builtins::ops::LUA_LTE, None, &[span_expr, l, r])?,
+            OpTy::GT => self.call_ref(builtins::ops::LUA_GT, None, &[l, r])?,
+            OpTy::LT => self.call_ref(builtins::ops::LUA_LT, None, &[l, r])?,
+            OpTy::GTE => self.call_ref(builtins::ops::LUA_GTE, None, &[l, r])?,
+            OpTy::LTE => self.call_ref(builtins::ops::LUA_LTE, None, &[l, r])?,
             op => todo!("Operator not implemented: {:?}", op),
         }
         Ok(())
