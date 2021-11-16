@@ -3,6 +3,7 @@ import json
 import subprocess
 import matplotlib.pyplot as plt
 import argparse
+import numpy as np
 from glob import glob
 from tqdm import tqdm
 
@@ -53,6 +54,7 @@ perfs_dir = "_perfs"
 if not os.path.isdir(perfs_dir):
     os.makedirs(perfs_dir)
 
+
 def get_filenames_from_name(name, folder_name):
     filenames = [os.path.join(folder_name, name + ext) for ext in exts]
     temp_filenames = [filename + ".temp" for filename in filenames]
@@ -62,7 +64,9 @@ def get_filenames_from_name(name, folder_name):
 
     return (filenames, temp_filenames, ns)
 
+
 json_name = os.path.join(perfs_dir, "data.json")
+
 
 def get_results(filenames, temp_filenames, n):
     for (file, temp) in zip(filenames, temp_filenames):
@@ -98,18 +102,40 @@ def get_results(filenames, temp_filenames, n):
 
     return results
 
+
 if opts.command_type == "runall":
-    data = {language: [] for language in commands}
+    bar_width = 0.25
+    data = {command: [] for command in commands}
+    benches = []
     for value_filename in glob("./perfs/*/values.json"):
         value_json = json.load(open(value_filename, "r"))
         folder_name = os.path.dirname(value_filename)
         name = os.path.basename(folder_name)
         (filenames, temp_filenames, ns) = get_filenames_from_name(name, folder_name)
         results = get_results(filenames, temp_filenames, value_json["one"])
+        benches.append(name)
         for program in results["results"]:
             command = program["command"].split(" ")[0]
             data[command].append((name, program["mean"], program["stddev"]))
-    print(data)
+    fig, ax = plt.subplots()
+    current_xs = np.arange(len(benches))
+    for (name, series) in data.items():
+        ax.bar(
+            current_xs,
+            [point[1] for point in series],
+            width=bar_width,
+            label=name.split("/")[-1],
+        )
+        current_xs = [x + bar_width for x in current_xs]
+
+    ax.set_xlabel("benchmark", fontweight="bold")
+    ax.set_ylabel("time (s)", fontweight="bold")
+    plt.xticks([r + bar_width for r in range(len(benches))], benches)
+    ax.legend()
+    fig.suptitle(f"benchmark results", fontsize=18)
+    ax.set_title("lower is better")
+    plt.tight_layout()
+    plt.savefig(os.path.join(perfs_dir, f"benches.png"), dpi=300)
 else:
     name = opts.benchmark[0]
     folder_name = os.path.join("perfs", name)
@@ -147,7 +173,6 @@ else:
 
         plt.savefig(os.path.join(perfs_dir, f"{name}.png"), dpi=300)
 
-
     if opts.command_type == "graph":
         data = json.load(open(os.path.join(perf_backup), "r"))
         regen_single_graph(ns, name, data)
@@ -169,4 +194,3 @@ else:
 
         json.dump(data, open(perf_backup, "w"))
         regen_single_graph(ns, name, data)
-
