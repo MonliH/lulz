@@ -35,7 +35,7 @@ cargo run --release
 
 ## how fast??
 
-In a simple [recursive fibonacci benchmark](./perfs/fib/fib.lol), it performs about **220x** faster than lci, and **12x** faster than CPython:
+In a simple [recursive fibonacci benchmark](./perfs/fib/fib.lol), it performs about **220x** faster than lci, and **13x** faster than CPython:
 
 <img src="./assets/benches.png" alt="Benchmark results" width=650></img>
 

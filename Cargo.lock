@@ -99,14 +99,14 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 [[package]]
 name = "mlua"
 version = "0.6.6"
-source = "git+https://github.com/khvzak/mlua.git#6d689c35aac83dfa94125ae18d7d1badbd6c614e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4235d7e740d73d7429df6f176c81b248f05c39d67264d45a7d8cecb67c227f6f"
 dependencies = [
  "bstr",
  "cc",
  "num-traits",
  "once_cell",
  "pkg-config",
- "rustc-hash",
 ]
 
 [[package]]
@@ -135,12 +135,6 @@ name = "pkg-config"
 version = "0.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12295df4f294471248581bc09bef3c38a5e46f1e36d6a37353621a0c6c357e1f"
-
-[[package]]
-name = "rustc-hash"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "smallvec"

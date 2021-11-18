@@ -35,8 +35,8 @@ pub fn register_raise_error(lj: &Lua) {
     let globals = lj.globals();
     globals.set(
         "_ffi_lulz_error",
-        lj.create_function(|lua, (span_arr, msg): ([usize; 3], String)| {
-            let span = Span::from_arr(span_arr);
+        lj.create_function(|_, (msg, (s, e, file)): (String, (usize, usize, usize))| {
+            let span = Span::new(s, e, file);
             raise_error_at(span, &msg);
             Ok(())
         }).unwrap(),
