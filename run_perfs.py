@@ -25,12 +25,12 @@ graph.add_argument(
     help="the benchmark in ./perfs/ to run",
 )
 
-graph = subparsers.add_parser(
+run = subparsers.add_parser(
     "run",
     help="run the same benchmark (in ./perfs/) multiple times, with \
     different input sizes, and composite into a line graph",
 )
-graph.add_argument(
+run.add_argument(
     "benchmark",
     metavar="<benchmark>",
     type=str,
@@ -43,11 +43,10 @@ runall = subparsers.add_parser(
     help="run all benchmarks in ./perfs/, and composite into a bar graph",
 )
 
-
 opts = parser.parse_args()
 
-exts = [".lol", ".lci.lol", ".py"]
-commands = ["./target/release/lulz", "lci", "python"]
+exts = [".lol", ".py", ".lci.lol",]
+commands = ["./target/release/lulz", "python", "lci"]
 
 perfs_dir = "_perfs"
 
@@ -105,6 +104,7 @@ def get_results(filenames, temp_filenames, n):
 
 if opts.command_type == "runall":
     bar_width = 0.25
+    fig, ax = plt.subplots()
     data = {command: [] for command in commands}
     benches = []
     for value_filename in glob("./perfs/*/values.json"):
@@ -117,7 +117,6 @@ if opts.command_type == "runall":
         for program in results["results"]:
             command = program["command"].split(" ")[0]
             data[command].append((name, program["mean"], program["stddev"]))
-    fig, ax = plt.subplots()
     current_xs = np.arange(len(benches))
     for (name, series) in data.items():
         ax.bar(
@@ -134,8 +133,7 @@ if opts.command_type == "runall":
     ax.legend()
     fig.suptitle(f"benchmark results", fontsize=18)
     ax.set_title("lower is better")
-    plt.tight_layout()
-    plt.savefig(os.path.join(perfs_dir, f"benches.png"), dpi=300)
+    plt.savefig(os.path.join(perfs_dir, f"benches.png"), dpi=300, bbox_inches="tight", pad_inches=0.2)
 else:
     name = opts.benchmark[0]
     folder_name = os.path.join("perfs", name)

@@ -3,6 +3,12 @@ name = "lulz"
 version = "0.1.0"
 authors = ["Jonathan Li <30177086+MonliH@users.noreply.github.com>"]
 edition = "2018"
+license = "MIT"
+repository = "https://github.com/MonliH/lulz"
+
+exclude = [
+    "assets/*",
+]
 
 [dependencies]
 codespan-reporting = "0.11.1"
