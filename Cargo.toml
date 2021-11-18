@@ -1,14 +1,15 @@
 [package]
 name = "lulz"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Jonathan Li <30177086+MonliH@users.noreply.github.com>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/MonliH/lulz"
-
+description = "A fast and spec-compliant LOLCODE implementation"
 exclude = [
     "assets/*",
 ]
+readme = "readme.md"
 
 [dependencies]
 codespan-reporting = "0.11.1"
