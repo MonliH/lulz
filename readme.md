@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/lulz)](https://crates.io/crates/lulz)
 
-`lulz` is a **[LOLCODE](http://www.lolcode.org/) implemented** written in rust.
+`lulz` is a **[LOLCODE](http://www.lolcode.org/) implementation** written in rust.
 It is **much faster than [lci](https://github.com/justinmeza/lci)** because it embeds **Lua**
 as a JIT-compiler backend.
 
